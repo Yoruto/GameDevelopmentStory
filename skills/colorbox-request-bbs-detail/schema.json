@@ -1,0 +1,651 @@
+{
+  "name": "request-bbs-detail",
+  "description": "展示单个帖子的标题、正文、作者、话题、模块配置、互动数据和跳转入口。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "tid": {
+        "type": "string",
+        "description": "帖子唯一ID，例如 \"123456\""
+      }
+    },
+    "required": [
+      "tid"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "object",
+        "description": "成功时返回的数据载荷",
+        "properties": {
+          "basicInfo": {
+            "type": "object",
+            "description": "帖子基础信息",
+            "properties": {
+              "fid": {
+                "type": "number",
+                "description": "论坛版块 ID"
+              },
+              "topicCategoryName": {
+                "type": "string",
+                "description": "话题分类名称"
+              },
+              "author": {
+                "type": "object",
+                "description": "作者信息",
+                "properties": {
+                  "puid": {
+                    "type": "number",
+                    "description": "作者 PUID"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "作者昵称"
+                  },
+                  "nftInfo": {
+                    "type": "object",
+                    "description": "NFT 信息",
+                    "properties": {
+                      "assetAmount": {
+                        "type": "number|null",
+                        "description": "NFT 资产数量，可能为 null"
+                      },
+                      "assetCate": {
+                        "type": "string|null",
+                        "description": "NFT 资产分类，可能为 null"
+                      },
+                      "assetId": {
+                        "type": "string|null",
+                        "description": "NFT 资产 ID，可能为 null"
+                      },
+                      "assetTitle": {
+                        "type": "string|null",
+                        "description": "NFT 资产标题，可能为 null"
+                      },
+                      "assetType": {
+                        "type": "string|null",
+                        "description": "NFT 资产类型，可能为 null"
+                      },
+                      "contentUrl": {
+                        "type": "string|null",
+                        "description": "NFT 内容 URL，可能为 null"
+                      },
+                      "hasNFT": {
+                        "type": "boolean|null",
+                        "description": "是否拥有 NFT，可能为 null"
+                      },
+                      "id": {
+                        "type": "number|string|null",
+                        "description": "NFT 记录 ID，可能为 null"
+                      },
+                      "ownerPuid": {
+                        "type": "number|null",
+                        "description": "NFT 拥有者 PUID，可能为 null"
+                      },
+                      "shardId": {
+                        "type": "number|string|null",
+                        "description": "NFT 分片 ID，可能为 null"
+                      },
+                      "shardNo": {
+                        "type": "number|string|null",
+                        "description": "NFT 分片序号，可能为 null"
+                      },
+                      "shardUniqueCode": {
+                        "type": "string|null",
+                        "description": "NFT 分片唯一编码，可能为 null"
+                      }
+                    }
+                  }
+                }
+              },
+              "topicName": {
+                "type": "string",
+                "description": "话题名称"
+              },
+              "topic_id": {
+                "type": "number",
+                "description": "话题 ID"
+              },
+              "tid": {
+                "type": "number",
+                "description": "帖子 ID"
+              },
+              "relation": {
+                "type": "number",
+                "description": "当前用户与作者关系状态"
+              },
+              "status": {
+                "type": "number",
+                "description": "帖子状态"
+              },
+              "isAuthor": {
+                "type": "boolean",
+                "description": "当前用户是否为作者"
+              }
+            }
+          },
+          "cardList": {
+            "type": "array",
+            "description": "帖子卡片列表",
+            "items": {
+              "type": "object",
+              "description": "帖子卡片项"
+            }
+          },
+          "containsAi": {
+            "type": "number",
+            "description": "是否包含 AI 内容，0/1"
+          },
+          "containsPodcast": {
+            "type": "boolean|null",
+            "description": "是否包含播客，可能为 null"
+          },
+          "contentStyleType": {
+            "type": "number|string|null",
+            "description": "正文样式类型，可能为 null"
+          },
+          "contentType": {
+            "type": "number",
+            "description": "内容类型"
+          },
+          "deepTalk": {
+            "type": "object",
+            "description": "深聊/问 AI 引导信息",
+            "properties": {
+              "guideName": {
+                "type": "string",
+                "description": "深聊引导标题"
+              },
+              "guideNameSubtitle": {
+                "type": "string",
+                "description": "深聊引导副标题"
+              },
+              "guideOutTime": {
+                "type": "number",
+                "description": "引导消失时间，单位秒"
+              },
+              "guideStayTime": {
+                "type": "number",
+                "description": "引导停留时间，单位秒"
+              },
+              "iconDay": {
+                "type": "string",
+                "description": "日间模式图标 URL"
+              },
+              "iconName": {
+                "type": "string",
+                "description": "图标名称"
+              },
+              "iconNight": {
+                "type": "string",
+                "description": "夜间模式图标 URL"
+              },
+              "needShow": {
+                "type": "boolean",
+                "description": "是否展示深聊入口"
+              },
+              "replyAiShow": {
+                "type": "boolean",
+                "description": "是否展示回复 AI 引导"
+              },
+              "replyGuideName": {
+                "type": "string",
+                "description": "回复区 AI 引导文案"
+              }
+            }
+          },
+          "enableCorrect": {
+            "type": "number",
+            "description": "是否开启纠错，0/1"
+          },
+          "giftCacheDtoList": {
+            "type": "array",
+            "description": "礼物缓存列表",
+            "items": {
+              "type": "object",
+              "description": "礼物缓存项"
+            }
+          },
+          "guideWords": {
+            "type": "string|null",
+            "description": "引导文案，可能为 null"
+          },
+          "hcoinThreadDTO": {
+            "type": "object",
+            "description": "H 币/礼物聚合信息",
+            "properties": {
+              "detailDtoList": {
+                "type": "array",
+                "description": "H 币/礼物明细列表",
+                "items": {
+                  "type": "object",
+                  "description": "H 币/礼物明细项"
+                }
+              },
+              "hcoinReplyDTOMap": {
+                "type": "object|null",
+                "description": "回复维度 H 币信息映射，可能为 null"
+              },
+              "showGiftIconMinCount": {
+                "type": "number",
+                "description": "展示礼物图标的最小数量阈值"
+              },
+              "tid": {
+                "type": "number|null",
+                "description": "帖子 ID，可能为 null"
+              },
+              "totalCoins": {
+                "type": "number",
+                "description": "累计 H 币数量"
+              },
+              "totalUsers": {
+                "type": "number",
+                "description": "累计参与用户数"
+              }
+            }
+          },
+          "location": {
+            "type": "string",
+            "description": "作者 IP 属地/地理位置，可能为空字符串"
+          },
+          "marketThreadFlag": {
+            "type": "boolean",
+            "description": "是否营销帖"
+          },
+          "moduleConfigList": {
+            "type": "object",
+            "description": "帖子详情模块配置",
+            "properties": {
+              "jfb": {
+                "type": "object",
+                "description": "九分半模块",
+                "properties": {
+                  "moduleContent": {
+                    "type": "object|null",
+                    "description": "模块内容，可能为 null"
+                  },
+                  "moduleName": {
+                    "type": "string",
+                    "description": "模块名称"
+                  },
+                  "moduleShow": {
+                    "type": "boolean|null",
+                    "description": "是否展示模块，可能为 null"
+                  }
+                }
+              },
+              "topic": {
+                "type": "object",
+                "description": "话题模块",
+                "properties": {
+                  "moduleContent": {
+                    "type": "object",
+                    "description": "话题模块内容",
+                    "properties": {
+                      "tags": {
+                        "type": "array",
+                        "description": "话题标签列表",
+                        "items": {
+                          "type": "object",
+                          "description": "话题标签信息",
+                          "properties": {
+                            "logo": {
+                              "type": "string",
+                              "description": "话题图标 URL"
+                            },
+                            "name": {
+                              "type": "string",
+                              "description": "话题名称"
+                            },
+                            "topic_category": {
+                              "type": "string",
+                              "description": "话题分类名称"
+                            },
+                            "topic_id": {
+                              "type": "number",
+                              "description": "话题 ID"
+                            },
+                            "unlight": {
+                              "type": "number",
+                              "description": "话题未点亮/关注状态标识"
+                            },
+                            "url": {
+                              "type": "string",
+                              "description": "话题跳转链接/Schema"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  },
+                  "moduleName": {
+                    "type": "string",
+                    "description": "模块名称"
+                  },
+                  "moduleShow": {
+                    "type": "boolean",
+                    "description": "是否展示模块"
+                  }
+                }
+              },
+              "redpacket": {
+                "type": "object",
+                "description": "红包模块",
+                "properties": {
+                  "moduleContent": {
+                    "type": "object",
+                    "description": "红包模块内容"
+                  },
+                  "moduleName": {
+                    "type": "string",
+                    "description": "模块名称"
+                  },
+                  "moduleShow": {
+                    "type": "boolean",
+                    "description": "是否展示模块"
+                  }
+                }
+              },
+              "title": {
+                "type": "object",
+                "description": "标题模块",
+                "properties": {
+                  "moduleContent": {
+                    "type": "object",
+                    "description": "标题模块内容",
+                    "properties": {
+                      "merge_title": {
+                        "type": "string",
+                        "description": "合并标题，可能为空字符串"
+                      },
+                      "title": {
+                        "type": "string",
+                        "description": "帖子标题"
+                      }
+                    }
+                  },
+                  "moduleName": {
+                    "type": "string",
+                    "description": "模块名称"
+                  },
+                  "moduleShow": {
+                    "type": "boolean",
+                    "description": "是否展示模块"
+                  }
+                }
+              },
+              "user": {
+                "type": "object",
+                "description": "用户模块",
+                "properties": {
+                  "moduleContent": {
+                    "type": "object",
+                    "description": "用户模块内容",
+                    "properties": {
+                      "enableSendMsg": {
+                        "type": "boolean",
+                        "description": "是否允许私信"
+                      },
+                      "header": {
+                        "type": "string",
+                        "description": "用户头像 URL"
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "用户昵称"
+                      },
+                      "nftInfo": {
+                        "type": "object",
+                        "description": "NFT 信息",
+                        "properties": {
+                          "assetAmount": {
+                            "type": "number|null",
+                            "description": "NFT 资产数量，可能为 null"
+                          },
+                          "assetCate": {
+                            "type": "string|null",
+                            "description": "NFT 资产分类，可能为 null"
+                          },
+                          "assetId": {
+                            "type": "string|null",
+                            "description": "NFT 资产 ID，可能为 null"
+                          },
+                          "assetTitle": {
+                            "type": "string|null",
+                            "description": "NFT 资产标题，可能为 null"
+                          },
+                          "assetType": {
+                            "type": "string|null",
+                            "description": "NFT 资产类型，可能为 null"
+                          },
+                          "contentUrl": {
+                            "type": "string|null",
+                            "description": "NFT 内容 URL，可能为 null"
+                          },
+                          "hasNFT": {
+                            "type": "boolean|null",
+                            "description": "是否拥有 NFT，可能为 null"
+                          },
+                          "id": {
+                            "type": "number|string|null",
+                            "description": "NFT 记录 ID，可能为 null"
+                          },
+                          "ownerPuid": {
+                            "type": "number|null",
+                            "description": "NFT 拥有者 PUID，可能为 null"
+                          },
+                          "shardId": {
+                            "type": "number|string|null",
+                            "description": "NFT 分片 ID，可能为 null"
+                          },
+                          "shardNo": {
+                            "type": "number|string|null",
+                            "description": "NFT 分片序号，可能为 null"
+                          },
+                          "shardUniqueCode": {
+                            "type": "string|null",
+                            "description": "NFT 分片唯一编码，可能为 null"
+                          }
+                        }
+                      },
+                      "ornament": {
+                        "type": "string",
+                        "description": "头像挂件 URL"
+                      },
+                      "puid": {
+                        "type": "number",
+                        "description": "用户 PUID"
+                      },
+                      "time": {
+                        "type": "string",
+                        "description": "帖子发布时间展示文案"
+                      },
+                      "type": {
+                        "type": "number",
+                        "description": "用户/作者类型"
+                      },
+                      "view": {
+                        "type": "number",
+                        "description": "浏览数"
+                      }
+                    }
+                  },
+                  "moduleName": {
+                    "type": "string",
+                    "description": "模块名称"
+                  },
+                  "moduleShow": {
+                    "type": "boolean",
+                    "description": "是否展示模块"
+                  }
+                }
+              },
+              "content": {
+                "type": "object",
+                "description": "正文内容模块",
+                "properties": {
+                  "moduleContent": {
+                    "type": "object",
+                    "description": "正文模块内容",
+                    "properties": {
+                      "content": {
+                        "type": "string",
+                        "description": "帖子正文 HTML 字符串"
+                      },
+                      "description": {
+                        "type": "string",
+                        "description": "帖子摘要/描述文案"
+                      }
+                    }
+                  },
+                  "moduleName": {
+                    "type": "string",
+                    "description": "模块名称"
+                  },
+                  "moduleShow": {
+                    "type": "boolean",
+                    "description": "是否展示模块"
+                  }
+                }
+              }
+            }
+          },
+          "podcastInfo": {
+            "type": "object|null",
+            "description": "播客信息，可能为 null"
+          },
+          "replies": {
+            "type": "number",
+            "description": "回复数"
+          },
+          "searchWords": {
+            "type": "array",
+            "description": "正文命中的搜索词/实体词列表",
+            "items": {
+              "type": "object",
+              "description": "正文命中的可跳转搜索词/实体词",
+              "properties": {
+                "extraData": {
+                  "type": "object",
+                  "description": "搜索词扩展数据",
+                  "properties": {
+                    "itemId": {
+                      "type": "string",
+                      "description": "实体项 ID"
+                    },
+                    "itemType": {
+                      "type": "string",
+                      "description": "实体项类型"
+                    }
+                  }
+                },
+                "fromIndex": {
+                  "type": "number",
+                  "description": "命中词在正文中的起始位置"
+                },
+                "jumpUrl": {
+                  "type": "string",
+                  "description": "点击跳转链接/Schema"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "命中词名称"
+                },
+                "toIndex": {
+                  "type": "number",
+                  "description": "命中词在正文中的结束位置"
+                }
+              }
+            }
+          },
+          "tagInfoList": {
+            "type": "array",
+            "description": "标签信息列表",
+            "items": {
+              "type": "object",
+              "description": "标签信息项"
+            }
+          },
+          "templateId": {
+            "type": "number",
+            "description": "模板 ID"
+          },
+          "templateType": {
+            "type": "number",
+            "description": "模板类型"
+          },
+          "topicPushingFlag": {
+            "type": "boolean",
+            "description": "是否话题推送"
+          },
+          "videoTranscodeState": {
+            "type": "number|string|null",
+            "description": "视频转码状态，可能为 null"
+          },
+          "video_info": {
+            "type": "object|null",
+            "description": "视频信息，可能为 null"
+          },
+          "visibleRange": {
+            "type": "string",
+            "description": "可见范围，如 ALL_SEE"
+          },
+          "title": {
+            "type": "string",
+            "description": "兼容旧版扁平字段：帖子标题"
+          },
+          "content": {
+            "type": "string",
+            "description": "兼容旧版扁平字段：帖子正文 HTML 字符串"
+          },
+          "author": {
+            "type": "string",
+            "description": "兼容旧版扁平字段：作者昵称/账号名称"
+          },
+          "avatar": {
+            "type": "string",
+            "description": "兼容旧版扁平字段：作者头像 URL，可能为空字符串"
+          },
+          "replyCount": {
+            "type": "number",
+            "description": "兼容旧版扁平字段：回复数量"
+          },
+          "lightReplyCount": {
+            "type": "number",
+            "description": "兼容旧版扁平字段：亮评数量"
+          },
+          "recommends": {
+            "type": "number",
+            "description": "兼容旧版扁平字段：推荐/点亮数量"
+          },
+          "fid": {
+            "type": "number|string",
+            "description": "兼容旧版扁平字段：论坛版块 ID；接口缺失时可能为空字符串"
+          },
+          "forumName": {
+            "type": "string",
+            "description": "兼容旧版扁平字段：论坛版块名称，可能为空字符串"
+          }
+        }
+      },
+      "success": {
+        "type": "boolean",
+        "description": "接口业务是否成功"
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

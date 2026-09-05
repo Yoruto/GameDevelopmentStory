@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>带结果海报发帖功能</title>
+    <style>
+      :root {
+        font-family:
+          'PingFang SC',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        color: #3d3d3d;
+        background: #f4f7f8;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        min-width: 320px;
+        min-height: 100vh;
+        margin: 0;
+        background: #f4f7f8;
+      }
+      main {
+        display: flex;
+        width: min(100%, 390px);
+        min-height: 100vh;
+        flex-direction: column;
+        padding: 34px 16px 16px;
+        margin: 0 auto;
+        background: #fff;
+      }
+      .artwork {
+        display: grid;
+        flex: 0 0 auto;
+        justify-items: center;
+        gap: 7px;
+        padding: 32px 12px 28px;
+        margin: 18px 0 16px;
+        color: #fff;
+        background: #4a8b8f;
+        text-align: center;
+      }
+      .poster-mark {
+        display: grid;
+        width: 30px;
+        height: 30px;
+        place-items: center;
+        border: 2px solid #fff;
+        font-size: 22px;
+        line-height: 1;
+      }
+      .artwork span {
+        font-size: 11px;
+      }
+      .artwork strong {
+        font-size: 30px;
+        font-weight: 600;
+        line-height: 1.2;
+      }
+      .artwork small {
+        color: #e3f1f1;
+        font-size: 9px;
+      }
+      button {
+        display: inline-flex;
+        min-height: 36px;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        padding: 0 12px;
+        color: #fff;
+        font: inherit;
+        font-size: 11px;
+        background: #4a8b8f;
+        border: 1px solid #4a8b8f;
+        border-radius: 0;
+        cursor: pointer;
+      }
+      button:hover,
+      button:focus-visible {
+        background: #3d7579;
+        border-color: #3d7579;
+        outline: 2px solid #4a8b8f;
+        outline-offset: 2px;
+      }
+      button.complete {
+        color: #3f7d5a;
+        background: #eef7f1;
+        border-color: #cce7d5;
+      }
+      button:disabled {
+        cursor: wait;
+        opacity: 0.7;
+      }
+      .poster-canvas {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        pointer-events: none;
+        opacity: 0;
+      }
+      .notice {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+      @media (min-width: 480px) {
+        body {
+          display: grid;
+          place-items: center;
+          padding: 24px;
+        }
+        main {
+          min-height: 640px;
+          border: 1px solid #d8e3e8;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="artwork">
+        <div class="poster-mark" aria-hidden="true">+</div>
+        <span id="result-label">挑战完成</span>
+        <strong id="result-score">9,860</strong>
+        <small id="result-caption">本次活动积分</small>
+      </div>
+      <button id="share" type="button">分享结果海报</button>
+      <button id="redraw" type="button" hidden>重新生成</button>
+      <canvas id="poster" class="poster-canvas" width="800" height="1000" aria-label="结果海报预览"></canvas>
+      <div id="notice" class="notice" role="status" aria-live="polite"></div>
+    </main>
+    <script>
+      const result = {
+        title: "带结果海报发帖功能",
+        label: "挑战完成",
+        score: 9860,
+        caption: "本次活动积分",
+        nickname: "篮球爱好者",
+        rank: 4,
+        date: "2026.08.28"
+      };
+      const share = document.querySelector('#share');
+      const redraw = document.querySelector('#redraw');
+      const noticeNode = document.querySelector('#notice');
+      const canvas = document.querySelector('#poster');
+      const context = canvas && canvas.getContext('2d');
+      let phase = 'idle';
+      let busy = false;
+      let posterBlob = null;
+      let renderPromise = null;
+
+      document.querySelector('#result-label').textContent = result.label;
+      document.querySelector('#result-score').textContent = Number(result.score).toLocaleString('zh-CN');
+      document.querySelector('#result-caption').textContent = result.caption;
+
+      function notice(message) {
+        noticeNode.textContent = String(message || '');
+      }
+
+      function shortText(value, maxLength) {
+        const text = String(value == null ? '' : value);
+        return text.length > maxLength ? text.slice(0, Math.max(1, maxLength - 3)) + '...' : text;
+      }
+
+      function setBusy(nextBusy) {
+        busy = nextBusy;
+        share.disabled = nextBusy;
+        redraw.disabled = nextBusy;
+      }
+
+      function drawPoster() {
+        if (!context || !canvas || typeof canvas.toBlob !== 'function') {
+          return Promise.reject(new Error('当前环境不支持海报预览'));
+        }
+        context.fillStyle = '#4a8b8f';
+        context.fillRect(0, 0, canvas.width, canvas.height);
+        context.fillStyle = '#ffffff';
+        context.textAlign = 'center';
+        context.font = '600 42px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';
+        context.fillText(shortText(result.label, 18), 400, 190);
+        context.font = '600 104px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';
+        context.fillText(shortText(Number(result.score).toLocaleString('zh-CN'), 12), 400, 470);
+        context.font = '28px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';
+        context.fillText(shortText(result.caption, 22), 400, 540);
+        context.font = '24px -apple-system,BlinkMacSystemFont,Segoe UI,sans-serif';
+        context.fillText(shortText(result.nickname, 18), 400, 720);
+        context.fillText(shortText(result.date, 20), 400, 880);
+        return new Promise((resolve) => canvas.toBlob(resolve, 'image/png', 0.92)).then((blob) => {
+          if (!blob) throw new Error('海报生成失败');
+          posterBlob = blob;
+          return blob;
+        });
+      }
+
+      function regenerate() {
+        if (busy) return;
+        phase = 'rendering';
+        renderPromise = drawPoster();
+        renderPromise.then(() => notice('海报已生成')).catch((error) => notice(error.message || '海报生成失败'));
+        return renderPromise;
+      }
+
+      async function uploadAndPost() {
+        if (busy) return;
+        setBusy(true);
+        phase = 'rendering';
+        share.textContent = '正在准备分享';
+        notice('正在准备海报');
+        try {
+          const blob = renderPromise ? await renderPromise : await regenerate();
+          if (!blob || blob.size > 10 * 1024 * 1024) throw new Error('海报超过 10MB，请重试');
+          const sdk = window.ColorboxAI;
+          if (!sdk?.oss?.uploadFile || !sdk?.request?.bbs?.openPostEditor) {
+            throw new Error('当前为本地演示模式，请在虎扑 App 内分享');
+          }
+          phase = 'uploading';
+          share.textContent = '正在上传海报';
+          const upload = await sdk.oss.uploadFile({ file: blob, filename: 'result-poster-' + Date.now() + '.png' });
+          const parsed = new URL(upload && upload.downloadUrl);
+          if (parsed.protocol !== 'https:' || !parsed.hostname) throw new Error('海报上传失败');
+          phase = 'opening';
+          share.textContent = '正在打开编辑器';
+          const post = await sdk.request.bbs.openPostEditor({
+            title: shortText(result.title, 40) + '｜第' + shortText(result.rank, 8) + '名',
+            content: '我在活动中获得 ' + shortText(result.score, 12) + ' 分，排名第 ' + shortText(result.rank, 8) + '。',
+            imageUrl: parsed.href
+          });
+          if (!post || post.code !== 200) throw new Error(post?.message || '发帖编辑器打开失败');
+          phase = 'done';
+          share.classList.add('complete');
+          share.textContent = '已准备分享';
+          notice('已打开虎扑发帖编辑器');
+        } catch (error) {
+          phase = 'error';
+          share.classList.remove('complete');
+          share.textContent = '分享结果海报';
+          notice(error?.code === 'CANCELLED' || error?.code === 'CANCELED' ? '已取消发帖' : (error?.message || '分享失败，请稍后重试'));
+        } finally {
+          setBusy(false);
+        }
+      }
+
+      redraw.addEventListener('click', regenerate);
+      share.addEventListener('click', uploadAndPost);
+      regenerate();
+    </script>
+  </body>
+</html>

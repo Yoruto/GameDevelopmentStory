@@ -1,0 +1,41 @@
+{
+  "id": "colorbox-social-share",
+  "name": "社交分享",
+  "description": "唤起原生分享面板，支持分享微信、微博。当页面需要进行社交平台分享时引导 AI 调用。",
+  "category": "设备与分享",
+  "categories": [
+    "设备与分享"
+  ],
+  "icon": "share-2",
+  "details": {
+    "capabilities": [
+      "社交分享：唤起原生分享面板，支持分享微信、微博。当页面需要进行社交平台分享时引导 AI 调用。",
+      "调用设备能力或站内原生能力完成页面交互。",
+      "发起站内跳转、分享或端侧协同操作。"
+    ],
+    "scenarios": [
+      "活动传播、内容分享和端内页面跳转。",
+      "需要与设备或原生容器交互的移动端体验。"
+    ],
+    "usageTips": [
+      "在调用前判断当前运行环境是否支持对应能力。",
+      "将用户主动点击作为调用入口，并为失败或降级场景留出反馈。"
+    ]
+  },
+  "content": "---\nname: social-share\ndescription: 唤起原生分享面板，支持分享微信、微博。当页面需要进行社交平台分享时引导 AI 调用。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.social.share(params)`\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| title | string | 是 | 分享标题 |\n| link | string | 是 | 分享链接 URL，必须是 http/https 开头的完整链接 |\n| text | string | 否 | 可选，分享的副标题/描述文本 |\n| imageUrl | string | 否 | 可选，分享卡片的缩略图图片 URL |\n\n# Returns\n\n- Type: `Promise<void>`\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.bridge.device.share({ title: \"活动开始啦\", link: window.location.href, text: \"快来一起参与投票赢大奖吧！\", imageUrl: \"https://example.com/thumb.png\" });\n```",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "content": "---\nname: social-share\ndescription: 唤起原生分享面板，支持分享微信、微博。当页面需要进行社交平台分享时引导 AI 调用。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.social.share(params)`\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| title | string | 是 | 分享标题 |\n| link | string | 是 | 分享链接 URL，必须是 http/https 开头的完整链接 |\n| text | string | 否 | 可选，分享的副标题/描述文本 |\n| imageUrl | string | 否 | 可选，分享卡片的缩略图图片 URL |\n\n# Returns\n\n- Type: `Promise<void>`\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.bridge.device.share({ title: \"活动开始啦\", link: window.location.href, text: \"快来一起参与投票赢大奖吧！\", imageUrl: \"https://example.com/thumb.png\" });\n```"
+    },
+    {
+      "path": "schema.json",
+      "content": "{\n  \"name\": \"social-share\",\n  \"description\": \"唤起原生分享面板，支持分享微信、微博。当页面需要进行社交平台分享时引导 AI 调用。\",\n  \"inputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"title\": {\n        \"type\": \"string\",\n        \"description\": \"分享标题\"\n      },\n      \"link\": {\n        \"type\": \"string\",\n        \"description\": \"分享链接 URL，必须是 http/https 开头的完整链接\"\n      },\n      \"text\": {\n        \"type\": \"string\",\n        \"description\": \"可选，分享的副标题/描述文本\"\n      },\n      \"imageUrl\": {\n        \"type\": \"string\",\n        \"description\": \"可选，分享卡片的缩略图图片 URL\"\n      }\n    },\n    \"required\": [\n      \"title\",\n      \"link\"\n    ]\n  },\n  \"outputSchema\": null\n}"
+    }
+  ],
+  "manifest": {
+    "capability": "social-share",
+    "source": "skill-package",
+    "version": 1
+  }
+}

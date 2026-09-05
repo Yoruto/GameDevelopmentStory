@@ -1,0 +1,41 @@
+{
+  "id": "colorbox-game-jump",
+  "name": "game-jump",
+  "description": "识别活动页中指向 h5game.hupu.com 的链接跳转，在 App 内自动改写为 huputiyu://webview/openencodeurl?url=...，非 App 环境保留原始跳转逻辑。",
+  "category": "应用基础",
+  "categories": [
+    "应用基础"
+  ],
+  "icon": "refresh-cw",
+  "details": {
+    "capabilities": [
+      "game-jump：识别活动页中指向 h5game.hupu.com 的链接跳转，在 App 内自动改写为 huputiyu://webview/openencodeurl?url=...，非 App 环境保留原始跳转逻辑。",
+      "提供应用运行时可复用的基础服务能力。",
+      "帮助页面完成通用数据处理和平台能力接入。"
+    ],
+    "scenarios": [
+      "需要补齐应用基础交互或服务调用的功能。",
+      "需要组合多个技能完成完整业务流程的页面。"
+    ],
+    "usageTips": [
+      "先确认该能力的输入输出，再与业务状态进行组合。",
+      "为异步调用增加加载、失败和重试体验。"
+    ]
+  },
+  "content": "---\nname: game-jump\ndescription: 识别活动页中指向 h5game.hupu.com 的链接跳转，在 App 内自动改写为 huputiyu://webview/openencodeurl?url=...，非 App 环境保留原始跳转逻辑。\n---\n\n# Goal\n\n帮我把页面中的“游戏跳转”逻辑改造成 App 内外分流的写法。\n\n# Context\n\n- 需要识别 HTML 中 `a[href^=\"https://h5game.hupu.com\"]`\n- 需要识别 `location.href = \"https://h5game.hupu.com...\"` / `window.location.href = \"https://h5game.hupu.com...\"`\n- App 内参考图片组件热区跳转逻辑：`http/https` 会被转成 `huputiyu://webview/openencodeurl?url=...`\n- App 内执行跳转时，统一通过 `window.ColorboxAI.navigate.to(params)` 触发，`params.url` 填写转成后的 schema\n- 非 App 内保持原来的 `href` 或 `location.href` 逻辑，不要强行改成 schema\n\n# Constraints\n\n- 只处理以 `https://h5game.hupu.com` 开头的游戏跳转\n- 不要改动其它业务链接、外链或普通站内跳转\n- 不要删除原有非 App 分支\n- 不要把所有链接都改成 `huputiyu://webview/openencodeurl`\n- App 内不要直接写 `location.href = huputiyu://...`，要先组装 `params` 再调用 `window.ColorboxAI.navigate.to(params)`\n- 如果原代码有埋点，先保留埋点，再执行跳转\n- 不要用 `window.open` 替代原跳转逻辑\n\n# Examples\n\n```javascript\nconst targetUrl = 'https://h5game.hupu.com?game=1&appid=cmzq&screenOrientation=2&sty=app&game_source=airyld';\nif (sdk.isInApp) {\n  window.ColorboxAI.navigate.to({\n    url: `huputiyu://webview/openencodeurl?url=${encodeURIComponent(targetUrl)}`\n  });\n} else {\n  location.href = targetUrl;\n}\n```\n\n```javascript\nconst link = document.querySelector('a.result-action.game-entry');\nif (link) {\n  link.addEventListener('click', (event) => {\n    event.preventDefault();\n    const targetUrl = link.getAttribute('href') || '';\n    if (sdk.isInApp) {\n      window.ColorboxAI.navigate.to({\n        url: `huputiyu://webview/openencodeurl?url=${encodeURIComponent(targetUrl)}`\n      });\n      return;\n    }\n    location.href = targetUrl;\n  });\n}\n```\n",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "content": "---\nname: game-jump\ndescription: 识别活动页中指向 h5game.hupu.com 的链接跳转，在 App 内自动改写为 huputiyu://webview/openencodeurl?url=...，非 App 环境保留原始跳转逻辑。\n---\n\n# Goal\n\n帮我把页面中的“游戏跳转”逻辑改造成 App 内外分流的写法。\n\n# Context\n\n- 需要识别 HTML 中 `a[href^=\"https://h5game.hupu.com\"]`\n- 需要识别 `location.href = \"https://h5game.hupu.com...\"` / `window.location.href = \"https://h5game.hupu.com...\"`\n- App 内参考图片组件热区跳转逻辑：`http/https` 会被转成 `huputiyu://webview/openencodeurl?url=...`\n- App 内执行跳转时，统一通过 `window.ColorboxAI.navigate.to(params)` 触发，`params.url` 填写转成后的 schema\n- 非 App 内保持原来的 `href` 或 `location.href` 逻辑，不要强行改成 schema\n\n# Constraints\n\n- 只处理以 `https://h5game.hupu.com` 开头的游戏跳转\n- 不要改动其它业务链接、外链或普通站内跳转\n- 不要删除原有非 App 分支\n- 不要把所有链接都改成 `huputiyu://webview/openencodeurl`\n- App 内不要直接写 `location.href = huputiyu://...`，要先组装 `params` 再调用 `window.ColorboxAI.navigate.to(params)`\n- 如果原代码有埋点，先保留埋点，再执行跳转\n- 不要用 `window.open` 替代原跳转逻辑\n\n# Examples\n\n```javascript\nconst targetUrl = 'https://h5game.hupu.com?game=1&appid=cmzq&screenOrientation=2&sty=app&game_source=airyld';\nif (sdk.isInApp) {\n  window.ColorboxAI.navigate.to({\n    url: `huputiyu://webview/openencodeurl?url=${encodeURIComponent(targetUrl)}`\n  });\n} else {\n  location.href = targetUrl;\n}\n```\n\n```javascript\nconst link = document.querySelector('a.result-action.game-entry');\nif (link) {\n  link.addEventListener('click', (event) => {\n    event.preventDefault();\n    const targetUrl = link.getAttribute('href') || '';\n    if (sdk.isInApp) {\n      window.ColorboxAI.navigate.to({\n        url: `huputiyu://webview/openencodeurl?url=${encodeURIComponent(targetUrl)}`\n      });\n      return;\n    }\n    location.href = targetUrl;\n  });\n}\n```\n"
+    },
+    {
+      "path": "agents/openai.yaml",
+      "content": "interface:\n  display_name: \"游戏跳转\"\n  short_description: \"处理 h5game.hupu.com 在 App 内外的跳转改写\"\n  default_prompt: \"使用 $game-jump 处理活动页里指向 h5game.hupu.com 的链接跳转改造，App 内走 window.ColorboxAI.navigate.to。\"\n"
+    }
+  ],
+  "manifest": {
+    "capability": "game-jump",
+    "source": "skill-package",
+    "version": 1
+  }
+}

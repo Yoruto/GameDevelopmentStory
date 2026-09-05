@@ -1,0 +1,477 @@
+{
+  "name": "request-bbs-getTopicThreads",
+  "description": "查询论坛指定专区/话题（Topic）下的帖子列表，如最新回复或最新发帖。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "topic_id": {
+        "type": "string",
+        "description": "专区/话题唯一 ID，例如 \"85\""
+      },
+      "tab_type": {
+        "type": "number",
+        "description": "Tab 类型，如 2 代表最新回复，默认 2"
+      },
+      "page": {
+        "type": "number",
+        "description": "页码，从 1 开始，默认为 1"
+      },
+      "stamp": {
+        "type": "number",
+        "description": "时间戳，默认为 0"
+      },
+      "lastCursor": {
+        "type": "string",
+        "description": "最后一项游标，用于分页"
+      }
+    },
+    "required": [
+      "topic_id"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "object",
+        "description": "成功时返回的数据载荷",
+        "properties": {
+          "nextPage": {
+            "type": "boolean",
+            "description": "是否还有下一页；false 表示没有更多数据"
+          },
+          "next_page": {
+            "type": "number",
+            "description": "兼容旧分页字段；优先使用 nextPage 判断是否还有更多数据"
+          },
+          "stamp": {
+            "type": "number|null",
+            "description": "分页时间戳/服务端返回的列表标记，可能为 null"
+          },
+          "total": {
+            "type": "number|null",
+            "description": "总数，接口可能返回 null"
+          },
+          "list": {
+            "type": "array",
+            "description": "帖子列表数据",
+            "items": {
+              "type": "object",
+              "properties": {
+                "tid": {
+                  "type": "number",
+                  "description": "帖子唯一 ID"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "帖子标题"
+                },
+                "summary": {
+                  "type": "string",
+                  "description": "帖子摘要/正文截断内容，可能为空字符串"
+                },
+                "puid": {
+                  "type": "number",
+                  "description": "发帖人 PUID"
+                },
+                "fid": {
+                  "type": "number",
+                  "description": "论坛版块 ID"
+                },
+                "replies": {
+                  "type": "number",
+                  "description": "回复数"
+                },
+                "repliesDesc": {
+                  "type": "string|null",
+                  "description": "回复数展示文案，可能为 null"
+                },
+                "userName": {
+                  "type": "string",
+                  "description": "发帖人昵称"
+                },
+                "userHeader": {
+                  "type": "string",
+                  "description": "发帖人头像 URL"
+                },
+                "time": {
+                  "type": "string",
+                  "description": "帖子展示时间，如 \"07-19\""
+                },
+                "createTime": {
+                  "type": "number",
+                  "description": "发帖时间戳"
+                },
+                "lastPostTime": {
+                  "type": "number",
+                  "description": "最后回复/更新时间戳"
+                },
+                "recommendCount": {
+                  "type": "number",
+                  "description": "推荐/亮了数量"
+                },
+                "shareNum": {
+                  "type": "number",
+                  "description": "分享数"
+                },
+                "topicId": {
+                  "type": "number",
+                  "description": "帖子所属话题/专区 ID"
+                },
+                "topicName": {
+                  "type": "string",
+                  "description": "帖子所属话题/专区名称"
+                },
+                "topicIcon": {
+                  "type": "string",
+                  "description": "帖子所属话题/专区图标 URL"
+                },
+                "topThread": {
+                  "type": "boolean",
+                  "description": "是否置顶帖"
+                },
+                "specialIdentifyPics": {
+                  "type": "string|null",
+                  "description": "特殊标识图片 URL，可能为 null"
+                },
+                "nightSpecialIdentifyPics": {
+                  "type": "string|null",
+                  "description": "夜间模式特殊标识图片 URL，可能为 null"
+                },
+                "specialIdentifyPicsWidth": {
+                  "type": "number|null",
+                  "description": "特殊标识图片宽度，可能为 null"
+                },
+                "specialIdentifyPicsHeight": {
+                  "type": "number|null",
+                  "description": "特殊标识图片高度，可能为 null"
+                },
+                "videoThread": {
+                  "type": "boolean",
+                  "description": "是否视频帖"
+                },
+                "jumpUrl": {
+                  "type": "string",
+                  "description": "帖子跳转 Schema/链接"
+                },
+                "video": {
+                  "type": "object|null",
+                  "description": "视频信息；非视频帖为 null",
+                  "properties": {
+                    "duration": {
+                      "type": "number",
+                      "description": "视频时长，单位秒"
+                    },
+                    "vid": {
+                      "type": "number",
+                      "description": "视频 ID"
+                    },
+                    "img": {
+                      "type": "string",
+                      "description": "视频封面 URL"
+                    },
+                    "size": {
+                      "type": "number",
+                      "description": "视频大小，单位字节"
+                    },
+                    "width": {
+                      "type": "number",
+                      "description": "视频宽度"
+                    },
+                    "play_num": {
+                      "type": "number",
+                      "description": "播放数"
+                    },
+                    "url": {
+                      "type": "string",
+                      "description": "视频播放 URL"
+                    },
+                    "bullet_comment_num": {
+                      "type": "number",
+                      "description": "弹幕数"
+                    },
+                    "height": {
+                      "type": "number",
+                      "description": "视频高度"
+                    },
+                    "humanDuration": {
+                      "type": "string",
+                      "description": "格式化视频时长，如 \"4:04\""
+                    },
+                    "humanSize": {
+                      "type": "string",
+                      "description": "格式化视频大小，如 \"29MB\""
+                    }
+                  }
+                },
+                "picList": {
+                  "type": "array",
+                  "description": "图片列表",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "url": {
+                        "type": "string",
+                        "description": "图片 URL"
+                      },
+                      "is_gif": {
+                        "type": "number",
+                        "description": "是否 GIF，0 表示否，1 表示是"
+                      },
+                      "width": {
+                        "type": "number",
+                        "description": "图片宽度"
+                      },
+                      "height": {
+                        "type": "number",
+                        "description": "图片高度"
+                      },
+                      "type": {
+                        "type": "string",
+                        "description": "图片类型，如 common"
+                      },
+                      "videoUrl": {
+                        "type": "string|null",
+                        "description": "图片关联视频 URL，可能为 null"
+                      }
+                    }
+                  }
+                },
+                "containPic": {
+                  "type": "boolean",
+                  "description": "是否包含图片"
+                },
+                "lightReplyResult": {
+                  "type": "object|null",
+                  "description": "亮评信息；无亮评时为 null",
+                  "properties": {
+                    "lightReplyData": {
+                      "type": "object",
+                      "description": "亮评内容",
+                      "properties": {
+                        "pid": {
+                          "type": "number",
+                          "description": "亮评回复 ID"
+                        },
+                        "tid": {
+                          "type": "number",
+                          "description": "亮评所属帖子 ID"
+                        },
+                        "aid": {
+                          "type": "number|null",
+                          "description": "亮评 aid，可能为 null"
+                        },
+                        "puid": {
+                          "type": "number",
+                          "description": "亮评用户 PUID"
+                        },
+                        "username": {
+                          "type": "string",
+                          "description": "亮评用户昵称"
+                        },
+                        "user_ip": {
+                          "type": "string",
+                          "description": "亮评用户 IP"
+                        },
+                        "via": {
+                          "type": "number",
+                          "description": "亮评来源端标识"
+                        },
+                        "content": {
+                          "type": "string",
+                          "description": "亮评内容"
+                        },
+                        "quote": {
+                          "type": "object|null",
+                          "description": "引用回复信息；无引用时为 null",
+                          "properties": {
+                            "rerferInfo": {
+                              "type": "object",
+                              "description": "被引用用户信息（接口字段名为 rerferInfo）",
+                              "properties": {
+                                "username": {
+                                  "type": "string",
+                                  "description": "被引用用户昵称"
+                                },
+                                "puid": {
+                                  "type": "number",
+                                  "description": "被引用用户 PUID"
+                                }
+                              }
+                            },
+                            "content": {
+                              "type": "string",
+                              "description": "被引用回复内容"
+                            },
+                            "togglecontent": {
+                              "type": "string|null",
+                              "description": "折叠/展开内容，可能为 null"
+                            },
+                            "attr": {
+                              "type": "string",
+                              "description": "引用回复扩展属性序列化字符串"
+                            },
+                            "videoInfo": {
+                              "type": "object|null",
+                              "description": "引用回复视频信息，可能为 null"
+                            },
+                            "ancillaryContents": {
+                              "type": "array|null",
+                              "description": "引用回复附属内容，可能为 null"
+                            },
+                            "pid": {
+                              "type": "number",
+                              "description": "被引用回复 ID"
+                            }
+                          }
+                        },
+                        "create_time": {
+                          "type": "number",
+                          "description": "亮评创建时间戳"
+                        },
+                        "update_info": {
+                          "type": "string",
+                          "description": "亮评更新信息"
+                        },
+                        "attr": {
+                          "type": "string",
+                          "description": "亮评扩展属性序列化字符串"
+                        },
+                        "score": {
+                          "type": "number",
+                          "description": "亮评分数"
+                        },
+                        "checkReplyInfo": {
+                          "type": "object",
+                          "description": "亮评检查/回复状态信息",
+                          "properties": {
+                            "type": {
+                              "type": "number",
+                              "description": "状态类型"
+                            },
+                            "num": {
+                              "type": "number",
+                              "description": "状态数量"
+                            }
+                          }
+                        },
+                        "light_count": {
+                          "type": "number",
+                          "description": "亮了数量"
+                        },
+                        "allLightCount": {
+                          "type": "number",
+                          "description": "总亮了数量"
+                        },
+                        "videoInfo": {
+                          "type": "object|null",
+                          "description": "亮评视频信息，可能为 null"
+                        },
+                        "header": {
+                          "type": "string",
+                          "description": "亮评用户头像 URL"
+                        },
+                        "header_big": {
+                          "type": "string",
+                          "description": "亮评用户大头像 URL"
+                        },
+                        "header_small": {
+                          "type": "string",
+                          "description": "亮评用户小头像 URL"
+                        },
+                        "groupId": {
+                          "type": "number",
+                          "description": "用户组 ID"
+                        },
+                        "picInfos": {
+                          "type": "array",
+                          "description": "亮评图片信息列表"
+                        },
+                        "ancillaryContents": {
+                          "type": "array|null",
+                          "description": "亮评附属内容，可能为 null"
+                        }
+                      }
+                    },
+                    "total": {
+                      "type": "number",
+                      "description": "亮评总数"
+                    }
+                  }
+                },
+                "timeFormatter": {
+                  "type": "string|null",
+                  "description": "时间格式化结果，可能为 null"
+                },
+                "contentType": {
+                  "type": "number",
+                  "description": "内容类型"
+                },
+                "voteThread": {
+                  "type": "boolean",
+                  "description": "是否投票帖"
+                },
+                "voteIdList": {
+                  "type": "array",
+                  "description": "投票 ID 列表"
+                },
+                "voteList": {
+                  "type": "array|null",
+                  "description": "投票信息列表，可能为 null"
+                },
+                "showIcon": {
+                  "type": "string|null",
+                  "description": "展示图标 URL，可能为 null"
+                },
+                "showIconNight": {
+                  "type": "string|null",
+                  "description": "夜间模式展示图标 URL，可能为 null"
+                },
+                "certIconUrl": {
+                  "type": "string|null",
+                  "description": "认证图标 URL，可能为 null"
+                },
+                "certTitle": {
+                  "type": "string|null",
+                  "description": "认证标题，可能为 null"
+                },
+                "filterWords": {
+                  "type": "array|null",
+                  "description": "过滤词列表，可能为 null"
+                },
+                "containsPodcast": {
+                  "type": "boolean|null",
+                  "description": "是否包含播客，可能为 null"
+                },
+                "podcastInfo": {
+                  "type": "object|null",
+                  "description": "播客信息，可能为 null"
+                },
+                "isDraw": {
+                  "type": "boolean",
+                  "description": "是否抽奖帖"
+                }
+              }
+            }
+          },
+          "cursor": {
+            "type": "string",
+            "description": "下一页请求游标，加载更多时传给 lastCursor"
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

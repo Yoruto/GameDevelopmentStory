@@ -1,0 +1,37 @@
+{
+  "name": "navigate-to",
+  "description": "为按钮、图片和卡片配置站内、站外或 App 内页面跳转。当用户点击页面元素后前往指定活动页、内容页或外部链接时调用。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "需要跳转的目标 URL，如 https://... 或 huputiyu://..."
+      },
+      "target": {
+        "type": "string",
+        "description": "跳转目标窗口标识，如 _self 或 _blank，可选"
+      }
+    },
+    "required": [
+      "url"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码，200 表示执行成功"
+      },
+      "message": {
+        "type": "string",
+        "description": "提示信息"
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

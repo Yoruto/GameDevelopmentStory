@@ -1,0 +1,144 @@
+{
+  "name": "request-bbs-openPostEditor",
+  "description": "从活动页唤起发帖页，并支持预填标题、正文和图片。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "topicId": {
+        "type": "string",
+        "description": "发布的目标专区 ID (例如 \"85\")"
+      },
+      "tagId": {
+        "type": "string",
+        "description": "发布的目标话题 ID，可选 (例如 \"152660\")"
+      },
+      "topicName": {
+        "type": "string",
+        "description": "专区名称，可选 (例如 \"数码区\")"
+      },
+      "tagName": {
+        "type": "string",
+        "description": "话题名称，可选 (例如 \"虎扑有奖活动\")"
+      },
+      "title": {
+        "type": "string",
+        "description": "预填的帖子标题，可选"
+      },
+      "content": {
+        "type": "string | array",
+        "description": "预填的帖子正文段落，支持普通文本字符串或富文本段落数组（含文本和链接），可选",
+        "anyOf": [
+          {
+            "type": "string",
+            "description": "普通文本字符串，例如：\"这是预填的帖子内容\""
+          },
+          {
+            "type": "array",
+            "description": "符合 Hupu 编辑器协议的段落数组",
+            "items": {
+              "type": "object",
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "description": "节点类型，固定为 \"paragraph\""
+                },
+                "content": {
+                  "type": "array",
+                  "description": "行内子节点列表",
+                  "items": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "description": "普通文本节点",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "description": "固定为 \"text\""
+                          },
+                          "text": {
+                            "type": "string",
+                            "description": "文本内容"
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "text"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "description": "超链接节点",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "description": "固定为 \"link\""
+                          },
+                          "attrs": {
+                            "type": "object",
+                            "properties": {
+                              "href": {
+                                "type": "string",
+                                "description": "链接地址"
+                              },
+                              "target": {
+                                "type": "string",
+                                "description": "跳转目标窗口，如 \"_blank\""
+                              },
+                              "title": {
+                                "type": "string",
+                                "description": "链接显示文本"
+                              }
+                            },
+                            "required": [
+                              "href"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "type",
+                          "attrs"
+                        ]
+                      }
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "type"
+              ]
+            }
+          }
+        ]
+      },
+      "imageUrl": {
+        "type": "string",
+        "description": "预填的图片 URL 链接，可选"
+      }
+    },
+    "required": [
+      "topicId"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码，200 表示成功构建并拉起"
+      },
+      "message": {
+        "type": "string",
+        "description": "说明信息"
+      },
+      "schema": {
+        "type": "string",
+        "description": "生成的 native schema 协议地址"
+      }
+    },
+    "required": [
+      "code",
+      "message",
+      "schema"
+    ]
+  }
+}

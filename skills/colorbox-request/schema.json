@@ -1,0 +1,62 @@
+{
+  "name": "request",
+  "description": "在活动页中向指定接口发起通用的 HTTP 请求，支持配置自定义方法、请求头与请求体数据。由 SDK 统一进行跨域与转发调度，可选走 Native Bridge 通道。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "需要请求的接口 URL 链接，支持 HTTP/HTTPS 协议"
+      },
+      "method": {
+        "type": "string",
+        "description": "HTTP 请求方法，例如 \"GET\", \"POST\", \"PUT\", \"DELETE\"，默认为 \"GET\""
+      },
+      "headers": {
+        "type": "object",
+        "description": "自定义请求头，以键值对表示，可选"
+      },
+      "data": {
+        "type": "object",
+        "description": "请求体数据对象；GET 时作为 query 参数，POST 时作为请求体，可选"
+      },
+      "timeout": {
+        "type": "number",
+        "description": "超时时间限制（单位：毫秒），可选"
+      },
+      "channel": {
+        "type": "string",
+        "enum": [
+          "fetch",
+          "bridge"
+        ],
+        "description": "请求通道。fetch 为 Web 请求（默认）；bridge 为 Native 请求（hupu.common.request），仅 App / Bridge 可用，不可用时自动回退 fetch"
+      }
+    },
+    "required": [
+      "url"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "statusCode": {
+        "type": "number",
+        "description": "响应的 HTTP 状态码，例如 200"
+      },
+      "data": {
+        "type": "object",
+        "description": "响应的 JSON 数据体，可能为任何 JSON 对象或结构"
+      },
+      "headers": {
+        "type": "object",
+        "description": "响应头信息"
+      }
+    },
+    "required": [
+      "statusCode",
+      "data",
+      "headers"
+    ]
+  }
+}

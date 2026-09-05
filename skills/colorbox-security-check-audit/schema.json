@@ -1,0 +1,37 @@
+{
+  "name": "security-checkAudit",
+  "description": "在用户提交文本内容或触发图片生成前，调用风控接口进行敏感内容安全检测。支持敏感词检测，自动识别未登录状态并统一返回 code、message 与 data 结构。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "content": {
+        "type": "string",
+        "description": "待检测的文本内容字符串"
+      }
+    },
+    "required": [
+      "content"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码：200 成功，401 未登录，500 异常"
+      },
+      "message": {
+        "type": "string",
+        "description": "提示信息"
+      },
+      "data": {
+        "type": "boolean",
+        "description": "是否安全通过，true 表示安全，false 表示包含敏感拦截"
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

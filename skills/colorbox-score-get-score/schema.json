@@ -1,0 +1,978 @@
+{
+  "name": "score-getScore",
+  "description": "获取指定业务对象的平均评分与打分人数（如球员、装备等）。当活动页内需要展示某一实体的打分状态时调用。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "outBizType": {
+        "type": "string",
+        "description": "业务类型。常用可选值包括：nbaPlayer (NBA球员), cbaPlayer (CBA球员), equipment (运动装备), games (游戏), movie (电影影视), food (美食), school (高校)"
+      },
+      "outBizNo": {
+        "type": "string",
+        "description": "业务对象 ID，例如球员 ID"
+      }
+    },
+    "required": [
+      "outBizType",
+      "outBizNo"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "业务状态码，1 表示成功"
+      },
+      "type": {
+        "type": "string",
+        "description": "响应类型，例如 COMMON"
+      },
+      "msg": {
+        "type": "string",
+        "description": "提示信息，例如 \"成功\""
+      },
+      "success": {
+        "type": "boolean",
+        "description": "是否请求成功"
+      },
+      "data": {
+        "type": "object",
+        "description": "评分数据主体",
+        "properties": {
+          "nodeId": {
+            "type": "number",
+            "description": "当前评分节点 ID"
+          },
+          "linkNodes": {
+            "type": "array",
+            "description": "关联节点/面包屑导航列表",
+            "items": {
+              "type": "object",
+              "properties": {
+                "nodeId": {
+                  "type": "number",
+                  "description": "节点 ID"
+                },
+                "parentNodeId": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "父节点 ID，可能为 null"
+                },
+                "level": {
+                  "type": "number",
+                  "description": "节点层级"
+                },
+                "desc": {
+                  "type": "string",
+                  "description": "节点描述/名称"
+                },
+                "target": {
+                  "type": "string",
+                  "description": "跳转目标类型，例如 GROUP"
+                },
+                "outBizKey": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "外部业务标识，可能为 null"
+                },
+                "schema": {
+                  "type": "string",
+                  "description": "跳转 schema 链接"
+                }
+              }
+            }
+          },
+          "groupInfo": {
+            "type": "object",
+            "description": "所属榜单/分组信息",
+            "properties": {
+              "groupId": {
+                "type": "number",
+                "description": "分组 ID"
+              },
+              "nodeId": {
+                "type": "number",
+                "description": "分组对应节点 ID"
+              },
+              "groupName": {
+                "type": "string",
+                "description": "分组名称"
+              },
+              "jumpUrl": {
+                "type": "string",
+                "description": "分组跳转链接"
+              },
+              "publishNum": {
+                "type": "number",
+                "description": "已发布数量"
+              },
+              "recommendDesc": {
+                "type": "string",
+                "description": "推荐描述"
+              },
+              "publishTime": {
+                "type": "string",
+                "description": "发布时间（格式化字符串，如 07-13）"
+              },
+              "publishTimeTs": {
+                "type": "number",
+                "description": "发布时间戳（毫秒）"
+              },
+              "creatorUser": {
+                "type": "number",
+                "description": "创建者用户 ID"
+              }
+            }
+          },
+          "detail": {
+            "type": "object",
+            "description": "评分对象详情",
+            "properties": {
+              "image": {
+                "type": "array",
+                "description": "封面图片 URL 列表",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "imageShape": {
+                "type": "string",
+                "description": "图片形状，例如 rectangle（矩形）、square（正方形）"
+              },
+              "imageSize": {
+                "type": "string",
+                "description": "图片尺寸标识，例如 cover_87x122"
+              },
+              "minScoreUserCountLimit": {
+                "type": "number",
+                "description": "展示评分所需的最小打分人数阈值"
+              },
+              "bizId": {
+                "type": "string",
+                "description": "业务对象 ID"
+              },
+              "bizType": {
+                "type": "string",
+                "description": "业务类型，例如 movie_movie"
+              },
+              "name": {
+                "type": "string",
+                "description": "评分对象名称"
+              },
+              "infoJson": {
+                "type": "object",
+                "description": "扩展信息 JSON，值多为字符串数组形式",
+                "properties": {
+                  "machineCanScore": {
+                    "type": "array",
+                    "description": "是否允许机器评分",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "scoreCountThreshold": {
+                    "type": "array",
+                    "description": "展示评分的人数阈值",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "canScore": {
+                    "type": "array",
+                    "description": "是否可评分",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "ipLocation": {
+                    "type": "string",
+                    "description": "IP 归属地"
+                  },
+                  "showScoreTrend": {
+                    "type": "array",
+                    "description": "是否展示评分趋势",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "show": {
+                    "type": "array",
+                    "description": "展示时间戳",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "link": {
+                    "type": "array",
+                    "description": "关联链接",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "showScore": {
+                    "type": "array",
+                    "description": "是否展示评分",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "selfCategory": {
+                    "type": "string",
+                    "description": "自身分类，例如 movie"
+                  },
+                  "commentAudioMax": {
+                    "type": "array",
+                    "description": "语音评论最大时长（秒）",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "selfBizType": {
+                    "type": "string",
+                    "description": "自身业务类型"
+                  },
+                  "selfBizId": {
+                    "type": "number",
+                    "description": "自身业务 ID"
+                  },
+                  "ugcBtnDesc": {
+                    "type": "array",
+                    "description": "UGC 按钮文案",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "operationCanScore": {
+                    "type": "array",
+                    "description": "运营是否允许评分",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "distributionControl": {
+                    "type": "array",
+                    "description": "分发控制配置（JSON 字符串）",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "commentAudioMin": {
+                    "type": "array",
+                    "description": "语音评论最小时长（秒）",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "allowUgc": {
+                    "type": "array",
+                    "description": "是否允许 UGC",
+                    "items": {
+                      "type": "boolean"
+                    }
+                  },
+                  "cover_87x122": {
+                    "type": "array",
+                    "description": "87x122 尺寸封面图",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "canComment": {
+                    "type": "array",
+                    "description": "是否可评论",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "selfName": {
+                    "type": "string",
+                    "description": "自身名称"
+                  },
+                  "commentSupport": {
+                    "type": "array",
+                    "description": "支持的评论类型，例如 AUDIO",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "desc": {
+                    "type": "array",
+                    "description": "描述信息，例如上映日期",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "scorePersonCount": {
+                "type": "number",
+                "description": "参与打分的人数"
+              },
+              "commentCount": {
+                "type": "number",
+                "description": "评论数"
+              },
+              "summedCommentCount": {
+                "type": "number",
+                "description": "累计评论数（含子项）"
+              },
+              "summedScorePersonCount": {
+                "type": "number",
+                "description": "累计打分人数（含子项）"
+              },
+              "totalScore": {
+                "type": "number",
+                "description": "总分值"
+              },
+              "scoreAvg": {
+                "type": "number",
+                "description": "平均评分分值（0 - 10）"
+              },
+              "scoreDistribution": {
+                "type": "object",
+                "description": "评分分布，键为分值，值为对应人数",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              },
+              "scoreSummaryTrend": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "评分汇总趋势，可能为 null"
+              },
+              "scoreTabLocate": {
+                "type": "string",
+                "description": "评分 Tab 默认定位，例如 scoreDistribution"
+              },
+              "hottestComments": {
+                "type": "array",
+                "description": "最热评论文本列表",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "hotCommentModels": {
+                "type": "array",
+                "description": "热门评论模型列表",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "commentUserId": {
+                      "type": "number",
+                      "description": "评论用户 ID"
+                    },
+                    "commentUserHeadImg": {
+                      "type": "string",
+                      "description": "评论用户头像 URL"
+                    },
+                    "commentUserName": {
+                      "type": "string",
+                      "description": "评论用户昵称"
+                    },
+                    "commentContent": {
+                      "type": "string",
+                      "description": "评论内容"
+                    },
+                    "commentId": {
+                      "type": "string",
+                      "description": "评论 ID"
+                    },
+                    "subjectId": {
+                      "type": "string",
+                      "description": "主题/帖子 ID"
+                    },
+                    "ancillaryContents": {
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "description": "评论附属内容（图片/音频等）",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "commentContentId": {
+                            "type": "string",
+                            "description": "附属内容 ID"
+                          },
+                          "commentContent": {
+                            "type": "string",
+                            "description": "附属内容 URL"
+                          },
+                          "commentContentType": {
+                            "type": "string",
+                            "description": "附属内容类型，例如 IMAGE、AUDIO"
+                          },
+                          "durationInSec": {
+                            "type": [
+                              "number",
+                              "null"
+                            ],
+                            "description": "时长（秒），音频有效，否则为 null"
+                          }
+                        }
+                      }
+                    },
+                    "lightCount": {
+                      "type": "number",
+                      "description": "点亮/点赞数"
+                    },
+                    "score": {
+                      "type": "number",
+                      "description": "该评论用户给出的评分"
+                    },
+                    "parentCommentUserId": {
+                      "type": [
+                        "number",
+                        "null"
+                      ],
+                      "description": "父评论用户 ID，可能为 null"
+                    },
+                    "parentCommentUserName": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "父评论用户昵称，可能为 null"
+                    },
+                    "parentCommentContent": {
+                      "type": [
+                        "string",
+                        "null"
+                      ],
+                      "description": "父评论内容，可能为 null"
+                    },
+                    "parentAncillaryContents": {
+                      "type": [
+                        "array",
+                        "null"
+                      ],
+                      "description": "父评论附属内容，可能为 null"
+                    }
+                  }
+                }
+              },
+              "tagCategoryList": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "description": "标签分类列表，可能为 null"
+              },
+              "userScore": {
+                "type": "number",
+                "description": "当前登录用户打的分数，未打分为 0"
+              },
+              "userScoreAvg": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "当前用户平均评分，可能为 null"
+              },
+              "status": {
+                "type": "number",
+                "description": "状态码"
+              },
+              "items": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "description": "子评分项列表，可能为 null"
+              },
+              "parentBizKeys": {
+                "type": "array",
+                "description": "父业务标识列表",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "mostChosenTags": {
+                "type": [
+                  "array",
+                  "null"
+                ],
+                "description": "最常选择的标签，可能为 null"
+              },
+              "canScore": {
+                "type": "boolean",
+                "description": "是否可评分"
+              },
+              "canComment": {
+                "type": "boolean",
+                "description": "是否可评论"
+              },
+              "bgColor": {
+                "type": "string",
+                "description": "背景色（十六进制）"
+              },
+              "maskColor": {
+                "type": "string",
+                "description": "蒙层颜色（十六进制含透明度）"
+              },
+              "scoreItemAttributes": {
+                "type": "object",
+                "description": "评分项属性配置，值多为字符串数组形式",
+                "properties": {
+                  "machineCanScore": {
+                    "type": "array",
+                    "description": "是否允许机器评分",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "scoreCountThreshold": {
+                    "type": "array",
+                    "description": "展示评分的人数阈值",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "canScore": {
+                    "type": "array",
+                    "description": "是否可评分",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "showScoreTrend": {
+                    "type": "array",
+                    "description": "是否展示评分趋势",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "showScore": {
+                    "type": "array",
+                    "description": "是否展示评分",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "commentAudioMax": {
+                    "type": "array",
+                    "description": "语音评论最大时长（秒）",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "ugcBtnDesc": {
+                    "type": "array",
+                    "description": "UGC 按钮文案",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "operationCanScore": {
+                    "type": "array",
+                    "description": "运营是否允许评分",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "distributionControl": {
+                    "type": "array",
+                    "description": "分发控制配置（JSON 字符串）",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "commentAudioMin": {
+                    "type": "array",
+                    "description": "语音评论最小时长（秒）",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "allowUgc": {
+                    "type": "array",
+                    "description": "是否允许 UGC",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "canComment": {
+                    "type": "array",
+                    "description": "是否可评论",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "commentSupport": {
+                    "type": "array",
+                    "description": "支持的评论类型",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "del": {
+                "type": "number",
+                "description": "是否删除，0 表示未删除"
+              },
+              "finalStatus": {
+                "type": "string",
+                "description": "最终审核状态，例如 PASS"
+              },
+              "specialStyle": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "特殊样式配置，可能为 null"
+              },
+              "creatorId": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "创建者 ID，可能为 null"
+              },
+              "creatorName": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "创建者名称，可能为 null"
+              },
+              "creatorAvatar": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "创建者头像，可能为 null"
+              },
+              "bgImage": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "背景图，可能为 null"
+              },
+              "shareBgImage": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "分享背景图，可能为 null"
+              },
+              "scoreItemNodeId": {
+                "type": "array",
+                "description": "评分项节点 ID 列表",
+                "items": {
+                  "type": "number"
+                }
+              },
+              "createDt": {
+                "type": "string",
+                "description": "创建时间（ISO 时间字符串）"
+              },
+              "permissions": {
+                "type": "array",
+                "description": "权限列表",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "allowUgc": {
+                "type": "boolean",
+                "description": "是否允许 UGC 添加评分对象"
+              },
+              "ugcBtnDesc": {
+                "type": "string",
+                "description": "UGC 按钮文案，例如\"添加评分对象\""
+              },
+              "scoreResources": {
+                "type": "object",
+                "description": "评分资源配置"
+              },
+              "visible": {
+                "type": [
+                  "boolean",
+                  "null"
+                ],
+                "description": "是否可见，可能为 null"
+              },
+              "videoDetail": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "视频详情，可能为 null"
+              },
+              "parentBizKey": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "父业务标识，可能为 null"
+              },
+              "typeMapping": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "类型映射，可能为 null"
+              },
+              "uniqueItem": {
+                "type": "boolean",
+                "description": "是否唯一评分项"
+              },
+              "ipLocation": {
+                "type": "string",
+                "description": "IP 归属地"
+              },
+              "publishTime": {
+                "type": "string",
+                "description": "发布时间（格式化字符串，如 06-23）"
+              },
+              "scoreColorDay": {
+                "type": "string",
+                "description": "日间模式评分颜色（十六进制）"
+              },
+              "scoreColorNight": {
+                "type": "string",
+                "description": "夜间模式评分颜色（十六进制）"
+              },
+              "scoreValueHighlight": {
+                "type": "boolean",
+                "description": "评分值是否高亮"
+              },
+              "relatedModelList": {
+                "type": "array",
+                "description": "关联模型列表",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "poiBizKey": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "POI 业务标识，可能为 null"
+              },
+              "shareBizKey": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "分享业务标识，可能为 null"
+              },
+              "distance": {
+                "type": [
+                  "number",
+                  "null"
+                ],
+                "description": "距离，可能为 null"
+              },
+              "bindTagThread": {
+                "type": "boolean",
+                "description": "是否绑定标签帖子"
+              },
+              "textLink": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "文本链接，可能为 null"
+              },
+              "itemId": {
+                "type": "number",
+                "description": "评分项 ID"
+              },
+              "itemType": {
+                "type": "string",
+                "description": "评分项类型，例如 normal"
+              },
+              "showScore": {
+                "type": "boolean",
+                "description": "是否展示评分"
+              },
+              "resourceMark": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "资源标记，可能为 null"
+              },
+              "resourceDetail": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "资源详情，可能为 null"
+              },
+              "resourceConfig": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "资源配置，可能为 null"
+              },
+              "commentConfig": {
+                "type": "object",
+                "description": "评论配置",
+                "properties": {
+                  "commentAudioSupport": {
+                    "type": "boolean",
+                    "description": "是否支持语音评论"
+                  },
+                  "commentAudioMax": {
+                    "type": "number",
+                    "description": "语音评论最大时长（秒）"
+                  },
+                  "commentAudioMin": {
+                    "type": "number",
+                    "description": "语音评论最小时长（秒）"
+                  }
+                }
+              },
+              "hotStatements": {
+                "type": "array",
+                "description": "热门短评/观点列表",
+                "items": {
+                  "type": "object"
+                }
+              },
+              "deepTalk": {
+                "type": "object",
+                "description": "AI 深度聊天（问 AI）配置",
+                "properties": {
+                  "needShow": {
+                    "type": "boolean",
+                    "description": "是否展示入口"
+                  },
+                  "iconDay": {
+                    "type": "string",
+                    "description": "日间模式图标 URL"
+                  },
+                  "iconNight": {
+                    "type": "string",
+                    "description": "夜间模式图标 URL"
+                  },
+                  "iconName": {
+                    "type": "string",
+                    "description": "入口名称，例如\"问AI\""
+                  },
+                  "guideName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "引导文案，可能为 null"
+                  },
+                  "guideNameSubtitle": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "引导副标题"
+                  },
+                  "guideOutTime": {
+                    "type": "number",
+                    "description": "引导消失时间（秒）"
+                  },
+                  "guideStayTime": {
+                    "type": "number",
+                    "description": "引导停留时间（秒）"
+                  },
+                  "replyAiShow": {
+                    "type": "boolean",
+                    "description": "回复中是否展示 AI 入口"
+                  },
+                  "replyGuideName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "回复引导文案，可能为 null"
+                  }
+                }
+              }
+            }
+          },
+          "parent": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "父节点信息，可能为 null"
+          },
+          "hasSubNodes": {
+            "type": "boolean",
+            "description": "是否存在子节点"
+          },
+          "subNodes": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "description": "子节点列表，可能为 null"
+          },
+          "pageResource": {
+            "type": "object",
+            "description": "页面资源与跳转链接配置",
+            "properties": {
+              "showSearchButton": {
+                "type": "boolean",
+                "description": "是否展示搜索按钮"
+              },
+              "searchSchema": {
+                "type": "string",
+                "description": "搜索页跳转 schema"
+              },
+              "shareUrl": {
+                "type": "string",
+                "description": "分享链接"
+              },
+              "scoreCommunityGuidelinesUrl": {
+                "type": "string",
+                "description": "评分社区公约链接"
+              },
+              "scoreEditUrl": {
+                "type": "string",
+                "description": "评分编辑跳转 schema"
+              },
+              "scoreItemSupplementUrl": {
+                "type": "string",
+                "description": "评分对象补充跳转 schema"
+              },
+              "commentManagementUrl": {
+                "type": "string",
+                "description": "评论管理跳转 schema"
+              },
+              "uniqueItemSearchSchema": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "description": "唯一评分项搜索 schema，可能为 null"
+              }
+            }
+          },
+          "location": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "定位信息，可能为 null"
+          },
+          "showTabs": {
+            "type": "boolean",
+            "description": "是否展示 Tab 切换"
+          }
+        }
+      }
+    }
+  }
+}

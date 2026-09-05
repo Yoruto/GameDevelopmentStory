@@ -1,0 +1,41 @@
+{
+  "id": "colorbox-cloud-auth",
+  "name": "CloudBase 登录",
+  "description": "使用当前虎扑登录态向鉴权中心一步换取活动 CloudBase 环境的 Bearer accessToken（服务端完成 ticket + signin/custom），并通过 storage 持久化存储 Session。活动页访问需登录的云函数网关接口前调用。",
+  "category": "账号与云服务",
+  "categories": [
+    "账号与云服务"
+  ],
+  "icon": "cloud",
+  "details": {
+    "capabilities": [
+      "CloudBase 登录：使用当前虎扑登录态向鉴权中心一步换取活动 CloudBase 环境的 Bearer accessToken（服务端完成 ticket + signin/custom），并通过 storage 持久化存储 Session。活动页访问需登录的云函数网关接口前调用。",
+      "处理用户身份、云端凭据或受控服务访问。",
+      "为后续业务请求提供必要的登录态和授权上下文。"
+    ],
+    "scenarios": [
+      "需要识别当前用户并读取其授权范围的页面。",
+      "需要调用云端数据或受保护业务接口的应用。"
+    ],
+    "usageTips": [
+      "不要在客户端持久化或输出敏感凭据。",
+      "在调用受保护接口前处理未登录和授权失效状态。"
+    ]
+  },
+  "content": "---\nname: cloud-auth\ndescription: 使用当前虎扑登录态向鉴权中心一步换取活动 CloudBase 环境的 Bearer accessToken（服务端完成 ticket + signin/custom），并通过 storage 持久化存储 Session。活动页访问需登录的云函数网关接口前调用。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.cloud.auth(params)`\n\n# Constraints\n\n- 必须使用 window.ColorboxAI.cloud.auth({ envId })，禁止 H5 自行处理 ticket、私钥或直连 signin/custom\n- envId 必须是活动环境的腾讯云 EnvId\n- 拿到 accessToken 后，需登录的云接口请用 window.ColorboxAI.cloud.request，勿用手写 fetch 拼 Authorization\n- 公开读接口可不调用本方法\n- 必须根据返回的 code 判断是否成功，若 code 不等于 200，必须使用返回的 message 对用户进行友好提示（如 Toast 或弹窗）。\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| envId | string | 是 | 活动 CloudBase 环境 ID（腾讯云 EnvId，非 alias） |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| code | number | 是 | 状态码，成功为 200 |\n| message | string | 是 | 提示信息 |\n| data | object | 否 |  |\n| data.accessToken | string | 否 | CloudBase Bearer accessToken |\n| data.expiresIn | number | 否 | 有效期（秒） |\n| data.envId | string | 否 | 活动环境 EnvId |\n| data.customUserId | string | 否 | 自定义登录用户 ID（通常为虎扑 puid） |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.cloud.auth({ envId: window.ACTIVITY_ENV_ID }).then(res => { if (res.code === 200) console.log(res.data.accessToken); });\n```",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "content": "---\nname: cloud-auth\ndescription: 使用当前虎扑登录态向鉴权中心一步换取活动 CloudBase 环境的 Bearer accessToken（服务端完成 ticket + signin/custom），并通过 storage 持久化存储 Session。活动页访问需登录的云函数网关接口前调用。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.cloud.auth(params)`\n\n# Constraints\n\n- 必须使用 window.ColorboxAI.cloud.auth({ envId })，禁止 H5 自行处理 ticket、私钥或直连 signin/custom\n- envId 必须是活动环境的腾讯云 EnvId\n- 拿到 accessToken 后，需登录的云接口请用 window.ColorboxAI.cloud.request，勿用手写 fetch 拼 Authorization\n- 公开读接口可不调用本方法\n- 必须根据返回的 code 判断是否成功，若 code 不等于 200，必须使用返回的 message 对用户进行友好提示（如 Toast 或弹窗）。\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| envId | string | 是 | 活动 CloudBase 环境 ID（腾讯云 EnvId，非 alias） |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| code | number | 是 | 状态码，成功为 200 |\n| message | string | 是 | 提示信息 |\n| data | object | 否 |  |\n| data.accessToken | string | 否 | CloudBase Bearer accessToken |\n| data.expiresIn | number | 否 | 有效期（秒） |\n| data.envId | string | 否 | 活动环境 EnvId |\n| data.customUserId | string | 否 | 自定义登录用户 ID（通常为虎扑 puid） |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.cloud.auth({ envId: window.ACTIVITY_ENV_ID }).then(res => { if (res.code === 200) console.log(res.data.accessToken); });\n```"
+    },
+    {
+      "path": "schema.json",
+      "content": "{\n  \"name\": \"cloud-auth\",\n  \"description\": \"使用当前虎扑登录态向鉴权中心一步换取活动 CloudBase 环境的 Bearer accessToken（服务端完成 ticket + signin/custom），并通过 storage 持久化存储 Session。活动页访问需登录的云函数网关接口前调用。\",\n  \"inputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"envId\": {\n        \"type\": \"string\",\n        \"description\": \"活动 CloudBase 环境 ID（腾讯云 EnvId，非 alias）\"\n      }\n    },\n    \"required\": [\n      \"envId\"\n    ]\n  },\n  \"outputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"code\": {\n        \"type\": \"number\",\n        \"description\": \"状态码，成功为 200\"\n      },\n      \"message\": {\n        \"type\": \"string\",\n        \"description\": \"提示信息\"\n      },\n      \"data\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"accessToken\": {\n            \"type\": \"string\",\n            \"description\": \"CloudBase Bearer accessToken\"\n          },\n          \"expiresIn\": {\n            \"type\": \"number\",\n            \"description\": \"有效期（秒）\"\n          },\n          \"envId\": {\n            \"type\": \"string\",\n            \"description\": \"活动环境 EnvId\"\n          },\n          \"customUserId\": {\n            \"type\": \"string\",\n            \"description\": \"自定义登录用户 ID（通常为虎扑 puid）\"\n          }\n        }\n      }\n    },\n    \"required\": [\n      \"code\",\n      \"message\"\n    ]\n  }\n}"
+    }
+  ],
+  "manifest": {
+    "capability": "cloud-auth",
+    "source": "skill-package",
+    "version": 1
+  }
+}

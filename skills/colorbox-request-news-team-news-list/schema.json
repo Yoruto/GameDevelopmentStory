@@ -1,0 +1,141 @@
+{
+  "name": "request-news-teamNewsList",
+  "description": "获取篮球/足球球队的资讯新闻列表。支持分页加载下一页。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "teamId": {
+        "type": "string",
+        "description": "球队ID，例如 \"1902000003703898\" (篮球) 或 \"5568\" (足球)"
+      },
+      "newsId": {
+        "type": "string",
+        "description": "用于分页的分界新闻ID，取上一页 data 数组最后一项的 nid，不传则默认为第一页。"
+      },
+      "category": {
+        "type": "string",
+        "description": "赛事类别：basketball(篮球) 或 football(足球)"
+      }
+    },
+    "required": [
+      "teamId",
+      "category"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "array",
+        "description": "球队资讯新闻列表",
+        "items": {
+          "type": "object",
+          "properties": {
+            "nid": {
+              "type": "string",
+              "description": "新闻唯一 ID，分页游标取列表最后一项的该字段"
+            },
+            "tid": {
+              "type": "string",
+              "description": "关联帖子/话题 ID"
+            },
+            "type": {
+              "type": "string",
+              "description": "内容展示类型，如 IMG_TEXT、IMAGE_TOP_TEXT_BOTTOM"
+            },
+            "title": {
+              "type": "string",
+              "description": "新闻标题"
+            },
+            "img": {
+              "type": "string",
+              "description": "封面图 URL"
+            },
+            "replies": {
+              "type": "number",
+              "description": "回复数"
+            },
+            "lights": {
+              "type": "number",
+              "description": "亮评数"
+            },
+            "link": {
+              "type": "string",
+              "description": "跳转链接，如 kanqiu://bbs/topic/{tid}"
+            },
+            "linkType": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "链接类型，可能为 null"
+            },
+            "badge": {
+              "type": "array",
+              "items": {
+                "type": "object"
+              },
+              "description": "角标列表"
+            },
+            "publishTime": {
+              "type": "string",
+              "description": "发布时间，格式如 \"2026-07-21 21:10:55\""
+            },
+            "addTime": {
+              "type": "number",
+              "description": "发布时间戳（秒）"
+            },
+            "oldNewsId": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "旧版新闻 ID，可能为 null"
+            },
+            "top": {
+              "type": "boolean",
+              "description": "是否置顶"
+            },
+            "pv": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "浏览量，可能为 null"
+            },
+            "gifList": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "items": {
+                "type": "object"
+              },
+              "description": "动图列表，可能为 null"
+            },
+            "read": {
+              "type": "string",
+              "description": "已读标识，通常与 nid 相同"
+            },
+            "showComment": {
+              "type": "number",
+              "description": "是否展示评论，1 表示展示"
+            }
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

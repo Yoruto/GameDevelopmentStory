@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>Activity Demo Baseline</title>
+</head>
+<body>
+  <h2>社区动态 Demo</h2>
+
+  <div>
+    <input type="text" id="titleInput" placeholder="标题"><br><br>
+    <textarea id="contentInput" placeholder="内容" rows="3"></textarea><br><br>
+    <button id="submitBtn">发布</button>
+  </div>
+
+  <hr>
+
+  <h3>动态列表</h3>
+  <div id="itemList">加载中...</div>
+
+  <script>
+    window.ACTIVITY_API_BASE = "";
+    window.ACTIVITY_ENV_ID = "";
+
+    async function apiGet(path) {
+      const res = await window.ColorboxAI.cloud.request({
+        url: window.ACTIVITY_API_BASE + path,
+        method: "GET"
+      });
+      if (res.statusCode === 200 && (res.code === 0 || res.code === 200)) return res.data;
+      throw new Error(res.message || "请求失败");
+    }
+
+    async function apiPost(path, body) {
+      const res = await window.ColorboxAI.cloud.request({
+        url: window.ACTIVITY_API_BASE + path,
+        method: "POST",
+        data: body,
+        envId: window.ACTIVITY_ENV_ID,
+        auth: true
+      });
+      if (res.statusCode === 401) throw new Error("请重新登录");
+      if (res.statusCode === 200 && (res.code === 0 || res.code === 200)) return res.data;
+      throw new Error(res.message || "请求失败");
+    }
+
+    async function fetchList() {
+      try {
+        const list = await apiGet('/demo/list') || [];
+        document.getElementById('itemList').innerHTML = list.length
+          ? list.map(item => `<div><strong>${item.title || '无标题'}</strong><p>${item.content || ''}</p><hr></div>`).join('')
+          : '<div>暂无动态</div>';
+      } catch (e) {
+        document.getElementById('itemList').innerHTML = `<div style="color:red;">加载失败: ${e.message}</div>`;
+      }
+    }
+
+    async function handleSubmit() {
+      const title = document.getElementById('titleInput').value.trim();
+      const content = document.getElementById('contentInput').value.trim();
+      if (!title) return alert('请输入标题');
+
+      try {
+        await apiPost('/demo/submit', { title, content });
+        document.getElementById('titleInput').value = '';
+        document.getElementById('contentInput').value = '';
+        fetchList();
+      } catch (e) {
+        alert(e.message || '提交失败');
+      }
+    }
+
+    document.getElementById('submitBtn').addEventListener('click', handleSubmit);
+    fetchList();
+  </script>
+</body>
+</html>

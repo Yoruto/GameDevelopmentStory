@@ -1,0 +1,37 @@
+{
+  "name": "oss-uploadFile",
+  "description": "支持在活动页内通过拍照、相册选择或合成二进制，将文件或图片直传至 Hupu OSS 并获取可用 CDN 地址。适用于用户上传头像、活动晒图、截图分享及二进制文件存证。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "file": {
+        "type": "object",
+        "description": "待上传的 HTML5 File 或 Blob 对象"
+      },
+      "filename": {
+        "type": "string",
+        "description": "自定义文件名，可选"
+      }
+    },
+    "required": [
+      "file"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "downloadUrl": {
+        "type": "string",
+        "description": "上传成功后的 CDN 访问绝对链接"
+      },
+      "name": {
+        "type": "string",
+        "description": "上传成功后的文件名"
+      }
+    },
+    "required": [
+      "downloadUrl",
+      "name"
+    ]
+  }
+}

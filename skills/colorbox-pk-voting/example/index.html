@@ -1,0 +1,729 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <script type="application/json" id="colorbox-skill-usage">
+      {
+        "skills": [
+          "colorbox-cloud-auth",
+          "colorbox-cloud-request",
+          "colorbox-oss-upload-file"
+        ]
+      }
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>PK 投票功能</title>
+    <style>
+      :root {
+        color: #3d3d3d;
+        background: #f4f7f8;
+        font-family:
+          "PingFang SC",
+          -apple-system,
+          BlinkMacSystemFont,
+          "Segoe UI",
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        font-variant-numeric: tabular-nums;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-width: 320px;
+        min-height: 100vh;
+        margin: 0;
+        background: #f4f7f8;
+      }
+
+      button,
+      input {
+        font: inherit;
+      }
+
+      main {
+        display: flex;
+        width: min(100%, 390px);
+        min-height: 100vh;
+        flex-direction: column;
+        padding: 34px 16px 20px;
+        margin: 0 auto;
+        background: #ffffff;
+      }
+
+      header {
+        padding-bottom: 14px;
+        border-bottom: 1px solid #edf3f4;
+      }
+
+      h1 {
+        margin: 0;
+        color: #1a1f26;
+        font-size: 17px;
+        font-weight: 600;
+        line-height: 1.35;
+      }
+
+      .description {
+        margin: 7px 0 0;
+        color: #6f7e8c;
+        font-size: 11px;
+        line-height: 1.55;
+      }
+
+      .options {
+        display: grid;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      .option {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        min-height: 72px;
+        align-items: center;
+        gap: 6px 10px;
+        padding: 10px 11px;
+        color: #3d3d3d;
+        text-align: left;
+        background: #ffffff;
+        border: 1px solid #d8e3e8;
+        border-radius: 0;
+        cursor: pointer;
+      }
+
+      .option:hover,
+      .option.selected {
+        color: #1a1f26;
+        background: #f0f7f7;
+        border-color: #4a8b8f;
+        outline: 0;
+      }
+
+      .option:focus-visible {
+        outline: 2px solid #4a8b8f;
+        outline-offset: 2px;
+      }
+
+      .option:disabled {
+        cursor: not-allowed;
+        opacity: 0.62;
+      }
+
+      .candidate {
+        display: grid;
+        min-width: 0;
+        grid-template-columns: auto minmax(0, 1fr);
+        align-items: center;
+        gap: 8px;
+      }
+
+      .candidate-image {
+        width: 34px;
+        height: 34px;
+        object-fit: cover;
+        background: #edf3f4;
+        border-radius: 50%;
+      }
+
+      .candidate-copy {
+        display: grid;
+        min-width: 0;
+        gap: 2px;
+      }
+
+      .candidate-name {
+        overflow: hidden;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.35;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .candidate-description {
+        overflow: hidden;
+        color: #6f7e8c;
+        font-size: 10px;
+        line-height: 1.4;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .percentage {
+        color: #1a1f26;
+        font-size: 13px;
+        font-weight: 600;
+      }
+
+      .bar-track {
+        grid-column: 1 / -1;
+        height: 4px;
+        overflow: hidden;
+        background: #edf3f4;
+      }
+
+      .bar {
+        display: block;
+        width: 0;
+        height: 100%;
+        background: #78aeb0;
+        transition: width 180ms ease;
+      }
+
+      .selected .bar {
+        background: #4a8b8f;
+      }
+
+      .option-meta {
+        grid-column: 1 / -1;
+        color: #8aa0b3;
+        font-size: 9px;
+        line-height: 1.3;
+      }
+
+      .total {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        margin-top: 16px;
+        color: #6f7e8c;
+        font-size: 10px;
+      }
+
+      .vote-mark {
+        width: 8px;
+        height: 8px;
+        border: 1px solid #4a8b8f;
+        border-radius: 50%;
+      }
+
+      .proof {
+        display: grid;
+        gap: 7px;
+        padding: 16px 0;
+        margin-top: 18px;
+        border-top: 1px solid #edf3f4;
+        border-bottom: 1px solid #edf3f4;
+      }
+
+      .proof-label {
+        color: #3d3d3d;
+        font-size: 11px;
+        font-weight: 600;
+      }
+
+      .proof-help,
+      .proof-status {
+        color: #8aa0b3;
+        font-size: 9px;
+        line-height: 1.45;
+      }
+
+      .proof-picker {
+        display: inline-flex;
+        width: max-content;
+        min-height: 30px;
+        align-items: center;
+        padding: 0 10px;
+        color: #356f72;
+        font-size: 10px;
+        background: #f0f7f7;
+        border: 1px solid #b9d4d5;
+        cursor: pointer;
+      }
+
+      .proof-picker:focus-within {
+        outline: 2px solid #4a8b8f;
+        outline-offset: 2px;
+      }
+
+      .proof-picker.disabled {
+        cursor: not-allowed;
+        opacity: 0.58;
+      }
+
+      .proof-picker input {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        white-space: nowrap;
+      }
+
+      .selection {
+        min-height: 42px;
+        padding-top: 22px;
+        margin-top: auto;
+        color: #6f7e8c;
+        font-size: 10px;
+        line-height: 1.5;
+        text-align: center;
+      }
+
+      .selection.error {
+        color: #b04a43;
+      }
+
+      @media (min-width: 480px) {
+        body {
+          display: grid;
+          place-items: center;
+          padding: 24px;
+        }
+
+        main {
+          min-height: 640px;
+          border: 1px solid #d8e3e8;
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .bar {
+          transition: none;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1 id="match-title">正在加载投票</h1>
+        <p class="description" id="match-description">请稍候...</p>
+      </header>
+
+      <section class="options" aria-label="投票选项">
+        <button class="option" data-side="left" type="button" disabled>
+          <span class="candidate">
+            <img class="candidate-image" alt="" hidden />
+            <span class="candidate-copy">
+              <span class="candidate-name">左侧选项</span>
+              <span class="candidate-description"></span>
+            </span>
+          </span>
+          <strong class="percentage">--</strong>
+          <span class="bar-track" aria-hidden="true"><i class="bar"></i></span>
+          <span class="option-meta">-- 票</span>
+        </button>
+
+        <button class="option" data-side="right" type="button" disabled>
+          <span class="candidate">
+            <img class="candidate-image" alt="" hidden />
+            <span class="candidate-copy">
+              <span class="candidate-name">右侧选项</span>
+              <span class="candidate-description"></span>
+            </span>
+          </span>
+          <strong class="percentage">--</strong>
+          <span class="bar-track" aria-hidden="true"><i class="bar"></i></span>
+          <span class="option-meta">-- 票</span>
+        </button>
+      </section>
+
+      <div class="total" aria-live="polite">
+        <span class="vote-mark" aria-hidden="true"></span>
+        <span id="total-votes">正在读取参与人数</span>
+      </div>
+
+      <section class="proof" aria-label="应援图">
+        <span class="proof-label">应援图（可选）</span>
+        <span class="proof-help">选择图片后先上传，单张不超过 10 MB；上传成功再点击选项投票。</span>
+        <label class="proof-picker" id="proof-picker">
+          选择图片
+          <input id="proof-file" type="file" accept="image/*" />
+        </label>
+        <span class="proof-status" id="proof-status" aria-live="polite">未添加图片</span>
+      </section>
+
+      <div class="selection" id="selection" role="status" aria-live="polite">正在加载投票...</div>
+    </main>
+
+    <script>
+      window.ACTIVITY_API_BASE = "";
+      window.ACTIVITY_ENV_ID = "";
+      window.PK_MATCH_ID = "plan-final";
+
+      const DEMO_MATCH = {
+        id: "plan-final",
+        title: "你更支持哪一个方案？",
+        description: "每个账号限投 1 票，本地预览的投票不会提交到服务器。",
+        startsAt: new Date(Date.now() - 86400000).toISOString(),
+        endsAt: new Date(Date.now() + 30 * 86400000).toISOString(),
+        status: "live",
+        candidates: [
+          { side: "left", name: "方案 A", description: "稳健推进，优先保证核心体验。", imageUrl: null, voteCount: 74 },
+          { side: "right", name: "方案 B", description: "快速突破，优先验证创新方向。", imageUrl: null, voteCount: 54 }
+        ]
+      };
+
+      const state = {
+        match: null,
+        results: null,
+        me: null,
+        proofUrl: null,
+        busy: false,
+        uploading: false,
+        authenticated: false,
+        demo: false
+      };
+
+      const titleNode = document.getElementById("match-title");
+      const descriptionNode = document.getElementById("match-description");
+      const totalNode = document.getElementById("total-votes");
+      const selectionNode = document.getElementById("selection");
+      const proofInput = document.getElementById("proof-file");
+      const proofPicker = document.getElementById("proof-picker");
+      const proofStatus = document.getElementById("proof-status");
+      const optionButtons = Array.from(document.querySelectorAll(".option"));
+
+      function apiBase() {
+        return String(window.ACTIVITY_API_BASE || "").trim().replace(/\/$/, "");
+      }
+
+      function matchId() {
+        return String(window.PK_MATCH_ID || "").trim();
+      }
+
+      function isHttpsUrl(value) {
+        try {
+          const url = new URL(value);
+          return url.protocol === "https:" && Boolean(url.hostname) && !url.username && !url.password;
+        } catch (error) {
+          return false;
+        }
+      }
+
+      function setSelection(message, isError) {
+        selectionNode.textContent = message;
+        selectionNode.classList.toggle("error", Boolean(isError));
+      }
+
+      function createRequestError(response, fallback) {
+        const error = new Error(response && response.message ? response.message : fallback);
+        error.statusCode = Number(response && response.statusCode) || 500;
+        error.code = response && response.code;
+        return error;
+      }
+
+      function friendlyMessage(error, fallback) {
+        if (error && error.statusCode === 401) return "请先登录虎扑账号后再投票";
+        if (error && error.statusCode === 429) return "操作太频繁，请稍后再试";
+        if (error && error.statusCode >= 500) return "服务暂时不可用，请稍后重试";
+        return (error && error.message) || fallback;
+      }
+
+      async function cloudRequest(path, options) {
+        const sdk = window.ColorboxAI && window.ColorboxAI.cloud;
+        if (!sdk || typeof sdk.request !== "function") {
+          throw new Error("当前环境缺少 ColorboxAI Cloud 请求能力");
+        }
+        const config = options || {};
+        const params = {
+          url: apiBase() + path,
+          method: config.method || "GET"
+        };
+        if (config.data !== undefined) params.data = config.data;
+        if (config.auth) {
+          params.auth = true;
+          params.envId = String(window.ACTIVITY_ENV_ID || "").trim();
+        }
+        const response = await sdk.request(params);
+        const statusCode = Number(response && response.statusCode);
+        const businessCode = response && response.code;
+        const statusOk = statusCode >= 200 && statusCode < 300;
+        const codeOk = businessCode === 0 || businessCode === 200;
+        if (!statusOk || !codeOk) throw createRequestError(response, "请求失败");
+        return response.data;
+      }
+
+      function resultForSide(side) {
+        const items = state.results && Array.isArray(state.results.candidates)
+          ? state.results.candidates
+          : [];
+        return items.find((item) => item.side === side) || { side, voteCount: 0, percentage: 0 };
+      }
+
+      function candidateForSide(side) {
+        const candidates = state.match && Array.isArray(state.match.candidates)
+          ? state.match.candidates
+          : [];
+        return candidates.find((candidate) => candidate.side === side) || null;
+      }
+
+      function lifecycleMessage() {
+        if (!state.match) return "正在加载投票...";
+        if (state.match.status === "scheduled") {
+          return "投票尚未开始，开始时间：" + new Date(state.match.startsAt).toLocaleString("zh-CN");
+        }
+        if (state.match.status === "ended") return "投票已经结束，当前展示最终结果";
+        if (state.me && state.me.voted) {
+          const candidate = candidateForSide(state.me.side);
+          return "你已选择" + (candidate ? candidate.name : "该选项");
+        }
+        if (state.demo) return "本地演示模式：点击选项模拟投票";
+        if (!state.authenticated) return "登录后点击选项完成投票";
+        return "点击选项完成投票";
+      }
+
+      function render() {
+        if (!state.match) return;
+        titleNode.textContent = state.match.title || "PK 投票";
+        descriptionNode.textContent = state.match.description || "每个登录账号限投 1 票";
+
+        optionButtons.forEach((button) => {
+          const side = button.dataset.side;
+          const candidate = candidateForSide(side);
+          const result = resultForSide(side);
+          const selected = Boolean(state.me && state.me.voted && state.me.side === side);
+          const image = button.querySelector(".candidate-image");
+
+          button.querySelector(".candidate-name").textContent = candidate ? candidate.name : "选项未配置";
+          button.querySelector(".candidate-description").textContent = candidate ? candidate.description || "" : "";
+          button.querySelector(".percentage").textContent = Number(result.percentage || 0).toLocaleString("zh-CN", { maximumFractionDigits: 1 }) + "%";
+          button.querySelector(".option-meta").textContent = Number(result.voteCount || 0).toLocaleString("zh-CN") + " 票";
+          button.querySelector(".bar").style.width = Math.max(0, Math.min(100, Number(result.percentage || 0))) + "%";
+          button.classList.toggle("selected", selected);
+          button.setAttribute("aria-pressed", selected ? "true" : "false");
+
+          if (candidate && isHttpsUrl(candidate.imageUrl)) {
+            image.src = candidate.imageUrl;
+            image.alt = candidate.name || "候选项图片";
+            image.hidden = false;
+          } else {
+            image.removeAttribute("src");
+            image.alt = "";
+            image.hidden = true;
+          }
+
+          const unavailable = !candidate || state.busy || state.uploading || state.match.status !== "live" || Boolean(state.me && state.me.voted);
+          button.disabled = unavailable;
+        });
+
+        const totalVotes = Number(state.results && state.results.totalVotes || 0);
+        totalNode.textContent = "已有 " + totalVotes.toLocaleString("zh-CN") + " 人参与";
+        proofInput.disabled = state.busy || state.uploading || Boolean(state.me && state.me.voted);
+        proofPicker.classList.toggle("disabled", proofInput.disabled);
+      }
+
+      function resultsFromMatch(match) {
+        const candidates = Array.isArray(match.candidates) ? match.candidates : [];
+        const totalVotes = candidates.reduce((sum, item) => sum + Number(item.voteCount || 0), 0);
+        return {
+          totalVotes,
+          candidates: candidates.map((item) => ({
+            side: item.side,
+            voteCount: Number(item.voteCount || 0),
+            percentage: totalVotes ? Math.round((Number(item.voteCount || 0) / totalVotes) * 1000) / 10 : 0
+          }))
+        };
+      }
+
+      async function ensureAuthenticated() {
+        if (state.authenticated) return;
+        const sdk = window.ColorboxAI && window.ColorboxAI.cloud;
+        if (!sdk || typeof sdk.auth !== "function") {
+          const error = new Error("当前环境缺少 ColorboxAI 登录能力");
+          error.statusCode = 401;
+          throw error;
+        }
+        const auth = await sdk.auth({ envId: String(window.ACTIVITY_ENV_ID || "").trim() });
+        if (!auth || auth.code !== 200) {
+          const error = new Error(auth && auth.message ? auth.message : "请先登录");
+          error.statusCode = auth && auth.code === 401 ? 401 : 500;
+          throw error;
+        }
+        state.authenticated = true;
+      }
+
+      async function loadViewer(options) {
+        const config = options || {};
+        try {
+          if (config.authenticate !== false) await ensureAuthenticated();
+          state.me = await cloudRequest("/pk/me?matchId=" + encodeURIComponent(matchId()), { auth: true });
+          state.authenticated = true;
+          return true;
+        } catch (error) {
+          if (error.statusCode === 401) {
+            state.authenticated = false;
+            state.me = { voted: false, side: null, remaining: 1 };
+            return false;
+          }
+          throw error;
+        }
+      }
+
+      async function loadResults() {
+        state.results = await cloudRequest(
+          "/pk/matches/" + encodeURIComponent(matchId()) + "/results"
+        );
+      }
+
+      function simulateVote(side) {
+        const result = resultForSide(side);
+        result.voteCount = Number(result.voteCount || 0) + 1;
+        state.results.totalVotes = Number(state.results.totalVotes || 0) + 1;
+        state.results.candidates.forEach((item) => {
+          item.percentage = state.results.totalVotes
+            ? Math.round((Number(item.voteCount || 0) / state.results.totalVotes) * 1000) / 10
+            : 0;
+        });
+        state.me = { voted: true, side, remaining: 0 };
+        render();
+        setSelection(lifecycleMessage(), false);
+      }
+
+      async function vote(side) {
+        if (state.busy || state.uploading || !state.match || state.match.status !== "live") return;
+        if (state.me && state.me.voted) {
+          setSelection("每个账号只能投 1 票", true);
+          return;
+        }
+        if (state.demo) {
+          simulateVote(side);
+          return;
+        }
+
+        state.busy = true;
+        render();
+        setSelection("正在提交投票...", false);
+        try {
+          await ensureAuthenticated();
+          const payload = { matchId: matchId(), side };
+          if (state.proofUrl) payload.proofUrl = state.proofUrl;
+          const submitted = await cloudRequest("/pk/votes", { method: "POST", data: payload, auth: true });
+          state.me = {
+            voted: true,
+            side: submitted && submitted.side ? submitted.side : side,
+            remaining: 0
+          };
+          render();
+          try {
+            await Promise.all([loadResults(), loadViewer({ authenticate: false })]);
+          } catch (refreshError) {
+            setSelection("投票已提交，最新票数暂未刷新，请稍后重新打开页面", true);
+            return;
+          }
+          setSelection(lifecycleMessage(), false);
+        } catch (error) {
+          if (error.statusCode === 409) {
+            try {
+              await loadViewer({ authenticate: false });
+              await loadResults();
+            } catch (refreshError) {
+              /* Keep the original actionable conflict message. */
+            }
+          }
+          setSelection(friendlyMessage(error, "投票失败，请重试"), true);
+        } finally {
+          state.busy = false;
+          render();
+        }
+      }
+
+      async function uploadProof(file) {
+        if (!file) return;
+        if (!file.type || !file.type.startsWith("image/")) {
+          proofStatus.textContent = "请选择图片文件";
+          proofInput.value = "";
+          return;
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          proofStatus.textContent = "图片不能超过 10 MB";
+          proofInput.value = "";
+          return;
+        }
+        if (state.demo) {
+          proofStatus.textContent = "本地预览不上传图片，请在虎扑 App 内验证";
+          proofInput.value = "";
+          return;
+        }
+
+        const upload = window.ColorboxAI && window.ColorboxAI.oss && window.ColorboxAI.oss.uploadFile;
+        if (typeof upload !== "function") {
+          proofStatus.textContent = "当前环境不支持图片上传";
+          proofInput.value = "";
+          return;
+        }
+
+        state.uploading = true;
+        render();
+        proofStatus.textContent = "正在上传图片...";
+        try {
+          const extension = file.name && file.name.includes(".") ? file.name.slice(file.name.lastIndexOf(".")).slice(0, 10) : ".jpg";
+          const result = await upload({ file, filename: "pk-vote-proof-" + Date.now() + extension });
+          if (!result || !isHttpsUrl(result.downloadUrl)) throw new Error("上传结果缺少有效图片地址");
+          state.proofUrl = result.downloadUrl;
+          proofStatus.textContent = "图片上传成功，将随投票一并提交";
+        } catch (error) {
+          state.proofUrl = null;
+          proofStatus.textContent = (error && error.message) || "图片上传失败，请重新选择";
+          proofInput.value = "";
+        } finally {
+          state.uploading = false;
+          render();
+        }
+      }
+
+      async function initialize() {
+        state.demo = window.location.protocol === "file:"
+          || window.location.hostname === "localhost"
+          || window.location.hostname === "127.0.0.1";
+        try {
+          if (state.demo) {
+            state.match = typeof structuredClone === "function"
+              ? structuredClone(DEMO_MATCH)
+              : JSON.parse(JSON.stringify(DEMO_MATCH));
+            state.results = resultsFromMatch(state.match);
+            state.me = { voted: false, side: null, remaining: 1 };
+            render();
+            setSelection(lifecycleMessage(), false);
+            return;
+          }
+
+          if (!apiBase() || !window.ACTIVITY_ENV_ID || !matchId()) {
+            throw new Error("投票服务尚未配置，请设置 API 地址、环境 ID 和对阵 ID");
+          }
+          if (!window.ColorboxAI || !window.ColorboxAI.cloud) {
+            throw new Error("当前环境缺少 ColorboxAI Cloud 能力");
+          }
+
+          const data = await cloudRequest("/pk/matches/" + encodeURIComponent(matchId()));
+          if (!data || !data.match || !Array.isArray(data.match.candidates)) {
+            throw new Error("对阵数据格式不正确");
+          }
+          state.match = data.match;
+          state.results = resultsFromMatch(state.match);
+          render();
+
+          try {
+            await loadViewer();
+          } catch (error) {
+            setSelection(friendlyMessage(error, "用户状态读取失败"), true);
+            render();
+            return;
+          }
+          render();
+          setSelection(lifecycleMessage(), false);
+        } catch (error) {
+          titleNode.textContent = "投票暂不可用";
+          descriptionNode.textContent = "请稍后重试或联系活动运营人员";
+          totalNode.textContent = "未能读取投票数据";
+          setSelection(friendlyMessage(error, "投票加载失败"), true);
+        }
+      }
+
+      optionButtons.forEach((button) => {
+        button.addEventListener("click", () => vote(button.dataset.side));
+      });
+      proofInput.addEventListener("change", () => uploadProof(proofInput.files && proofInput.files[0]));
+
+      initialize();
+    </script>
+  </body>
+</html>

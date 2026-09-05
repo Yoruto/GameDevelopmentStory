@@ -1,0 +1,46 @@
+{
+  "name": "score-addScore",
+  "description": "提交用户对指定业务对象的评分打分。打分分值范围为 1 到 10 之间。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "outBizType": {
+        "type": "string",
+        "description": "业务类型。常用可选值包括：nbaPlayer (NBA球员), cbaPlayer (CBA球员), equipment (运动装备), games (游戏), movie (电影影视), food (美食), school (高校)"
+      },
+      "outBizNo": {
+        "type": "string",
+        "description": "业务对象 ID，例如球员 ID"
+      },
+      "score": {
+        "type": "number",
+        "description": "打分分值，范围 1 - 10 之间"
+      },
+      "source": {
+        "type": "string",
+        "description": "来源渠道标识，可选"
+      }
+    },
+    "required": [
+      "outBizType",
+      "outBizNo",
+      "score"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "success": {
+        "type": "boolean",
+        "description": "是否提交成功"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误信息或成功提示"
+      }
+    },
+    "required": [
+      "success"
+    ]
+  }
+}

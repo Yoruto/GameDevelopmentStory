@@ -1,0 +1,17 @@
+{
+  "name": "storage-getValue",
+  "description": "读取当前活动页在本地或 App 容器内已经存储的状态数据。支持项目隔离及读取合并。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "key": {
+        "type": "string",
+        "description": "待读取的数据键名称，如果不传则返回当前项目下存储的所有键值对"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "any",
+    "description": "返回读取的数据。如果传入了 key，则返回对应的值；如果不传 key，则返回包含所有项目下键值的对象，通常为 string 类型（JSON 格式）或 null"
+  }
+}

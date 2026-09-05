@@ -1,0 +1,178 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>抽卡功能</title>
+    <script type="application/json" id="colorbox-skill-usage">
+      {"skills":["colorbox-cloud-auth","colorbox-cloud-request","colorbox-oss-upload-file","user-feedback"]}
+    </script>
+    <style>
+      :root {
+        font-family:
+          'PingFang SC',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          sans-serif;
+        color: #3d3d3d;
+        background: #f4f7f8;
+      }
+      * { box-sizing: border-box; }
+      body { min-width: 320px; min-height: 100vh; margin: 0; background: #f4f7f8; }
+      main { display: flex; width: min(100%, 390px); min-height: 100vh; flex-direction: column; padding: 34px 16px 16px; margin: 0 auto; background: #fff; }
+      header { padding-bottom: 14px; border-bottom: 1px solid #edf3f4; }
+      h1 { margin: 0; color: #1a1f26; font-size: 17px; font-weight: 600; line-height: 1.35; }
+      .card { display: grid; min-height: 185px; align-content: center; justify-items: center; gap: 7px; padding: 20px; margin: 20px 0 14px; color: #4a8b8f; background: #f0f7f7; border: 1px solid #d5e8e8; text-align: center; }
+      .card-mark { display: grid; width: 30px; height: 30px; place-items: center; border: 1px solid currentColor; font-size: 20px; }
+      .card strong { color: #1a1f26; font-size: 15px; font-weight: 600; }
+      .card span { color: #6f7e8c; font-size: 10px; }
+      .card.drawn { color: #3f7d5a; background: #eef7f1; border-color: #cce7d5; }
+      .odds { display: flex; justify-content: space-between; padding-bottom: 14px; color: #6f7e8c; font-size: 10px; border-bottom: 1px solid #edf3f4; }
+      .odds strong { color: #1a1f26; font-weight: 600; }
+      button { min-height: 36px; margin-top: 16px; color: #fff; font: inherit; font-size: 11px; background: #4a8b8f; border: 1px solid #4a8b8f; border-radius: 0; cursor: pointer; }
+      button:hover, button:focus-visible { background: #3d7579; border-color: #3d7579; outline: 2px solid #4a8b8f; outline-offset: 2px; }
+      button:disabled { opacity: 0.55; cursor: wait; }
+      .service-tools { display: none; padding-top: 18px; margin-top: 18px; border-top: 1px solid #edf3f4; }
+      main.configured .service-tools { display: block; }
+      .service-title { margin: 0 0 10px; color: #1a1f26; font-size: 12px; font-weight: 600; }
+      .prizes { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+      .prize { min-height: 64px; padding: 9px; background: #f7fafb; border: 1px solid #edf3f4; }
+      .prize strong, .prize span { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .prize strong { color: #1a1f26; font-size: 11px; }
+      .prize span, .hint, .status, .record { color: #6f7e8c; font-size: 10px; line-height: 1.5; }
+      .prize span { margin-top: 4px; }
+      .hint { margin: 8px 0 0; }
+      .secondary-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+      .secondary-actions button { color: #4a8b8f; background: #fff; }
+      .upload { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+      .upload label { display: grid; min-height: 32px; place-items: center; padding: 0 9px; color: #4a8b8f; border: 1px solid #d5e8e8; font-size: 10px; cursor: pointer; }
+      .upload input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+      .upload span { min-width: 0; overflow: hidden; color: #6f7e8c; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+      .status { margin-top: 10px; }
+      .status.error { color: #a33b32; }
+      .records { margin-top: 14px; }
+      .record { display: flex; justify-content: space-between; gap: 8px; padding: 7px 0; border-bottom: 1px solid #edf3f4; }
+      .record strong { color: #1a1f26; font-weight: 600; }
+      @media (min-width: 480px) { body { display: grid; place-items: center; padding: 24px; } main { min-height: 640px; border: 1px solid #d8e3e8; } }
+    </style>
+  </head>
+  <body>
+    <main id="app">
+      <header><h1 id="title">抽卡活动</h1></header>
+      <div class="card" id="card">
+        <div class="card-mark" aria-hidden="true">+</div>
+        <strong id="card-title">神秘奖励</strong
+        ><span id="card-text">点击下方按钮抽取</span>
+      </div>
+      <div class="odds"><span>剩余次数</span><strong id="quota">3 次</strong></div>
+      <button id="draw" type="button">立即抽取</button>
+
+      <section class="service-tools" id="service-tools" aria-label="卡池详情">
+        <h2 class="service-title">卡池与概率</h2>
+        <div class="prizes" id="prizes"></div>
+        <p class="hint">概率仅供展示，库存、保底和抽卡结果以服务端确认为准。</p>
+        <div class="upload"><label for="proof">选择结果素材</label><input id="proof" type="file" accept="image/jpeg,image/png,image/webp" /><span id="proof-name">可选，上传后随本次抽卡保存</span></div>
+        <div class="secondary-actions"><button id="draw-ten" type="button">十连抽</button><button id="refresh" type="button">刷新记录</button></div>
+        <div class="status" id="status" role="status" aria-live="polite"></div>
+        <div class="records" id="records"></div>
+      </section>
+    </main>
+    <script>
+      window.ACTIVITY_API_BASE = "";
+      window.ACTIVITY_ENV_ID = "";
+      window.ACTIVITY_POOL_ID = "default";
+      const demoPool = { poolId: "default", title: "抽卡活动", drawLimit: 3, pityThreshold: 10, prizes: [
+        { code: "points-100", name: "积分加成卡", rarity: "普通", weight: 70, description: "恭喜你，获得 100 积分" },
+        { code: "points-500", name: "500 积分", rarity: "稀有", weight: 25, description: "恭喜你，获得 500 积分" },
+        { code: "badge", name: "限定徽章", rarity: "传说", weight: 5, description: "恭喜你，获得限定徽章" }
+      ] };
+      const app = document.querySelector("#app");
+      const drawButton = document.querySelector("#draw");
+      const drawTenButton = document.querySelector("#draw-ten");
+      const statusNode = document.querySelector("#status");
+      let pool = demoPool;
+      let proofUrl = "";
+      let busy = false;
+      let configured = false;
+
+      function setStatus(message, error) { statusNode.textContent = message || ""; statusNode.className = "status" + (error ? " error" : ""); }
+      function setButtonsDisabled(disabled) { drawButton.disabled = disabled; drawTenButton.disabled = disabled; }
+      function escapeHtml(value) { return String(value == null ? "" : value).replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char])); }
+      function createRequestId() {
+        if (window.crypto && typeof window.crypto.randomUUID === "function") return window.crypto.randomUUID();
+        const bytes = new Uint8Array(16);
+        if (window.crypto && typeof window.crypto.getRandomValues === "function") window.crypto.getRandomValues(bytes); else for (let index = 0; index < bytes.length; index += 1) bytes[index] = Math.floor(Math.random() * 256);
+        bytes[6] = (bytes[6] & 15) | 64; bytes[8] = (bytes[8] & 63) | 128;
+        return Array.from(bytes, (value) => value.toString(16).padStart(2, "0")).join("").replace(/^(.{8})(.{4})(.{4})(.{4})(.{12})$/, "$1-$2-$3-$4-$5");
+      }
+      async function request(path, options = {}) {
+        if (!window.ColorboxAI?.cloud || !window.ACTIVITY_API_BASE || !window.ACTIVITY_ENV_ID) throw new Error("抽卡服务暂未配置");
+        const response = await window.ColorboxAI.cloud.request({ url: window.ACTIVITY_API_BASE + path, method: options.method || "GET", data: options.data, envId: window.ACTIVITY_ENV_ID, auth: Boolean(options.auth), headers: { "X-Request-Id": createRequestId() } });
+        if (response?.statusCode === 401) throw new Error("请先登录");
+        if (!response || response.statusCode !== 200 || (response.code !== 0 && response.code !== 200)) throw new Error(response?.message || "服务暂时不可用");
+        return response.data;
+      }
+      function renderPool(data) {
+        pool = data || demoPool;
+        document.querySelector("#title").textContent = pool.title || "抽卡活动";
+        const prizes = Array.isArray(pool.prizes) ? pool.prizes : [];
+        const totalWeight = prizes.reduce((sum, item) => sum + Math.max(0, Number(item.weight) || 0), 0);
+        document.querySelector("#prizes").innerHTML = prizes.map((item) => { const probability = totalWeight ? (Number(item.weight || 0) / totalWeight * 100).toFixed(2) : "0.00"; return `<div class="prize"><strong>${escapeHtml(item.name)}</strong><span>${escapeHtml(item.rarity || "奖励")} · ${probability}%</span></div>`; }).join("") || '<p class="hint">当前卡池暂无可抽奖励</p>';
+      }
+      function renderQuota(value) { document.querySelector("#quota").textContent = `${Math.max(0, Number(value) || 0)} 次`; }
+      function renderRecords(records) { const list = Array.isArray(records) ? records : []; document.querySelector("#records").innerHTML = list.map((item) => `<div class="record"><span>${escapeHtml(item.createdAt || "")}</span><strong>${escapeHtml(item.prizeName || "奖励")}</strong></div>`).join("") || '<p class="hint">暂时没有抽卡记录</p>'; }
+      function renderDraw(data) {
+        const draws = Array.isArray(data?.draws) ? data.draws : [];
+        const first = draws[0];
+        if (!first) throw new Error("服务端未返回抽卡结果");
+        document.querySelector("#card").classList.add("drawn");
+        document.querySelector("#card-title").textContent = first.prizeName || "抽卡成功";
+        document.querySelector("#card-text").textContent = draws.length > 1 ? `本次共获得 ${draws.length} 个奖励` : (first.description || `恭喜你，获得${first.prizeName || "奖励"}`);
+        drawButton.textContent = "再抽一次";
+        renderQuota(data.remainingCount);
+      }
+      async function refreshRecords() { if (!configured) return; renderRecords(await request(`/draw/results?poolId=${encodeURIComponent(window.ACTIVITY_POOL_ID)}`, { auth: true })); }
+      async function runDraw(drawCount) {
+        if (busy) return;
+        busy = true; setButtonsDisabled(true); if (configured) setStatus(drawCount === 10 ? "正在进行十连抽..." : "正在抽取...");
+        try {
+          let result;
+          if (configured) result = await request("/draw", { method: "POST", auth: true, data: { poolId: window.ACTIVITY_POOL_ID, drawCount, ...(proofUrl ? { proofUrl } : {}) } });
+          else { const item = demoPool.prizes[0]; result = { remainingCount: Math.max(0, Number.parseInt(document.querySelector("#quota").textContent, 10) - drawCount), draws: Array.from({ length: drawCount }, () => ({ prizeName: item.name, rarity: item.rarity, description: item.description })) }; }
+          renderDraw(result);
+          if (configured) { setStatus("抽卡成功"); await refreshRecords(); }
+        } catch (error) { if (configured) setStatus(error.message || "抽卡失败，请稍后重试", true); }
+        finally { busy = false; setButtonsDisabled(false); }
+      }
+      async function uploadProof(file) {
+        if (!file) return;
+        if (!["image/jpeg", "image/png", "image/webp"].includes(file.type)) throw new Error("仅支持 JPEG、PNG 或 WebP 图片");
+        if (file.size > 10 * 1024 * 1024) throw new Error("图片不能超过 10MB");
+        if (!window.ColorboxAI?.oss || typeof window.ColorboxAI.oss.uploadFile !== "function") throw new Error("当前环境不支持素材上传");
+        const result = await window.ColorboxAI.oss.uploadFile({ file, filename: `draw-proof-${Date.now()}.${file.type.split("/")[1] || "png"}` });
+        const url = new URL(result?.downloadUrl || "");
+        if (url.protocol !== "https:" || !url.hostname) throw new Error("素材上传失败");
+        proofUrl = url.href; document.querySelector("#proof-name").textContent = `已上传：${file.name}`; setStatus("素材已上传，可以开始抽卡");
+      }
+      async function initialize() {
+        configured = Boolean(window.ACTIVITY_API_BASE && window.ACTIVITY_ENV_ID && window.ColorboxAI?.cloud);
+        if (!configured) { renderPool(demoPool); renderQuota(demoPool.drawLimit); return; }
+        app.classList.add("configured"); setButtonsDisabled(true); setStatus("正在加载卡池...");
+        try {
+          renderPool(await request(`/pool?poolId=${encodeURIComponent(window.ACTIVITY_POOL_ID)}`));
+          const auth = await window.ColorboxAI.cloud.auth({ envId: window.ACTIVITY_ENV_ID });
+          if (!auth || (auth.code !== 0 && auth.code !== 200)) throw new Error(auth?.message || "请先登录");
+          const [quota, records] = await Promise.all([request(`/draw/quota?poolId=${encodeURIComponent(window.ACTIVITY_POOL_ID)}`, { auth: true }), request(`/draw/results?poolId=${encodeURIComponent(window.ACTIVITY_POOL_ID)}`, { auth: true })]);
+          renderQuota(quota?.remainingCount); renderRecords(records); setStatus("可以开始抽卡");
+        } catch (error) { setStatus(error.message || "活动加载失败", true); }
+        finally { setButtonsDisabled(false); }
+      }
+      drawButton.addEventListener("click", () => runDraw(1));
+      drawTenButton.addEventListener("click", () => runDraw(10));
+      document.querySelector("#refresh").addEventListener("click", () => refreshRecords().catch((error) => setStatus(error.message || "记录加载失败", true)));
+      document.querySelector("#proof").addEventListener("change", (event) => uploadProof(event.target.files[0]).catch((error) => { proofUrl = ""; event.target.value = ""; document.querySelector("#proof-name").textContent = "可选，上传后随本次抽卡保存"; setStatus(error.message || "素材上传失败", true); }));
+      initialize();
+    </script>
+  </body>
+</html>

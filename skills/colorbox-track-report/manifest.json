@@ -1,0 +1,41 @@
+{
+  "id": "colorbox-track-report",
+  "name": "埋点上报",
+  "description": "支持页面加载、点击、曝光等标准数据埋点上报，用于统计分析用户流量、模块点击和页面互动情况，方便了解页面表现与转化效果。",
+  "category": "应用基础",
+  "categories": [
+    "应用基础"
+  ],
+  "icon": "chart-no-axes-combined",
+  "details": {
+    "capabilities": [
+      "埋点上报：支持页面加载、点击、曝光等标准数据埋点上报，用于统计分析用户流量、模块点击和页面互动情况，方便了解页面表现与转化效果。",
+      "提供应用运行时可复用的基础服务能力。",
+      "帮助页面完成通用数据处理和平台能力接入。"
+    ],
+    "scenarios": [
+      "需要补齐应用基础交互或服务调用的功能。",
+      "需要组合多个技能完成完整业务流程的页面。"
+    ],
+    "usageTips": [
+      "先确认该能力的输入输出，再与业务状态进行组合。",
+      "为异步调用增加加载、失败和重试体验。"
+    ]
+  },
+  "content": "---\nname: track-report\ndescription: 支持页面加载、点击、曝光等标准数据埋点上报，用于统计分析用户流量、模块点击和页面互动情况，方便了解页面表现与转化效果。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.track(params)`\n\n# Constraints\n\n- 必须仅使用 window.ColorboxAI.track(params) 进行打点，严禁直接引入 @hupu/hp-tracer 或手动拼接 Hermes 接口 URL\n- 页面加载事件 access 由底层框架自动触发上报，业务代码切勿重复调用\n- 事件类型 act 必须且只能是：click (点击)、exposure (曝光)、videoact (视频) 之一；access、onload、onPageOpen、onPageClose 以及 submit、feed_xxx 等自定义 act 都不合法；不合法 act 会触发前端 SDK warning 与日志上报\n- 点击埋点应写在事件处理器(handler)的最前端，保障先上报再请求/跳转；曝光埋点使用 IntersectionObserver 监测，同一个元素在单次会话中只上报一次\n- 埋点上报必须控制数量：页面初始化阶段最多上报 50 个埋点，单页面 1 分钟内最多上报 200 个埋点，同一个 blk 在 1 分钟内最多上报 100 个埋点；超过限制的埋点会被前端 SDK 丢弃，不要通过循环、定时器或重复曝光规避限制\n- blk 必须使用 BMC001-BMC999 的六位编号格式（如 BMC001、BMC128），禁止使用 VOTE_MODULE、HEADER_CLICK 等语义字符串；不符合规则会触发前端 SDK warning 与日志上报\n- 位置标识写在 pos（同 blk 从 T1 递增）；可见文本写在 label；其它扩展业务属性写在 custom（小写驼峰）\n- 切勿手动传入 pg、pi、ext、sc 等系统字段，底座会自动完成补充封装\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| params | object | 是 | 埋点上报参数，包含 act (事件类型), blk (模块名), pos (位置), label (标签文案), custom (自定义小写驼峰业务数据) |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| ok | boolean | 否 | 是否成功唤起底层上报方法 |\n\n# Examples\n\n```javascript\n// 点击事件示例\nwindow.ColorboxAI.track({ act: \"click\", blk: \"BMC001\", pos: \"T1\", label: \"提交投票\", custom: { voteId: 101 } });\n```\n\n```javascript\n// 曝光监测示例\nconst observer = new IntersectionObserver((entries) => {\n  entries.forEach(entry => {\n    if (entry.isIntersecting) {\n      window.ColorboxAI.track({ act: \"exposure\", blk: \"BMC002\", pos: \"T1\", label: \"投票模块\" });\n      observer.unobserve(entry.target);\n    }\n  });\n}, { threshold: 0.5 });\nobserver.observe(document.getElementById(\"vote-card\"));\n```",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "content": "---\nname: track-report\ndescription: 支持页面加载、点击、曝光等标准数据埋点上报，用于统计分析用户流量、模块点击和页面互动情况，方便了解页面表现与转化效果。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.track(params)`\n\n# Constraints\n\n- 必须仅使用 window.ColorboxAI.track(params) 进行打点，严禁直接引入 @hupu/hp-tracer 或手动拼接 Hermes 接口 URL\n- 页面加载事件 access 由底层框架自动触发上报，业务代码切勿重复调用\n- 事件类型 act 必须且只能是：click (点击)、exposure (曝光)、videoact (视频) 之一；access、onload、onPageOpen、onPageClose 以及 submit、feed_xxx 等自定义 act 都不合法；不合法 act 会触发前端 SDK warning 与日志上报\n- 点击埋点应写在事件处理器(handler)的最前端，保障先上报再请求/跳转；曝光埋点使用 IntersectionObserver 监测，同一个元素在单次会话中只上报一次\n- 埋点上报必须控制数量：页面初始化阶段最多上报 50 个埋点，单页面 1 分钟内最多上报 200 个埋点，同一个 blk 在 1 分钟内最多上报 100 个埋点；超过限制的埋点会被前端 SDK 丢弃，不要通过循环、定时器或重复曝光规避限制\n- blk 必须使用 BMC001-BMC999 的六位编号格式（如 BMC001、BMC128），禁止使用 VOTE_MODULE、HEADER_CLICK 等语义字符串；不符合规则会触发前端 SDK warning 与日志上报\n- 位置标识写在 pos（同 blk 从 T1 递增）；可见文本写在 label；其它扩展业务属性写在 custom（小写驼峰）\n- 切勿手动传入 pg、pi、ext、sc 等系统字段，底座会自动完成补充封装\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| params | object | 是 | 埋点上报参数，包含 act (事件类型), blk (模块名), pos (位置), label (标签文案), custom (自定义小写驼峰业务数据) |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| ok | boolean | 否 | 是否成功唤起底层上报方法 |\n\n# Examples\n\n```javascript\n// 点击事件示例\nwindow.ColorboxAI.track({ act: \"click\", blk: \"BMC001\", pos: \"T1\", label: \"提交投票\", custom: { voteId: 101 } });\n```\n\n```javascript\n// 曝光监测示例\nconst observer = new IntersectionObserver((entries) => {\n  entries.forEach(entry => {\n    if (entry.isIntersecting) {\n      window.ColorboxAI.track({ act: \"exposure\", blk: \"BMC002\", pos: \"T1\", label: \"投票模块\" });\n      observer.unobserve(entry.target);\n    }\n  });\n}, { threshold: 0.5 });\nobserver.observe(document.getElementById(\"vote-card\"));\n```"
+    },
+    {
+      "path": "schema.json",
+      "content": "{\n  \"name\": \"track-report\",\n  \"description\": \"支持页面加载、点击、曝光等标准数据埋点上报，用于统计分析用户流量、模块点击和页面互动情况，方便了解页面表现与转化效果。\",\n  \"inputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"params\": {\n        \"type\": \"object\",\n        \"description\": \"埋点上报参数，包含 act (事件类型), blk (模块名), pos (位置), label (标签文案), custom (自定义小写驼峰业务数据)\"\n      }\n    },\n    \"required\": [\n      \"params\"\n    ]\n  },\n  \"outputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"ok\": {\n        \"type\": \"boolean\",\n        \"description\": \"是否成功唤起底层上报方法\"\n      }\n    }\n  }\n}"
+    }
+  ],
+  "manifest": {
+    "capability": "track-report",
+    "source": "skill-package",
+    "version": 1
+  }
+}

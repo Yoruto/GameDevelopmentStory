@@ -1,0 +1,4 @@
+interface:
+  display_name: "虎扑 Web 安全审计"
+  short_description: "审计虎扑活动页前端资源、网络请求与客户端安全确认禁止项"
+  default_prompt: "使用 $audit-hupu-web-security 审计当前活动页前端代码，只报告已确认的禁止项。"

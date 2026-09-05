@@ -1,0 +1,213 @@
+{
+  "name": "request-news-newsCommonList",
+  "description": "查询特定赛事导航（如 FIFA, NBA, CBA 等）首页的新闻列表内容。支持分页。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "source": {
+        "type": "string",
+        "description": "请求来源标识，默认可传 \"nav_category_news\""
+      },
+      "tagCode": {
+        "type": "string",
+        "description": "赛事标识 TagCode，如 \"fifa\" (足球世界杯) 等"
+      },
+      "newsId": {
+        "type": "string",
+        "description": "用于分页的分界新闻ID，上一页返回结果中最后一个新闻的 nid，不传则默认为第一页。"
+      }
+    },
+    "required": [
+      "source",
+      "tagCode"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "object",
+        "description": "成功时返回的数据载荷",
+        "properties": {
+          "newsCommonItems": {
+            "type": "array",
+            "description": "首页资讯新闻列表",
+            "items": {
+              "type": "object",
+              "description": "首页资讯新闻列表项",
+              "properties": {
+                "newsType": {
+                  "type": "string",
+                  "description": "列表项类型，固定为 \"news_common\""
+                },
+                "recommendBaseScore": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "推荐基础分，可能为 null"
+                },
+                "data": {
+                  "type": "object",
+                  "description": "新闻条目详情数据",
+                  "properties": {
+                    "newsType": {
+                      "type": "string",
+                      "description": "新闻类型，固定为 \"news_common\""
+                    },
+                    "newsMarkInfos": {
+                      "type": "array",
+                      "description": "新闻角标列表，可能为空数组",
+                      "items": {
+                        "type": "object",
+                        "description": "新闻角标/标记信息",
+                        "properties": {
+                          "text": {
+                            "type": "string",
+                            "description": "标记文案，如 \"置顶\""
+                          },
+                          "url": {
+                            "type": "string",
+                            "description": "日间标记图片 URL"
+                          },
+                          "nightUrl": {
+                            "type": "string",
+                            "description": "夜间标记图片 URL"
+                          },
+                          "width": {
+                            "type": "number",
+                            "description": "标记图片宽度"
+                          },
+                          "height": {
+                            "type": "number",
+                            "description": "标记图片高度"
+                          }
+                        }
+                      }
+                    },
+                    "showHotReply": {
+                      "type": "boolean",
+                      "description": "是否展示热门回复标识"
+                    },
+                    "top": {
+                      "type": "boolean",
+                      "description": "是否置顶"
+                    },
+                    "newsContentLabel": {
+                      "type": "string",
+                      "description": "新闻内容标签，如 \"图文新闻\"、\"跳转新闻-普通\""
+                    },
+                    "linkUrl": {
+                      "type": "string",
+                      "description": "跳转链接（kanqiu:// 或 huputiyu:// 协议）"
+                    },
+                    "iconInfo": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "新闻图标信息；无图标时为 null",
+                      "properties": {
+                        "iconName": {
+                          "type": "string",
+                          "description": "图标名称，如 \"置顶\"、\"热门\""
+                        },
+                        "iconUrl": {
+                          "type": "string",
+                          "description": "日间图标 URL"
+                        },
+                        "iconNightUrl": {
+                          "type": "string",
+                          "description": "夜间图标 URL"
+                        }
+                      }
+                    },
+                    "customLabelInfo": {
+                      "type": [
+                        "object",
+                        "null"
+                      ],
+                      "description": "自定义标签信息；无标签时为 null",
+                      "properties": {
+                        "labelName": {
+                          "type": "string",
+                          "description": "标签名称，如 \"虎扑辩论赛\"、\"闲谈播客\""
+                        }
+                      }
+                    },
+                    "newsDescribeInfo": {
+                      "type": "object",
+                      "description": "新闻描述信息（回复数摘要等）",
+                      "properties": {
+                        "describeInfo": {
+                          "type": "string",
+                          "description": "描述文案，如 \"6 回复\"、\"JRs热议中\""
+                        }
+                      }
+                    },
+                    "nid": {
+                      "type": "string",
+                      "description": "新闻 ID，可用于分页游标"
+                    },
+                    "tid": {
+                      "type": "string",
+                      "description": "关联帖子/话题 ID"
+                    },
+                    "newsContentType": {
+                      "type": "string",
+                      "description": "内容类型，如 \"IMG_TEXT\"（图文）、\"LINK\"（跳转）"
+                    },
+                    "title": {
+                      "type": "string",
+                      "description": "新闻标题"
+                    },
+                    "image": {
+                      "type": "string",
+                      "description": "新闻封面图 URL"
+                    },
+                    "showComment": {
+                      "type": "number",
+                      "description": "是否展示评论，1 表示展示，0 表示不展示"
+                    },
+                    "replyCount": {
+                      "type": "number",
+                      "description": "回复数"
+                    },
+                    "lightReplyCount": {
+                      "type": "number",
+                      "description": "亮回复数"
+                    },
+                    "publishTime": {
+                      "type": "string",
+                      "description": "发布时间，ISO 8601 格式，如 \"2026-07-21T20:18:28.000+08:00\""
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "ad_page_id": {
+            "type": "string",
+            "description": "广告页标识，如 \"nba.news\""
+          },
+          "reqNo": {
+            "type": "string",
+            "description": "本次请求流水号"
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

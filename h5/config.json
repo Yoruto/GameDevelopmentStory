@@ -1,0 +1,2285 @@
+{
+  "comment": "数值与设定表唯一源。玩法见 activity/design.md，目录与接口见 activity/architecture.md，索引见 activity/README.md。改平衡只改本文件，不要把数字写回玩法正文。改完跑 python scripts/sync_config.py，再 node tests/run-sim-tests.js。",
+  "copy": {
+    "comment": "展示文案与人才市场姓名池。不是玩法公式，但页面禁止再手写一份。",
+    "scaleLabels": {
+      "small": "小工作室",
+      "medium": "中等",
+      "large": "大公司"
+    },
+    "staffNamePool": ["林七", "苏棠", "阿肥", "小野", "老周", "阿喵", "阿扑", "K", "沈衡", "白露"],
+    "mediaQuotes": [
+      "IGM：骨架立住了，能熬夜打完。",
+      "机刻：文本有味道，节奏还差点意思。",
+      "游民星宫：画面先声夺人，后劲看运营。",
+      "触悦：听感先把人留住，关卡还得再磨。",
+      "发米通：评测席吵翻了，玩家倒还买账。"
+    ],
+    "ownConsolePlatform": {
+      "id": "ownConsole",
+      "displayName": "自研主机",
+      "comment": "叙事/解锁用语。玩家立项不出现第四选项；达标后并入主机端销量加成。"
+    },
+    "releaseTypes": {
+      "boxed": "普通发售",
+      "liveops": "长线运营",
+      "outsource": "外包接活"
+    },
+    "pitchHint": "小工作室不能长线。外包接活可练级攒经验，平台只选主机 / PC / 移动。最多 5 人含制作人。",
+    "outsourceQueueKicker": "外包交付",
+    "outsourceQueueBody": "外包交付 +经验 +外包费",
+    "readyToShipLabel": "待发售",
+    "readyToShipHint": "制作完成，尚未发布。点月前点「发布」才走媒体评分、销量和三端份额。",
+    "readyQueueKicker": "制作完成",
+    "readyQueueBody": "制作完成，尚未发布",
+    "releaseButton": "发布",
+    "trendLikePrefix": "玩家开始喜欢",
+    "mauLabel": "月活",
+    "shareHint": "三端份额 = 该端本公司累计销量 ÷（本公司该端累计销量 + 对手该端累计出货）。点月后对手出货会改份额。外包默认不占份额。",
+    "calendarTitle": "发售日历",
+    "calendarHint": "其他厂商计划发售。开局已有当年表；每年 12 月点「下一月」后生成下一年 1–12 月。不含自家待发售。",
+    "calendarEntry": "日历",
+    "calendarShipped": "已发",
+    "calendarMoved": "已改期",
+    "calendarEmpty": "暂无",
+    "chartTitle": "本月畅销榜",
+    "chartHint": "按本月实销排序。本公司在售盒装 + 对手在售。停售看相对基准的 Y，不看实销低不低。",
+    "chartEmpty": "这个月还没有在售作品上榜。",
+    "chartPlayerTag": "本公司",
+    "onSaleLabel": "在售",
+    "offSaleLabel": "已停售",
+    "baselineSalesLabel": "基准（首月参照）",
+    "monthActualSalesLabel": "本月实销",
+    "launchActualSalesLabel": "发售当月实销",
+    "mediaSalesHint": "基准是发售公式算出的首月参照，不是账上实销。有的事件只砸本月实销，有的会改写基准、之后每月都按新基准走。"
+  },
+  "calendar": {
+    "comment": "一局起止；点「下一月」才推进。",
+    "startYear": 2015,
+    "startMonth": 1,
+    "endYear": 2025,
+    "endMonth": 12
+  },
+  "economy": {
+    "comment": "货币只有整数「资金」。开局能撑过第一款中作薪资，换场地要心疼，卖得好能赚回来。",
+    "startingFunds": 78000,
+    "currencyName": "资金",
+    "relocateSmallToMedium": 35000,
+    "relocateMediumToLarge": 90000,
+    "advertising": {
+      "comment": "点月前可买一次；立刻加粉丝，并乘在「下一款真正发售」的销量上，该部发售后消耗。",
+      "cost": 7500,
+      "fansGain": 700,
+      "nextReleaseSalesMultiplier": 1.26
+    }
+  },
+  "company": {
+    "comment": "规模升级=花钱换场地。长线仅 medium+；工作室与自研主机入口仅 large；自研主机另要粉丝门槛。自研主机不作为第四个玩家平台，fold 进主机端并乘 ownConsoleSalesMultiplier。defaultName 是开局公司名，玩家可改。",
+    "startingScale": "small",
+    "defaultName": "喵扑studio",
+    "startingFans": 280,
+    "unlockOwnConsoleMinFans": 9000,
+    "ownConsoleFoldIntoPlatformId": "console",
+    "ownConsoleSalesMultiplier": 1.12,
+    "scales": {
+      "small": {
+        "maxStaff": 4,
+        "unlockLiveOps": false,
+        "canFoundStudios": false,
+        "unlockOwnConsole": false
+      },
+      "medium": {
+        "maxStaff": 6,
+        "unlockLiveOps": true,
+        "canFoundStudios": false,
+        "unlockOwnConsole": false
+      },
+      "large": {
+        "maxStaff": 10,
+        "unlockLiveOps": true,
+        "canFoundStudios": true,
+        "unlockOwnConsole": true
+      }
+    }
+  },
+  "staff": {
+    "comment": "编制上限跟规模走。特性只在雇佣时抽，升级只加四维。",
+    "salary": {
+      "comment": "月薪 = (base + level×perLevel + 四维均值×perAvgStat) × (1 + 荣誉×honorBonusPerPoint)，每年 1 月再乘一次年加薪。",
+      "base": 1700,
+      "perLevel": 320,
+      "perAvgStat": 28,
+      "honorBonusPerPoint": 0.04,
+      "annualRaiseRate": 0.08
+    },
+    "talentMarket": {
+      "comment": "每月刷新一批；招不招是点月前操作。",
+      "refreshCount": 4,
+      "levelMin": 1,
+      "levelMax": 5,
+      "statMin": 7,
+      "statMax": 24,
+      "traitChanceSpark": 0.25,
+      "traitChanceMeticulous": 0.25,
+      "traitChanceBoth": 0.08
+    },
+    "experience": {
+      "comment": "做游戏每月攒经验；升级所需 = expRequiredBase + 当前等级×expRequiredPerLevel。四维各加随机区间内整数。",
+      "expPerDevelopmentMonth": 12,
+      "expPerLiveOpsMonth": 6,
+      "expRequiredBase": 36,
+      "expRequiredPerLevel": 14,
+      "statGainPerLevelMin": 1,
+      "statGainPerLevelMax": 2
+    },
+    "honor": {
+      "comment": "高分作品与获奖给角色荣誉，从而抬薪。",
+      "fromHighScore": 2,
+      "fromAward": 3,
+      "highScoreThreshold": 8
+    }
+  },
+  "traits": {
+    "comment": "天生，雇佣时抽出；升级不加特性。一个人可以 0～2 条。",
+    "sparkOfInspiration": {
+      "displayName": "灵光一闪",
+      "comment": "灵感月：当月某一维额外加上 bonus；制作人更容易触发、加成更大。",
+      "producerTriggerRate": 0.18,
+      "memberTriggerRate": 0.08,
+      "producerDimBonus": 4,
+      "memberDimBonus": 2
+    },
+    "meticulous": {
+      "displayName": "一丝不苟",
+      "comment": "稳定性：把当月该人贡献的随机下限从 1 抬高；制作人抬整款游戏的翻车保护（发售分下限）。",
+      "producerMinRollBonus": 3,
+      "memberMinRollBonus": 1,
+      "producerScoreFloorBonus": 0.4,
+      "memberScoreFloorBonus": 0.1
+    }
+  },
+  "development": {
+    "comment": "质量算法步骤见 design.md 第 5.1 节（随机 1～该维属性，ceil÷总开发月数）。此处只放周期月数与事件加减幅。",
+    "shortMonths": 3,
+    "mediumMonths": 5,
+    "longMonths": 8,
+    "maxTeamSize": 5,
+    "maxProducers": 1,
+    "eventQualityAdjust": {
+      "dimDeltaMin": 2,
+      "dimDeltaMax": 5
+    }
+  },
+  "outsource": {
+    "comment": "外包接活：练级攒经验。小工作室可接。不走媒体评分、不进系列、默认不占三端份额。周期月数默认沿用 development 短/中/长；cycleMonths 非空时覆盖。外包费应明显低于一款自制发售，避免只接外包。",
+    "maxConcurrent": 1,
+    "shareWeight": 0,
+    "expPerDevelopmentMonth": 18,
+    "feeBase": 2400,
+    "feePerQualitySum": 12,
+    "feeMin": 1800,
+    "feeMax": 7200,
+    "cycleMonths": null
+  },
+  "marketShare": {
+    "comment": "三端份额 = 该端本公司计入份额的 lifetimeSales / (本公司该端累计销量 + 对手该端累计出货)。includeReleaseTypes 为自制；外包用 outsource.shareWeight（默认 0）。percentDecimals 只影响展示。",
+    "includeReleaseTypes": ["boxed", "liveops"],
+    "percentDecimals": 1
+  },
+  "lifecycle": {
+    "comment": "盒装发售生命周期（长线运营与外包不走本曲线）。发售公式写入 baselineSales，作为 Y=1.0 的首月参照，不是账上实销。当月真实销量=round(baselineSales×Y(m)×当月瞬时修正)。Y(m)=T+(1-T)/(1+e^(k·(x-x0)))，x=m-1。T=tMin+(S-scoreMin)/(scoreMax-scoreMin)×tSpan；x0=x0Min+同比例×x0Span。S=媒体均分，可为小数。文档 2.2 表曾写评分1的 x0=2.0，与线性插值公式不一致，实现用公式：S=scoreMin → T=tMin、x0=x0Min；S=scoreMax → T=tMin+tSpan、x0=x0Min+x0Span。k 不随评分变。无均分不套 scoreMax。掉榜只看 Y(m)<dropOffY 或 m>maxMonths，不看实销/基准比。chartSize 只给畅销榜席位。查表仅测试对照，运行时不算 12 格表。launchSales 记发售当月实销，后续月乘数只用 baselineSales。",
+    "maxMonths": 12,
+    "k": 1.2,
+    "tMin": 0.05,
+    "tSpan": 0.35,
+    "x0Min": 3.0,
+    "x0Span": 3.0,
+    "scoreMin": 1,
+    "scoreMax": 10,
+    "dropOffY": 0.18,
+    "chartSize": 20
+  },
+  "release": {
+    "comment": "发售公式写入盒装 baselineSales（首月参照）。粉丝保底 + 四维合计×系数，再乘广告与潮流倍率。当月实销=round(baseline×Y(m)×当月修正)。自制完工进 readyToShip，点发布才结算；外包到期仍自动交付。长线/外包不走盒装 lifecycle。",
+    "readyToShipMax": 99,
+    "fanSalesCoeff": 16,
+    "qualitySumSalesCoeff": 200,
+    "trendSalesMultiplier": 1.35,
+    "media": {
+      "comment": "五家媒体用真名差一字/一字母，增加代入感，不直接冒充原站。各打 1～10 分。得分约等于加权四维均值 ÷ scoreDivisor，夹在 minScore～maxScore。",
+      "minScore": 1,
+      "maxScore": 10,
+      "scoreDivisor": 6.5,
+      "outlets": [
+        {
+          "id": "handleZhi",
+          "displayName": "IGM",
+          "weights": {
+            "program": 0.35,
+            "script": 0.15,
+            "art": 0.25,
+            "music": 0.25
+          }
+        },
+        {
+          "id": "fourthWall",
+          "displayName": "机刻",
+          "weights": {
+            "program": 0.15,
+            "script": 0.4,
+            "art": 0.25,
+            "music": 0.2
+          }
+        },
+        {
+          "id": "pixelWatch",
+          "displayName": "游民星宫",
+          "weights": {
+            "program": 0.2,
+            "script": 0.2,
+            "art": 0.4,
+            "music": 0.2
+          }
+        },
+        {
+          "id": "midnightReview",
+          "displayName": "触悦",
+          "weights": {
+            "program": 0.2,
+            "script": 0.25,
+            "art": 0.2,
+            "music": 0.35
+          }
+        },
+        {
+          "id": "cartridgeWeekly",
+          "displayName": "发米通",
+          "weights": {
+            "program": 0.25,
+            "script": 0.25,
+            "art": 0.25,
+            "music": 0.25
+          }
+        }
+      ]
+    }
+  },
+  "liveOps": {
+    "comment": "中等公司才可立项。至少 1 人占编；人走或无人 = 关服。超过 1 人时，每人额外按 extraStaffRevenueRate 加月收。月收明显低于一款正常发售，但占人、开支稳定。",
+    "minScale": "medium",
+    "minMaintainStaff": 1,
+    "staffLeaveClosesServer": true,
+    "monthlyCost": 2200,
+    "monthlyRevenuePerQualitySum": 20,
+    "extraStaffRevenueRate": 0.35,
+    "shutdownPenalty": 600
+  },
+  "series": {
+    "comment": "媒体五家均分达到门槛可开系列；新作按比例继承系列粉丝与保底销量。",
+    "mediaAverageThreshold": 7.5,
+    "fanInheritRate": 0.4,
+    "guaranteedSalesInheritRate": 0.25
+  },
+  "world": {
+    "comment": "市场份额只展示。对手不当第二玩家。点月按发售日历执行本月计划，不另骰一套无关随机发售。每年 12 月点下一月进入新年时生成下一年表；开局生成当年。盒装销量事件：monthSalesMult/Delta 只改本月实销；baselineSalesMult/Delta 改基准，之后每月都用新基准×Y(m)。salesTarget 默认 playerOnSale。别人家提前发不改玩家基准。",
+    "monthlyEventChance": 0.22,
+    "events": [
+      {
+        "id": "inspirationBurst",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 2,
+        "displayName": "灵感加班",
+        "text": "有人夜里没走，在研质量悄悄涨了一截。",
+        "qualityDelta": 4,
+        "_comment": "随机通知。qualityDelta 加到在研某一维；待发售不受影响。"
+      },
+      {
+        "id": "communityBacklash",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "社区翻车",
+        "text": "帖子里吵起来了，粉丝和资金都挨了一刀。",
+        "fundsDelta": -3500,
+        "fansDelta": -220
+      },
+      {
+        "id": "unexpectedHit",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "意外出圈",
+        "text": "一段实机被到处转，账上和粉丝都暖了。",
+        "fundsDelta": 4200,
+        "fansDelta": 380
+      },
+      {
+        "id": "hardwareBill",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "设备加购",
+        "text": "新机器到了，钱包瘪一截，制作倒是顺了。",
+        "fundsDelta": -5200,
+        "qualityDelta": 3
+      },
+      {
+        "id": "industryShow",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "行业展会",
+        "text": "展台花了钱，换来一波新面孔。",
+        "fundsDelta": -2800,
+        "fansDelta": 260
+      },
+      {
+        "id": "crunchBoost",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "赶工见效",
+        "text": "这月拼了一把，质量上去了，也多烧了点钱。",
+        "fundsDelta": -1500,
+        "qualityDelta": 5
+      },
+      {
+        "id": "reviewBomb",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "差评风波",
+        "text": "评分站被刷了，口碑和资金一起掉。",
+        "fundsDelta": -2000,
+        "fansDelta": -180,
+        "qualityDelta": -3
+      },
+      {
+        "id": "scheduleSlip",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "进度延误",
+        "text": "技术债爆了，在研还要再磨一个月。待发售的成品不受影响。",
+        "devMonthsDelta": 1
+      },
+      {
+        "id": "rivalEarlyShip",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "竞品跳档",
+        "text": "有大厂把原定更晚的作品提前到了下个月。",
+        "rivalAdvance": {
+          "publisherId": "ea",
+          "seriesName": "战地"
+        }
+      },
+      {
+        "id": "channelOutage",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "渠道故障",
+        "text": "渠道这月掉线，本月实销被砸。基准（首月参照）不变，下个月仍按原基准走曲线。",
+        "monthSalesMult": 0.4,
+        "salesTarget": "playerOnSale"
+      },
+      {
+        "id": "wordOfMouthCrash",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "口碑反噬",
+        "text": "口碑翻了，这款在售的基准销量被改写。之后每个月都按新基准×Y(m) 算，不是只砸这一个月。",
+        "baselineSalesMult": 0.65,
+        "salesTarget": "playerOnSale"
+      },
+      {
+        "id": "crunchChoice",
+        "source": "random",
+        "presentation": "choice",
+        "weight": 1,
+        "displayName": "进度告急",
+        "text": "制作组说按现在的节奏可能赶不上。你怎么处理？",
+        "options": [
+          {
+            "id": "crunch",
+            "label": "加钱赶工",
+            "fundsDelta": -2500,
+            "devMonthsDelta": -1
+          },
+          {
+            "id": "onTime",
+            "label": "按期"
+          },
+          {
+            "id": "slack",
+            "label": "放任质量",
+            "qualityDelta": -4
+          },
+          {
+            "id": "dumpStock",
+            "label": "先清仓赶工",
+            "devMonthsDelta": -1,
+            "monthSalesMult": 0.5,
+            "salesTarget": "playerOnSale"
+          }
+        ]
+      }
+    ],
+    "historicalEvents": [
+      {
+        "id": "chickenDinnerRelease",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2017,
+        "month": 9,
+        "displayName": "《吃鸡》上线",
+        "text": "K 社把《吃鸡》丢上了架。大逃杀玩法第一次被推到台前，还看不出会掀多大浪。",
+        "rivalRelease": {
+          "publisherId": "krafton",
+          "publisherName": "K 社",
+          "title": "吃鸡",
+          "series": "吃鸡",
+          "genreId": "war",
+          "gameplayId": "battleRoyale",
+          "platformId": "pc",
+          "avg": 8.4,
+          "sales": 62000,
+          "mau": 0,
+          "live": true,
+          "keep": true
+        }
+      },
+      {
+        "id": "chickenDinnerBoom",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2017,
+        "month": 10,
+        "after": {
+          "prevEventId": "chickenDinnerRelease",
+          "releaseTitle": "吃鸡",
+          "monthDelay": 1
+        },
+        "displayName": "《吃鸡》引爆市场",
+        "text": "《吃鸡》把服务器打爆了。情报里能看到它的月活飙到惊人数字，不是一句传闻。",
+        "setRivalMau": {
+          "title": "吃鸡",
+          "mau": 18500000
+        }
+      },
+      {
+        "id": "chickenDinnerTrend",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2017,
+        "month": 11,
+        "after": {
+          "prevEventId": "chickenDinnerBoom"
+        },
+        "displayName": "大逃杀成了潮流",
+        "text": "玩家开始喜欢大逃杀。之后自制大逃杀能吃到潮流销量加成。",
+        "setTrend": {
+          "gameplayId": "battleRoyale"
+        }
+      },
+      {
+        "id": "wuxiaWave",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2016,
+        "month": 6,
+        "displayName": "武侠刷屏",
+        "text": "论坛里全是刀光剑影，粉丝跟着涨了一截。",
+        "fansDelta": 320
+      },
+      {
+        "id": "wuxiaTrend",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2016,
+        "month": 7,
+        "after": {
+          "prevEventId": "wuxiaWave"
+        },
+        "displayName": "武侠成了口味",
+        "text": "市场突然爱看武侠。对上题材的发售会更好卖。",
+        "setTrend": {
+          "genreId": "wuxia"
+        }
+      }
+    ],
+    "genreTrend": {
+      "comment": "潮流可以是题材 genreId 或玩法 gameplayId 二选一（也可同时）。随机刷新仍抽已解锁题材；历史/事件可指定玩法（如大逃杀）。发售时对上任一则销量乘 salesMultiplier。durationMonths 也用于事件写入的潮流。",
+      "refreshIntervalMonths": 4,
+      "durationMonths": 3,
+      "salesMultiplier": 1.35
+    },
+    "rivals": {
+      "comment": "对手厂商系列带 genreId/gameplayId，与 content.genres / content.gameplay 对齐；对上当月潮流题材会加销量。每月最多 cap 部。live 可竞最佳长线。出货必须落到三端之一，计入该端累计出货。发售日历数量与质量只改 calendar / shipping，不要写回 JS。",
+      "monthlyShipCap": 4,
+      "calendar": {
+        "comment": "每年生成 1–12 月计划。min/maxPerMonth 允许空月；min/maxYearTotal 避免整年空白也不塞满。keepYears=1 只保留当前年。历史 rivalRelease 必写入对应年月。",
+        "keepYears": 1,
+        "minPerMonth": 0,
+        "maxPerMonth": 3,
+        "minYearTotal": 8,
+        "maxYearTotal": 16
+      },
+      "defaultPlatformWeights": {
+        "comment": "未单独写 platformWeights 的厂商按此权重抽端。N 社气质偏主机。",
+        "console": 3,
+        "pc": 2,
+        "mobile": 2
+      },
+      "shipping": {
+        "comment": "对手简表出货：间隔月、底分、出货量区间。改这里，不要写回 JS。",
+        "power3InitialWait": [1, 8],
+        "otherInitialWait": [2, 12],
+        "avgBase": 5.6,
+        "avgPowerCoeff": 0.55,
+        "avgRandSpan": 2.4,
+        "avgMin": 5.5,
+        "avgMax": 9.8,
+        "qsumAvgCoeff": 16,
+        "qsumJitter": [8, 28],
+        "salesPower3": [14000, 42000],
+        "salesPower2": [7000, 24000],
+        "salesPower1": [2800, 12000],
+        "salesAvgDivisor": 7.2,
+        "livePeakRateMin": 0.12,
+        "livePeakRateSpan": 0.2,
+        "statJitter": [-8, 8],
+        "gapPower3": [4, 9],
+        "gapPower2": [6, 13],
+        "gapPower1": [8, 16]
+      },
+      "publishers": [
+        {
+          "id": "nintendo",
+          "name": "任天堂",
+          "region": "jp",
+          "power": 3,
+          "platformWeights": { "console": 8, "pc": 1, "mobile": 1 },
+          "series": [
+            {
+              "name": "马力欧",
+              "genreId": "cartoon",
+              "gameplayId": "platform"
+            },
+            {
+              "name": "塞尔达",
+              "genreId": "adventure",
+              "gameplayId": "action"
+            },
+            {
+              "name": "宝可梦",
+              "genreId": "fantasy",
+              "gameplayId": "rpg",
+              "live": true
+            },
+            {
+              "name": "动物森友会",
+              "genreId": "sliceOfLife",
+              "gameplayId": "sim"
+            },
+            {
+              "name": "星之卡比",
+              "genreId": "cartoon",
+              "gameplayId": "platform"
+            },
+            {
+              "name": "密特罗德",
+              "genreId": "scifi",
+              "gameplayId": "metroidvania"
+            }
+          ]
+        },
+        {
+          "id": "sony",
+          "name": "索尼互动",
+          "region": "jp",
+          "power": 3,
+          "platformWeights": { "console": 7, "pc": 2, "mobile": 1 },
+          "series": [
+            {
+              "name": "战神",
+              "genreId": "myth",
+              "gameplayId": "action"
+            },
+            {
+              "name": "最后生还者",
+              "genreId": "apocalypse",
+              "gameplayId": "action"
+            },
+            {
+              "name": "蜘蛛侠",
+              "genreId": "superhero",
+              "gameplayId": "action"
+            },
+            {
+              "name": "神秘海域",
+              "genreId": "adventure",
+              "gameplayId": "action"
+            },
+            {
+              "name": "地平线",
+              "genreId": "scifi",
+              "gameplayId": "openWorld"
+            },
+            {
+              "name": "GT赛车",
+              "genreId": "sports",
+              "gameplayId": "racing"
+            }
+          ]
+        },
+        {
+          "id": "sega",
+          "name": "世嘉",
+          "region": "jp",
+          "power": 2,
+          "series": [
+            {
+              "name": "索尼克",
+              "genreId": "cartoon",
+              "gameplayId": "platform"
+            },
+            {
+              "name": "如龙",
+              "genreId": "urban",
+              "gameplayId": "action"
+            },
+            {
+              "name": "梦幻之星",
+              "genreId": "scifi",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "VR战士",
+              "genreId": "urban",
+              "gameplayId": "fighting"
+            },
+            {
+              "name": "樱花大战",
+              "genreId": "romance",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "全面战争",
+              "genreId": "historical",
+              "gameplayId": "strategy"
+            }
+          ]
+        },
+        {
+          "id": "squareEnix",
+          "name": "史克威尔艾尼克斯",
+          "region": "jp",
+          "power": 3,
+          "series": [
+            {
+              "name": "最终幻想",
+              "genreId": "fantasy",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "勇者斗恶龙",
+              "genreId": "fantasy",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "王国之心",
+              "genreId": "cartoon",
+              "gameplayId": "arpg"
+            },
+            {
+              "name": "尼尔",
+              "genreId": "apocalypse",
+              "gameplayId": "arpg"
+            },
+            {
+              "name": "圣剑传说",
+              "genreId": "fantasy",
+              "gameplayId": "arpg"
+            },
+            {
+              "name": "时空之轮",
+              "genreId": "fantasy",
+              "gameplayId": "rpg"
+            }
+          ]
+        },
+        {
+          "id": "capcom",
+          "name": "卡普空",
+          "region": "jp",
+          "power": 3,
+          "series": [
+            {
+              "name": "生化危机",
+              "genreId": "horror",
+              "gameplayId": "survival"
+            },
+            {
+              "name": "怪物猎人",
+              "genreId": "fantasy",
+              "gameplayId": "action"
+            },
+            {
+              "name": "街头霸王",
+              "genreId": "urban",
+              "gameplayId": "fighting"
+            },
+            {
+              "name": "鬼泣",
+              "genreId": "myth",
+              "gameplayId": "action"
+            },
+            {
+              "name": "洛克人",
+              "genreId": "scifi",
+              "gameplayId": "platform"
+            },
+            {
+              "name": "逆转裁判",
+              "genreId": "mystery",
+              "gameplayId": "visualNovel"
+            }
+          ]
+        },
+        {
+          "id": "bandaiNamco",
+          "name": "万代南梦宫",
+          "region": "jp",
+          "power": 2,
+          "series": [
+            {
+              "name": "铁拳",
+              "genreId": "urban",
+              "gameplayId": "fighting"
+            },
+            {
+              "name": "皇牌空战",
+              "genreId": "war",
+              "gameplayId": "flight"
+            },
+            {
+              "name": "传说系列",
+              "genreId": "fantasy",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "太鼓达人",
+              "genreId": "music",
+              "gameplayId": "rhythm"
+            },
+            {
+              "name": "偶像大师",
+              "genreId": "sliceOfLife",
+              "gameplayId": "raising",
+              "live": true
+            },
+            {
+              "name": "噬神者",
+              "genreId": "apocalypse",
+              "gameplayId": "arpg"
+            }
+          ]
+        },
+        {
+          "id": "konami",
+          "name": "科乐美",
+          "region": "jp",
+          "power": 2,
+          "series": [
+            {
+              "name": "合金装备",
+              "genreId": "war",
+              "gameplayId": "stealth"
+            },
+            {
+              "name": "寂静岭",
+              "genreId": "horror",
+              "gameplayId": "survival"
+            },
+            {
+              "name": "魂斗罗",
+              "genreId": "scifi",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "实况足球",
+              "genreId": "sports",
+              "gameplayId": "sportsGame"
+            },
+            {
+              "name": "恶魔城",
+              "genreId": "horror",
+              "gameplayId": "metroidvania"
+            },
+            {
+              "name": "游戏王",
+              "genreId": "fantasy",
+              "gameplayId": "cards"
+            }
+          ]
+        },
+        {
+          "id": "koeiTecmo",
+          "name": "光荣特库摩",
+          "region": "jp",
+          "power": 2,
+          "series": [
+            {
+              "name": "真·三国无双",
+              "genreId": "historical",
+              "gameplayId": "hackSlash"
+            },
+            {
+              "name": "仁王",
+              "genreId": "historical",
+              "gameplayId": "arpg"
+            },
+            {
+              "name": "死或生",
+              "genreId": "urban",
+              "gameplayId": "fighting"
+            },
+            {
+              "name": "忍者龙剑传",
+              "genreId": "historical",
+              "gameplayId": "action"
+            },
+            {
+              "name": "零",
+              "genreId": "horror",
+              "gameplayId": "survival"
+            },
+            {
+              "name": "战国无双",
+              "genreId": "historical",
+              "gameplayId": "hackSlash"
+            }
+          ]
+        },
+        {
+          "id": "fromsoftware",
+          "name": "FromSoftware",
+          "region": "jp",
+          "power": 2,
+          "series": [
+            {
+              "name": "黑暗之魂",
+              "genreId": "fantasy",
+              "gameplayId": "arpg"
+            },
+            {
+              "name": "艾尔登法环",
+              "genreId": "fantasy",
+              "gameplayId": "openWorld"
+            },
+            {
+              "name": "血源诅咒",
+              "genreId": "horror",
+              "gameplayId": "arpg"
+            },
+            {
+              "name": "只狼",
+              "genreId": "historical",
+              "gameplayId": "action"
+            },
+            {
+              "name": "装甲核心",
+              "genreId": "mecha",
+              "gameplayId": "action"
+            },
+            {
+              "name": "恶魔之魂",
+              "genreId": "fantasy",
+              "gameplayId": "arpg"
+            }
+          ]
+        },
+        {
+          "id": "atlus",
+          "name": "Atlus",
+          "region": "jp",
+          "power": 1,
+          "series": [
+            {
+              "name": "女神异闻录",
+              "genreId": "school",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "真·女神转生",
+              "genreId": "myth",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "凯瑟琳",
+              "genreId": "urban",
+              "gameplayId": "puzzle"
+            },
+            {
+              "name": "世界树的迷宫",
+              "genreId": "fantasy",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "恶魔幸存者",
+              "genreId": "apocalypse",
+              "gameplayId": "tactics"
+            }
+          ]
+        },
+        {
+          "id": "falcom",
+          "name": "日本Falcom",
+          "region": "jp",
+          "power": 1,
+          "series": [
+            {
+              "name": "轨迹系列",
+              "genreId": "fantasy",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "伊苏系列",
+              "genreId": "adventure",
+              "gameplayId": "arpg"
+            },
+            {
+              "name": "迷城的国度",
+              "genreId": "fantasy",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "双星物语",
+              "genreId": "fantasy",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "东京幻都",
+              "genreId": "urban",
+              "gameplayId": "arpg"
+            }
+          ]
+        },
+        {
+          "id": "snk",
+          "name": "SNK",
+          "region": "jp",
+          "power": 1,
+          "series": [
+            {
+              "name": "拳皇",
+              "genreId": "urban",
+              "gameplayId": "fighting"
+            },
+            {
+              "name": "饿狼传说",
+              "genreId": "urban",
+              "gameplayId": "fighting"
+            },
+            {
+              "name": "侍魂",
+              "genreId": "historical",
+              "gameplayId": "fighting"
+            },
+            {
+              "name": "合金弹头",
+              "genreId": "war",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "月华剑士",
+              "genreId": "historical",
+              "gameplayId": "fighting"
+            }
+          ]
+        },
+        {
+          "id": "blizzard",
+          "name": "暴雪",
+          "region": "us",
+          "power": 3,
+          "series": [
+            {
+              "name": "魔兽争霸",
+              "genreId": "fantasy",
+              "gameplayId": "rts"
+            },
+            {
+              "name": "星际争霸",
+              "genreId": "scifi",
+              "gameplayId": "rts"
+            },
+            {
+              "name": "暗黑破坏神",
+              "genreId": "fantasy",
+              "gameplayId": "arpg"
+            },
+            {
+              "name": "魔兽世界",
+              "genreId": "fantasy",
+              "gameplayId": "mmo",
+              "live": true
+            },
+            {
+              "name": "守望先锋",
+              "genreId": "scifi",
+              "gameplayId": "shooter",
+              "live": true
+            },
+            {
+              "name": "炉石传说",
+              "genreId": "fantasy",
+              "gameplayId": "cards",
+              "live": true
+            }
+          ]
+        },
+        {
+          "id": "ea",
+          "name": "EA",
+          "region": "us",
+          "power": 3,
+          "series": [
+            {
+              "name": "战地",
+              "genreId": "war",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "Apex英雄",
+              "genreId": "scifi",
+              "gameplayId": "battleRoyale",
+              "live": true
+            },
+            {
+              "name": "FIFA",
+              "genreId": "sports",
+              "gameplayId": "sportsGame"
+            },
+            {
+              "name": "极品飞车",
+              "genreId": "urban",
+              "gameplayId": "racing"
+            },
+            {
+              "name": "质量效应",
+              "genreId": "scifi",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "死亡空间",
+              "genreId": "horror",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "模拟人生",
+              "genreId": "sliceOfLife",
+              "gameplayId": "sim"
+            }
+          ]
+        },
+        {
+          "id": "activision",
+          "name": "动视",
+          "region": "us",
+          "power": 3,
+          "series": [
+            {
+              "name": "使命召唤",
+              "genreId": "war",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "托尼霍克",
+              "genreId": "sports",
+              "gameplayId": "sportsGame"
+            },
+            {
+              "name": "古惑狼",
+              "genreId": "cartoon",
+              "gameplayId": "platform"
+            },
+            {
+              "name": "小龙斯派罗",
+              "genreId": "cartoon",
+              "gameplayId": "platform"
+            },
+            {
+              "name": "吉他英雄",
+              "genreId": "music",
+              "gameplayId": "rhythm"
+            }
+          ]
+        },
+        {
+          "id": "rockstar",
+          "name": "Rockstar",
+          "region": "us",
+          "power": 3,
+          "series": [
+            {
+              "name": "GTA",
+              "genreId": "urban",
+              "gameplayId": "openWorld"
+            },
+            {
+              "name": "荒野大镖客",
+              "genreId": "western",
+              "gameplayId": "openWorld"
+            },
+            {
+              "name": "马克思·佩恩",
+              "genreId": "urban",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "恶霸鲁尼",
+              "genreId": "school",
+              "gameplayId": "action"
+            },
+            {
+              "name": "黑色洛城",
+              "genreId": "urban",
+              "gameplayId": "action"
+            }
+          ]
+        },
+        {
+          "id": "valve",
+          "name": "Valve",
+          "region": "us",
+          "power": 3,
+          "platformWeights": { "console": 1, "pc": 8, "mobile": 1 },
+          "series": [
+            {
+              "name": "半条命",
+              "genreId": "scifi",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "传送门",
+              "genreId": "scifi",
+              "gameplayId": "puzzle"
+            },
+            {
+              "name": "求生之路",
+              "genreId": "apocalypse",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "反恐精英",
+              "genreId": "war",
+              "gameplayId": "shooter",
+              "live": true
+            },
+            {
+              "name": "Dota 2",
+              "genreId": "fantasy",
+              "gameplayId": "moba",
+              "live": true
+            },
+            {
+              "name": "军团要塞",
+              "genreId": "comedy",
+              "gameplayId": "shooter",
+              "live": true
+            }
+          ]
+        },
+        {
+          "id": "epic",
+          "name": "Epic Games",
+          "region": "us",
+          "power": 2,
+          "series": [
+            {
+              "name": "堡垒之夜",
+              "genreId": "cartoon",
+              "gameplayId": "battleRoyale",
+              "live": true
+            },
+            {
+              "name": "虚幻竞技场",
+              "genreId": "scifi",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "战争机器",
+              "genreId": "apocalypse",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "无尽之剑",
+              "genreId": "fantasy",
+              "gameplayId": "action"
+            },
+            {
+              "name": "子弹风暴",
+              "genreId": "scifi",
+              "gameplayId": "shooter"
+            }
+          ]
+        },
+        {
+          "id": "bethesda",
+          "name": "Bethesda",
+          "region": "us",
+          "power": 2,
+          "series": [
+            {
+              "name": "上古卷轴",
+              "genreId": "fantasy",
+              "gameplayId": "openWorld"
+            },
+            {
+              "name": "辐射",
+              "genreId": "apocalypse",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "星空",
+              "genreId": "scifi",
+              "gameplayId": "openWorld"
+            },
+            {
+              "name": "德军总部",
+              "genreId": "war",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "毁灭战士",
+              "genreId": "horror",
+              "gameplayId": "shooter"
+            }
+          ]
+        },
+        {
+          "id": "xbox",
+          "name": "Xbox Game Studios",
+          "region": "us",
+          "power": 3,
+          "platformWeights": { "console": 5, "pc": 4, "mobile": 1 },
+          "series": [
+            {
+              "name": "光环",
+              "genreId": "scifi",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "极限竞速",
+              "genreId": "sports",
+              "gameplayId": "racing"
+            },
+            {
+              "name": "战争机器",
+              "genreId": "apocalypse",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "帝国时代",
+              "genreId": "historical",
+              "gameplayId": "rts"
+            },
+            {
+              "name": "微软模拟飞行",
+              "genreId": "sliceOfLife",
+              "gameplayId": "flight"
+            }
+          ]
+        },
+        {
+          "id": "riot",
+          "name": "拳头",
+          "region": "us",
+          "power": 3,
+          "series": [
+            {
+              "name": "英雄联盟",
+              "genreId": "fantasy",
+              "gameplayId": "moba",
+              "live": true
+            },
+            {
+              "name": "无畏契约",
+              "genreId": "scifi",
+              "gameplayId": "shooter",
+              "live": true
+            },
+            {
+              "name": "云顶之弈",
+              "genreId": "fantasy",
+              "gameplayId": "autoChess",
+              "live": true
+            },
+            {
+              "name": "符文之地传说",
+              "genreId": "fantasy",
+              "gameplayId": "cards",
+              "live": true
+            },
+            {
+              "name": "英雄联盟手游",
+              "genreId": "fantasy",
+              "gameplayId": "moba",
+              "live": true
+            },
+            {
+              "name": "2XKO",
+              "genreId": "fantasy",
+              "gameplayId": "fighting"
+            }
+          ]
+        },
+        {
+          "id": "bungie",
+          "name": "Bungie",
+          "region": "us",
+          "power": 2,
+          "series": [
+            {
+              "name": "命运",
+              "genreId": "scifi",
+              "gameplayId": "shooter",
+              "live": true
+            },
+            {
+              "name": "光环",
+              "genreId": "scifi",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "马拉松",
+              "genreId": "scifi",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "神话",
+              "genreId": "fantasy",
+              "gameplayId": "rts"
+            },
+            {
+              "name": "奥妮",
+              "genreId": "scifi",
+              "gameplayId": "action"
+            }
+          ]
+        },
+        {
+          "id": "idsoftware",
+          "name": "id Software",
+          "region": "us",
+          "power": 1,
+          "series": [
+            {
+              "name": "毁灭战士",
+              "genreId": "horror",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "雷神之锤",
+              "genreId": "scifi",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "德军总部",
+              "genreId": "war",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "狂怒",
+              "genreId": "apocalypse",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "指挥官基恩",
+              "genreId": "cartoon",
+              "gameplayId": "platform"
+            }
+          ]
+        },
+        {
+          "id": "bioware",
+          "name": "BioWare",
+          "region": "us",
+          "power": 2,
+          "series": [
+            {
+              "name": "质量效应",
+              "genreId": "scifi",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "龙腾世纪",
+              "genreId": "fantasy",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "博德之门",
+              "genreId": "fantasy",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "无冬之夜",
+              "genreId": "fantasy",
+              "gameplayId": "rpg"
+            },
+            {
+              "name": "旧共和国武士",
+              "genreId": "scifi",
+              "gameplayId": "rpg"
+            }
+          ]
+        },
+        {
+          "id": "firaxis",
+          "name": "Firaxis",
+          "region": "us",
+          "power": 1,
+          "series": [
+            {
+              "name": "文明系列",
+              "genreId": "historical",
+              "gameplayId": "strategy"
+            },
+            {
+              "name": "幽浮系列",
+              "genreId": "scifi",
+              "gameplayId": "tactics"
+            },
+            {
+              "name": "漫威暗夜之子",
+              "genreId": "superhero",
+              "gameplayId": "tactics"
+            },
+            {
+              "name": "殖民",
+              "genreId": "historical",
+              "gameplayId": "strategy"
+            },
+            {
+              "name": "半人马座",
+              "genreId": "scifi",
+              "gameplayId": "strategy"
+            }
+          ]
+        },
+        {
+          "id": "gearbox",
+          "name": "Gearbox",
+          "region": "us",
+          "power": 1,
+          "series": [
+            {
+              "name": "无主之地",
+              "genreId": "scifi",
+              "gameplayId": "arpg"
+            },
+            {
+              "name": "兄弟连",
+              "genreId": "war",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "毁灭公爵",
+              "genreId": "comedy",
+              "gameplayId": "shooter"
+            },
+            {
+              "name": "家园",
+              "genreId": "scifi",
+              "gameplayId": "rts"
+            },
+            {
+              "name": "蓝色偏移",
+              "genreId": "scifi",
+              "gameplayId": "shooter"
+            }
+          ]
+        },
+        {
+          "id": "cdpr",
+          "name": "CD Projekt Red",
+          "region": "eu",
+          "power": 2,
+          "series": [
+            {
+              "name": "巫师",
+              "genreId": "fantasy",
+              "gameplayId": "arpg"
+            },
+            {
+              "name": "赛博朋克2077",
+              "genreId": "cyber",
+              "gameplayId": "openWorld"
+            },
+            {
+              "name": "昆特牌",
+              "genreId": "fantasy",
+              "gameplayId": "cards",
+              "live": true
+            }
+          ]
+        },
+        {
+          "id": "paradox",
+          "name": "Paradox",
+          "region": "eu",
+          "power": 2,
+          "series": [
+            {
+              "name": "欧陆风云",
+              "genreId": "historical",
+              "gameplayId": "strategy"
+            },
+            {
+              "name": "钢铁雄心",
+              "genreId": "war",
+              "gameplayId": "strategy"
+            },
+            {
+              "name": "十字军之王",
+              "genreId": "historical",
+              "gameplayId": "strategy"
+            },
+            {
+              "name": "维多利亚",
+              "genreId": "historical",
+              "gameplayId": "strategy"
+            },
+            {
+              "name": "群星",
+              "genreId": "scifi",
+              "gameplayId": "strategy"
+            }
+          ]
+        },
+        {
+          "id": "supercell",
+          "name": "Supercell",
+          "region": "eu",
+          "power": 2,
+          "platformWeights": { "console": 1, "pc": 1, "mobile": 8 },
+          "series": [
+            {
+              "name": "部落冲突",
+              "genreId": "fantasy",
+              "gameplayId": "strategy",
+              "live": true
+            },
+            {
+              "name": "皇室战争",
+              "genreId": "fantasy",
+              "gameplayId": "towerDefense",
+              "live": true
+            },
+            {
+              "name": "海岛奇兵",
+              "genreId": "war",
+              "gameplayId": "strategy",
+              "live": true
+            },
+            {
+              "name": "卡通农场",
+              "genreId": "sliceOfLife",
+              "gameplayId": "sim",
+              "live": true
+            },
+            {
+              "name": "荒野乱斗",
+              "genreId": "cartoon",
+              "gameplayId": "action",
+              "live": true
+            }
+          ]
+        },
+        {
+          "id": "ca",
+          "name": "Creative Assembly",
+          "region": "eu",
+          "power": 1,
+          "series": [
+            {
+              "name": "全面战争：幕府",
+              "genreId": "historical",
+              "gameplayId": "strategy"
+            },
+            {
+              "name": "全面战争：中世纪",
+              "genreId": "historical",
+              "gameplayId": "strategy"
+            },
+            {
+              "name": "全面战争：罗马",
+              "genreId": "historical",
+              "gameplayId": "strategy"
+            },
+            {
+              "name": "全面战争：帝国",
+              "genreId": "historical",
+              "gameplayId": "strategy"
+            },
+            {
+              "name": "全面战争：战锤",
+              "genreId": "fantasy",
+              "gameplayId": "strategy"
+            }
+          ]
+        },
+        {
+          "id": "tencent",
+          "name": "腾讯游戏",
+          "region": "cn",
+          "power": 3,
+          "platformWeights": { "console": 1, "pc": 2, "mobile": 7 },
+          "series": [
+            {
+              "name": "王者荣耀",
+              "genreId": "fantasy",
+              "gameplayId": "moba",
+              "live": true
+            },
+            {
+              "name": "和平精英",
+              "genreId": "war",
+              "gameplayId": "battleRoyale",
+              "live": true
+            },
+            {
+              "name": "穿越火线",
+              "genreId": "war",
+              "gameplayId": "shooter",
+              "live": true
+            },
+            {
+              "name": "QQ飞车",
+              "genreId": "urban",
+              "gameplayId": "racing",
+              "live": true
+            },
+            {
+              "name": "使命召唤手游",
+              "genreId": "war",
+              "gameplayId": "shooter",
+              "live": true
+            }
+          ]
+        },
+        {
+          "id": "netease",
+          "name": "网易游戏",
+          "region": "cn",
+          "power": 3,
+          "series": [
+            {
+              "name": "梦幻西游",
+              "genreId": "xianxia",
+              "gameplayId": "mmo",
+              "live": true
+            },
+            {
+              "name": "大话西游",
+              "genreId": "xianxia",
+              "gameplayId": "mmo",
+              "live": true
+            },
+            {
+              "name": "阴阳师",
+              "genreId": "myth",
+              "gameplayId": "cards",
+              "live": true
+            },
+            {
+              "name": "荒野行动",
+              "genreId": "war",
+              "gameplayId": "battleRoyale",
+              "live": true
+            },
+            {
+              "name": "永劫无间",
+              "genreId": "historical",
+              "gameplayId": "action"
+            },
+            {
+              "name": "第五人格",
+              "genreId": "horror",
+              "gameplayId": "survival",
+              "live": true
+            }
+          ]
+        },
+        {
+          "id": "mihoyo",
+          "name": "米哈游",
+          "region": "cn",
+          "power": 3,
+          "series": [
+            {
+              "name": "崩坏学园2",
+              "genreId": "school",
+              "gameplayId": "arpg",
+              "live": true
+            },
+            {
+              "name": "崩坏3",
+              "genreId": "mecha",
+              "gameplayId": "arpg",
+              "live": true
+            },
+            {
+              "name": "原神",
+              "genreId": "fantasy",
+              "gameplayId": "openWorld",
+              "live": true
+            },
+            {
+              "name": "星穹铁道",
+              "genreId": "scifi",
+              "gameplayId": "rpg",
+              "live": true
+            },
+            {
+              "name": "绝区零",
+              "genreId": "urban",
+              "gameplayId": "arpg",
+              "live": true
+            }
+          ]
+        },
+        {
+          "id": "lilith",
+          "name": "莉莉丝",
+          "region": "cn",
+          "power": 2,
+          "series": [
+            {
+              "name": "万国觉醒",
+              "genreId": "historical",
+              "gameplayId": "strategy",
+              "live": true
+            },
+            {
+              "name": "剑与远征",
+              "genreId": "fantasy",
+              "gameplayId": "idle",
+              "live": true
+            },
+            {
+              "name": "AFK 2",
+              "genreId": "fantasy",
+              "gameplayId": "idle",
+              "live": true
+            },
+            {
+              "name": "Warpath",
+              "genreId": "war",
+              "gameplayId": "strategy",
+              "live": true
+            },
+            {
+              "name": "Farlight 84",
+              "genreId": "scifi",
+              "gameplayId": "battleRoyale",
+              "live": true
+            }
+          ]
+        },
+        {
+          "id": "perfectWorld",
+          "name": "完美世界",
+          "region": "cn",
+          "power": 2,
+          "series": [
+            {
+              "name": "完美世界",
+              "genreId": "xianxia",
+              "gameplayId": "mmo",
+              "live": true
+            },
+            {
+              "name": "诛仙",
+              "genreId": "xianxia",
+              "gameplayId": "mmo",
+              "live": true
+            },
+            {
+              "name": "武林外传",
+              "genreId": "wuxia",
+              "gameplayId": "mmo"
+            },
+            {
+              "name": "赤壁",
+              "genreId": "historical",
+              "gameplayId": "strategy"
+            },
+            {
+              "name": "神雕侠侣",
+              "genreId": "wuxia",
+              "gameplayId": "mmo"
+            },
+            {
+              "name": "梦间集",
+              "genreId": "fantasy",
+              "gameplayId": "cards"
+            }
+          ]
+        },
+        {
+          "id": "nexon",
+          "name": "Nexon",
+          "region": "kr",
+          "power": 2,
+          "series": [
+            {
+              "name": "地下城与勇士",
+              "genreId": "fantasy",
+              "gameplayId": "arpg",
+              "live": true
+            },
+            {
+              "name": "冒险岛",
+              "genreId": "cartoon",
+              "gameplayId": "mmo",
+              "live": true
+            },
+            {
+              "name": "跑跑卡丁车",
+              "genreId": "cartoon",
+              "gameplayId": "racing",
+              "live": true
+            },
+            {
+              "name": "泡泡堂",
+              "genreId": "cartoon",
+              "gameplayId": "action",
+              "live": true
+            },
+            {
+              "name": "洛奇",
+              "genreId": "fantasy",
+              "gameplayId": "mmo",
+              "live": true
+            }
+          ]
+        },
+        {
+          "id": "netmarble",
+          "name": "Netmarble",
+          "region": "kr",
+          "power": 1,
+          "series": [
+            {
+              "name": "天堂2：革命",
+              "genreId": "fantasy",
+              "gameplayId": "mmo",
+              "live": true
+            },
+            {
+              "name": "剑灵：革命",
+              "genreId": "wuxia",
+              "gameplayId": "mmo",
+              "live": true
+            },
+            {
+              "name": "七大罪",
+              "genreId": "fantasy",
+              "gameplayId": "rpg",
+              "live": true
+            },
+            {
+              "name": "漫威未来之战",
+              "genreId": "superhero",
+              "gameplayId": "rpg",
+              "live": true
+            },
+            {
+              "name": "二之国",
+              "genreId": "fantasy",
+              "gameplayId": "rpg"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "awards": {
+    "comment": "每年 11 月过月时评选；窗口为去年 12 月～今年 11 月（规则，月份写在这里供实现读取）。",
+    "month": 11,
+    "windowStartMonth": 12,
+    "windowLabel": "lastDecember-thisNovember",
+    "fanBonusWinner": 500,
+    "list": [
+      {
+        "id": "goty",
+        "displayName": "年度游戏"
+      },
+      {
+        "id": "bestProduction",
+        "displayName": "最佳制作"
+      },
+      {
+        "id": "bestLiveOps",
+        "displayName": "最佳长线运营"
+      },
+      {
+        "id": "bestNarrative",
+        "displayName": "最佳叙事"
+      },
+      {
+        "id": "bestVisual",
+        "displayName": "最佳视觉"
+      },
+      {
+        "id": "playersChoice",
+        "displayName": "玩家之选"
+      }
+    ]
+  },
+  "content": {
+    "comment": "题材/玩法随年份或事件解锁。玩家平台只有 console/pc/mobile 三端，2015 开局都可选；自研主机另见 company 门槛，达标后并入主机端，不是第四选项。",
+    "genres": [
+      {
+        "id": "fantasy",
+        "displayName": "奇幻",
+        "unlockYear": 2015
+      },
+      {
+        "id": "urban",
+        "displayName": "都市",
+        "unlockYear": 2015
+      },
+      {
+        "id": "adventure",
+        "displayName": "冒险",
+        "unlockYear": 2015
+      },
+      {
+        "id": "mystery",
+        "displayName": "推理",
+        "unlockYear": 2015
+      },
+      {
+        "id": "cartoon",
+        "displayName": "卡通",
+        "unlockYear": 2015
+      },
+      {
+        "id": "wuxia",
+        "displayName": "武侠",
+        "unlockYear": 2016
+      },
+      {
+        "id": "scifi",
+        "displayName": "科幻",
+        "unlockYear": 2016
+      },
+      {
+        "id": "school",
+        "displayName": "校园",
+        "unlockYear": 2016
+      },
+      {
+        "id": "comedy",
+        "displayName": "搞笑",
+        "unlockYear": 2016
+      },
+      {
+        "id": "xianxia",
+        "displayName": "仙侠",
+        "unlockYear": 2016
+      },
+      {
+        "id": "mecha",
+        "displayName": "机甲",
+        "unlockYear": 2016
+      },
+      {
+        "id": "romance",
+        "displayName": "恋爱",
+        "unlockYear": 2017
+      },
+      {
+        "id": "historical",
+        "displayName": "历史",
+        "unlockYear": 2017
+      },
+      {
+        "id": "war",
+        "displayName": "战争",
+        "unlockYear": 2017
+      },
+      {
+        "id": "superhero",
+        "displayName": "超级英雄",
+        "unlockYear": 2017
+      },
+      {
+        "id": "horror",
+        "displayName": "惊悚",
+        "unlockYear": 2018
+      },
+      {
+        "id": "myth",
+        "displayName": "神话",
+        "unlockYear": 2018
+      },
+      {
+        "id": "sports",
+        "displayName": "体育",
+        "unlockYear": 2019
+      },
+      {
+        "id": "music",
+        "displayName": "音乐",
+        "unlockYear": 2019
+      },
+      {
+        "id": "sliceOfLife",
+        "displayName": "日常",
+        "unlockYear": 2020
+      },
+      {
+        "id": "western",
+        "displayName": "西部",
+        "unlockYear": 2020
+      },
+      {
+        "id": "apocalypse",
+        "displayName": "废土",
+        "unlockYear": 2021
+      },
+      {
+        "id": "cyber",
+        "displayName": "赛博",
+        "unlockYear": 2022
+      }
+    ],
+    "gameplay": [
+      {
+        "id": "rpg",
+        "displayName": "RPG",
+        "unlockYear": 2015
+      },
+      {
+        "id": "textAdventure",
+        "displayName": "文字冒险",
+        "unlockYear": 2015
+      },
+      {
+        "id": "action",
+        "displayName": "动作",
+        "unlockYear": 2015
+      },
+      {
+        "id": "platform",
+        "displayName": "平台跳跃",
+        "unlockYear": 2015
+      },
+      {
+        "id": "arpg",
+        "displayName": "动作RPG",
+        "unlockYear": 2015
+      },
+      {
+        "id": "moba",
+        "displayName": "MOBA",
+        "unlockYear": 2015
+      },
+      {
+        "id": "mmo",
+        "displayName": "MMO",
+        "unlockYear": 2015
+      },
+      {
+        "id": "rts",
+        "displayName": "即时战略",
+        "unlockYear": 2015
+      },
+      {
+        "id": "stealth",
+        "displayName": "潜行",
+        "unlockYear": 2015
+      },
+      {
+        "id": "metroidvania",
+        "displayName": "类银河战士",
+        "unlockYear": 2015
+      },
+      {
+        "id": "hackSlash",
+        "displayName": "割草",
+        "unlockYear": 2015
+      },
+      {
+        "id": "sportsGame",
+        "displayName": "体育竞技",
+        "unlockYear": 2015
+      },
+      {
+        "id": "tactics",
+        "displayName": "战棋",
+        "unlockYear": 2016
+      },
+      {
+        "id": "puzzle",
+        "displayName": "解谜",
+        "unlockYear": 2016
+      },
+      {
+        "id": "visualNovel",
+        "displayName": "视觉小说",
+        "unlockYear": 2016
+      },
+      {
+        "id": "strategy",
+        "displayName": "策略",
+        "unlockYear": 2016
+      },
+      {
+        "id": "flight",
+        "displayName": "飞行",
+        "unlockYear": 2016
+      },
+      {
+        "id": "shooter",
+        "displayName": "射击",
+        "unlockYear": 2017
+      },
+      {
+        "id": "fighting",
+        "displayName": "格斗",
+        "unlockYear": 2017
+      },
+      {
+        "id": "racing",
+        "displayName": "竞速",
+        "unlockYear": 2017
+      },
+      {
+        "id": "cards",
+        "displayName": "卡牌",
+        "unlockYear": 2017
+      },
+      {
+        "id": "battleRoyale",
+        "displayName": "大逃杀",
+        "unlockYear": 2017
+      },
+      {
+        "id": "sim",
+        "displayName": "模拟经营",
+        "unlockYear": 2018
+      },
+      {
+        "id": "survival",
+        "displayName": "生存",
+        "unlockYear": 2018
+      },
+      {
+        "id": "towerDefense",
+        "displayName": "塔防",
+        "unlockYear": 2018
+      },
+      {
+        "id": "autoChess",
+        "displayName": "自走棋",
+        "unlockYear": 2018
+      },
+      {
+        "id": "idle",
+        "displayName": "放置",
+        "unlockYear": 2018
+      },
+      {
+        "id": "raising",
+        "displayName": "养成",
+        "unlockYear": 2019
+      },
+      {
+        "id": "rhythm",
+        "displayName": "音乐节奏",
+        "unlockYear": 2019
+      },
+      {
+        "id": "sandbox",
+        "displayName": "沙盒",
+        "unlockYear": 2020
+      },
+      {
+        "id": "roguelike",
+        "displayName": "Roguelike",
+        "unlockYear": 2020
+      },
+      {
+        "id": "openWorld",
+        "displayName": "开放世界",
+        "unlockYear": 2021
+      }
+    ],
+    "platforms": [
+      {
+        "id": "console",
+        "displayName": "主机",
+        "unlockYear": 2015,
+        "comment": "主机端=已解锁的家用机能力（含日后自研主机加成）。旧机种年表（PS4/Xbox/Switch/次世代）收成此端内部市场，玩家不再点具体机种。三端从 2015 开局都可选，规模档不额外锁平台。"
+      },
+      {
+        "id": "pc",
+        "displayName": "PC",
+        "unlockYear": 2015
+      },
+      {
+        "id": "mobile",
+        "displayName": "移动",
+        "unlockYear": 2015
+      }
+    ]
+  },
+  "exampleQualityRoll": {
+    "comment": "设计文档第 5.1 节的演算示例数字，仅说明用，不参与运行。算法本身见设计文档。",
+    "devMonths": 5,
+    "teamSize": 3,
+    "producer": {
+      "program": 20,
+      "script": 20,
+      "art": 20,
+      "music": 20
+    },
+    "members": [
+      {
+        "program": 10,
+        "script": 10,
+        "art": 10,
+        "music": 10
+      },
+      {
+        "program": 10,
+        "script": 10,
+        "art": 10,
+        "music": 10
+      }
+    ],
+    "gameBaseCopiedFromProducer": {
+      "program": 20,
+      "script": 20,
+      "art": 20,
+      "music": 20
+    },
+    "oneMonth": {
+      "producerProgramRoll": 8,
+      "producerProgramGain": 2,
+      "memberAProgramRoll": 6,
+      "memberAProgramGain": 2,
+      "_comment": "ceil(8/5)=2，ceil(6/5)=2；该月程序增加 = 制作人这份 + 各成员这份。"
+    }
+  }
+}

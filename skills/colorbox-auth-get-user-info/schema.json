@@ -1,0 +1,74 @@
+{
+  "name": "auth-getUserInfo",
+  "description": "获取当前登录用户的基本资料（包含用户唯一标识 PUID、头像、昵称及 Token 等信息）。可用于登录态校验、页面个性化定制与特权判定。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {}
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码，成功为 200"
+      },
+      "message": {
+        "type": "string",
+        "description": "提示信息"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "islogin": {
+            "type": "number",
+            "description": "是否登录：1 为已登录，0 为未登录/游客"
+          },
+          "puid": {
+            "type": "string",
+            "description": "用户唯一 ID（未登录为 null）"
+          },
+          "nickname": {
+            "type": "string",
+            "description": "用户昵称（未登录为 null）"
+          },
+          "avatar": {
+            "type": "string",
+            "description": "用户头像 URL 链接地址"
+          },
+          "userHeadUrl": {
+            "type": "string",
+            "description": "用户头像 URL 链接地址（同 avatar）"
+          },
+          "authToken": {
+            "type": "string",
+            "description": "登录鉴权 Token 凭据（未登录为 null）"
+          },
+          "platform": {
+            "type": "string",
+            "description": "当前客户端平台：iOS / Android"
+          },
+          "night": {
+            "type": "number",
+            "description": "是否为夜间模式：1 为是，0 为否"
+          },
+          "statusbar_hight": {
+            "type": "number",
+            "description": "状态栏高度（单位 px），用于顶部自定义标题栏避让刘海"
+          },
+          "titlebar_hight": {
+            "type": "number",
+            "description": "标题栏高度（单位 px）"
+          },
+          "bottomSafeHeight": {
+            "type": "number",
+            "description": "底部安全区高度（单位 px，如 iPhone 全面屏通常为 34px）"
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

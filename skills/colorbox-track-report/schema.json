@@ -1,0 +1,25 @@
+{
+  "name": "track-report",
+  "description": "支持页面加载、点击、曝光等标准数据埋点上报，用于统计分析用户流量、模块点击和页面互动情况，方便了解页面表现与转化效果。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "params": {
+        "type": "object",
+        "description": "埋点上报参数，包含 act (事件类型), blk (模块名), pos (位置), label (标签文案), custom (自定义小写驼峰业务数据)"
+      }
+    },
+    "required": [
+      "params"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+        "description": "是否成功唤起底层上报方法"
+      }
+    }
+  }
+}

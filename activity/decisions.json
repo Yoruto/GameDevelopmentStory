@@ -1,0 +1,123 @@
+{
+  "destination": "在虎扑做一款开罗《游戏开发物语》气质的经营小游戏：招人、做游戏、发售、工作室评级。",
+  "decisions": [
+    {
+      "id": "D1",
+      "question": "玩法体量做成精简经营还是更接近原作的完整经营？",
+      "options": {
+        "A": "精简经营：招人+做游戏+发售循环，几分钟一局",
+        "B": "完整经营：培训、研究技术、办公室扩张，更接近原作"
+      },
+      "recommend": "A",
+      "depends_on": [],
+      "status": "resolved",
+      "presented": true,
+      "choice": "B",
+      "note": "开发者拍板完整经营向：养成、工作室、主机、对手、年度奖；第一版年限是 2015–2025，更长档不做进第一版。"
+    },
+    {
+      "id": "D2",
+      "question": "主题用原味游戏公司，还是改成虎扑味的体育游戏工作室？",
+      "options": {
+        "A": "游戏公司原味（文案带一点虎扑气质）",
+        "B": "虎扑化：体育游戏工作室"
+      },
+      "recommend": "A",
+      "depends_on": [],
+      "status": "resolved",
+      "presented": true,
+      "choice": "A",
+      "note": "开发者拍板游戏公司原味，不做体育游戏工作室改包装。"
+    },
+    {
+      "id": "D3",
+      "question": "一局怎么结束？",
+      "options": {
+        "A": "有终点：做到第 5 年或做满 5 款游戏后出工作室评级",
+        "B": "无限经营，玩家自己决定何时收手"
+      },
+      "recommend": "A",
+      "depends_on": [],
+      "status": "resolved",
+      "presented": true,
+      "choice": "A",
+      "note": "开发者拍板有终点：第一版打到 2025，不是原先的 5 年/5 款。"
+    },
+    {
+      "id": "DP",
+      "kind": "prototype",
+      "question": "要先看个雏形模板吗？",
+      "options": {
+        "A": "要看（推荐）",
+        "B": "不用，直接做"
+      },
+      "recommend": "A",
+      "depends_on": [
+        "D1",
+        "D2",
+        "D3"
+      ],
+      "status": "resolved",
+      "presented": true,
+      "choice": "B",
+      "note": "开发者要先写设计文档，不先看雏形页面。"
+    },
+    {
+      "id": "DD",
+      "kind": "deployment",
+      "question": "进度和评分用云端保存还是只存在本机？",
+      "options": {
+        "A": "云端保存",
+        "B": "本地保存"
+      },
+      "recommend": "A",
+      "depends_on": [],
+      "status": "resolved",
+      "note": "开发者原话：1（记在云端）",
+      "presented": true,
+      "choice": "A"
+    },
+    {
+      "id": "D5",
+      "question": "关掉再打开要不要接着玩？",
+      "options": {
+        "A": "自动记录进度，下次接着玩",
+        "B": "不记进度，每次重新开局"
+      },
+      "recommend": "A",
+      "depends_on": [],
+      "status": "resolved",
+      "presented": true,
+      "choice": "A",
+      "note": "开发者原话：默认自动记录进度"
+    },
+    {
+      "id": "D6",
+      "question": "生涯结算要不要分享到微信/微博？",
+      "options": {
+        "A": "要分享",
+        "B": "不分享（不发微信/微博）"
+      },
+      "recommend": "B",
+      "depends_on": [],
+      "status": "resolved",
+      "presented": true,
+      "choice": "B",
+      "note": "开发者原话：默认不分享"
+    },
+    {
+      "id": "D7",
+      "question": "公司名和游戏名怎么起？",
+      "options": {
+        "A": "玩家自己写，公司名默认喵扑studio（可改）",
+        "B": "只用随机占位名，不让玩家输入"
+      },
+      "recommend": "A",
+      "depends_on": [],
+      "status": "resolved",
+      "presented": true,
+      "choice": "A",
+      "note": "开发者原话：玩家自己写，默认是喵扑studio"
+    }
+  ]
+}

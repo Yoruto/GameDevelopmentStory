@@ -1,0 +1,162 @@
+{
+  "name": "request-match-queryAllDiagramInfoById",
+  "description": "查询通用赛事的积分榜详细数据。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "standingsId": {
+        "type": "string",
+        "description": "积分榜ID，例如 \"9\""
+      }
+    },
+    "required": [
+      "standingsId"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "object",
+        "description": "成功时返回的数据载荷",
+        "properties": {
+          "standingsName": {
+            "type": "string",
+            "description": "积分榜名称"
+          },
+          "standingsDesc": {
+            "type": "string",
+            "description": "积分榜描述（可能为 null）"
+          },
+          "dimensionDetails": {
+            "type": "array",
+            "description": "积分榜维度定义列表（表头列）",
+            "items": {
+              "type": "object",
+              "description": "积分榜维度定义",
+              "properties": {
+                "dimensionId": {
+                  "type": "number",
+                  "description": "维度ID"
+                },
+                "dimensionName": {
+                  "type": "string",
+                  "description": "维度名称（如年龄、国籍、积分、排名变化）"
+                },
+                "showPercent": {
+                  "type": "boolean",
+                  "description": "是否以百分比展示"
+                },
+                "sort": {
+                  "type": "number",
+                  "description": "维度展示排序"
+                },
+                "defaultSortField": {
+                  "type": "boolean",
+                  "description": "是否为默认排序字段"
+                }
+              }
+            }
+          },
+          "groupDetails": {
+            "type": "array",
+            "description": "积分榜分组列表",
+            "items": {
+              "type": "object",
+              "properties": {
+                "groupId": {
+                  "type": "number",
+                  "description": "分组ID"
+                },
+                "groupName": {
+                  "type": "string",
+                  "description": "分组名称"
+                },
+                "details": {
+                  "type": "array",
+                  "description": "该分组下的成员行列表",
+                  "items": {
+                    "type": "object",
+                    "description": "积分榜成员行",
+                    "properties": {
+                      "memberId": {
+                        "type": "string",
+                        "description": "成员ID"
+                      },
+                      "memberLandingUrl": {
+                        "type": "string",
+                        "description": "成员跳转链接（如百科页）"
+                      },
+                      "memberLogo": {
+                        "type": "string",
+                        "description": "成员头像/Logo URL"
+                      },
+                      "extraMemberId": {
+                        "type": "string",
+                        "description": "附加成员ID（可能为 null）"
+                      },
+                      "memberName": {
+                        "type": "string",
+                        "description": "成员名称"
+                      },
+                      "extraMemberName": {
+                        "type": "string",
+                        "description": "附加成员名称（可能为 null）"
+                      },
+                      "sort": {
+                        "type": "number",
+                        "description": "排序序号"
+                      },
+                      "showSort": {
+                        "type": "string",
+                        "description": "展示用排名文案"
+                      },
+                      "dimensionDetails": {
+                        "type": "array",
+                        "description": "该成员各维度的值列表",
+                        "items": {
+                          "type": "object",
+                          "description": "成员在某维度上的值",
+                          "properties": {
+                            "dimensionId": {
+                              "type": "number",
+                              "description": "维度ID，对应 dimensionDetails 中的维度"
+                            },
+                            "dimensionImage": {
+                              "type": "string",
+                              "description": "维度配图 URL（如国旗、排名变化箭头，可能为 null 或空字符串）"
+                            },
+                            "dimensionValue": {
+                              "type": "string",
+                              "description": "维度展示值"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "configInfos": {
+                  "type": "array",
+                  "description": "分组配置信息（可能为空数组）"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

@@ -1,0 +1,519 @@
+{
+  "name": "request-activity-listByBizKeys",
+  "description": "批量获取多个业务对象的平均评分与打分树详情（如球员、装备等）。支持一次传入多个 BizKey 进行批量查询。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "bizKeys": {
+        "type": "array",
+        "description": "待查询的业务对象列表。数组内每个对象需包含 outBizType（请求侧业务分类，常用：nbaPlayer、cbaPlayer、equipment、games、movie、food、school；返回 data[].bizType 为更细粒度类型，如 movie_movie、movie_role）和 outBizNo（业务对象 ID）"
+      },
+      "querySubItemLimit": {
+        "type": "number",
+        "description": "子项查询限制数，默认为 1"
+      },
+      "queryHasLight": {
+        "type": "boolean",
+        "description": "是否查询亮评，默认为 false"
+      }
+    },
+    "required": [
+      "bizKeys"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码，1 表示成功"
+      },
+      "type": {
+        "type": "string",
+        "description": "返回类型，如 COMMON"
+      },
+      "msg": {
+        "type": "string",
+        "description": "提示信息，如“成功”"
+      },
+      "success": {
+        "type": "boolean",
+        "description": "是否成功"
+      },
+      "data": {
+        "type": "array",
+        "description": "评分项列表，每个元素对应一个查询的业务对象",
+        "items": {
+          "type": "object",
+          "description": "评分项详情",
+          "properties": {
+            "bizType": {
+              "type": "string",
+              "description": "业务类型，如 movie_movie、movie_role"
+            },
+            "bizId": {
+              "type": "string",
+              "description": "业务对象ID"
+            },
+            "name": {
+              "type": "string",
+              "description": "评分对象名称"
+            },
+            "pic": {
+              "type": "string",
+              "description": "封面图片 URL"
+            },
+            "coverStyle": {
+              "type": "string",
+              "description": "封面样式，如 rectangle（矩形）"
+            },
+            "desc": {
+              "type": "string",
+              "description": "描述文案，如上映日期、角色饰演信息"
+            },
+            "behave": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "行为标识，可能为 null"
+            },
+            "score": {
+              "type": "number",
+              "description": "平均评分"
+            },
+            "canScore": {
+              "type": "boolean",
+              "description": "当前是否可评分"
+            },
+            "showScore": {
+              "type": "boolean",
+              "description": "是否展示评分"
+            },
+            "scoreCountThreshold": {
+              "type": "number",
+              "description": "评分展示所需的最少评分人数阈值"
+            },
+            "scoreValueHighlight": {
+              "type": "boolean",
+              "description": "评分值是否高亮展示"
+            },
+            "scoreColorDay": {
+              "type": "string",
+              "description": "评分日间模式颜色（十六进制）"
+            },
+            "scoreColorNight": {
+              "type": "string",
+              "description": "评分夜间模式颜色（十六进制）"
+            },
+            "scorePersonCount": {
+              "type": "number",
+              "description": "评分人数"
+            },
+            "scoreCount": {
+              "type": "number",
+              "description": "评分次数"
+            },
+            "comment": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "description": "该评分项的热评，可能为 null",
+              "properties": {
+                "subjectId": {
+                  "type": "string",
+                  "description": "评论所属主题ID"
+                },
+                "commentId": {
+                  "type": "string",
+                  "description": "评论ID"
+                },
+                "commentContent": {
+                  "type": "string",
+                  "description": "评论原始文本内容"
+                },
+                "processCommentContent": {
+                  "type": "string",
+                  "description": "处理后的评论展示文本（含 [图片] 等占位标记）"
+                },
+                "ancillaryContents": {
+                  "type": "array",
+                  "description": "评论附属内容列表（图片/音频等），可能为空数组",
+                  "items": {
+                    "type": "object",
+                    "description": "评论附属内容（图片/音频等）",
+                    "properties": {
+                      "commentContentId": {
+                        "type": "string",
+                        "description": "附属内容ID"
+                      },
+                      "commentContent": {
+                        "type": "string",
+                        "description": "附属内容值，如图片 URL"
+                      },
+                      "commentContentType": {
+                        "type": "string",
+                        "description": "附属内容类型，如 IMAGE、AUDIO"
+                      },
+                      "durationInSec": {
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "description": "时长（秒），仅音频类型有值，否则为 null"
+                      }
+                    }
+                  }
+                },
+                "contentColorDay": {
+                  "type": "string",
+                  "description": "评论文本日间模式颜色（十六进制）"
+                },
+                "contentColorNight": {
+                  "type": "string",
+                  "description": "评论文本夜间模式颜色（十六进制）"
+                },
+                "lightCount": {
+                  "type": "number",
+                  "description": "评论点亮（点赞）数"
+                },
+                "userId": {
+                  "type": "number",
+                  "description": "评论用户ID"
+                },
+                "username": {
+                  "type": "string",
+                  "description": "评论用户名（可能为空字符串）"
+                },
+                "hasLight": {
+                  "type": "boolean",
+                  "description": "当前用户是否已点亮该评论"
+                }
+              }
+            },
+            "schema": {
+              "type": "string",
+              "description": "跳转到评分详情的 schema 链接"
+            },
+            "hexColor": {
+              "type": "string",
+              "description": "主题背景色（十六进制）"
+            },
+            "maskColor": {
+              "type": "string",
+              "description": "蒙层颜色（含透明度的十六进制）"
+            },
+            "commentCount": {
+              "type": "number",
+              "description": "评论数"
+            },
+            "summedCommentCount": {
+              "type": "number",
+              "description": "累计评论数（含子项）"
+            },
+            "itemId": {
+              "type": "number",
+              "description": "评分项ID"
+            },
+            "resourceMark": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "资源标记，可能为 null"
+            },
+            "resourceDetail": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "description": "资源详情，可能为 null"
+            },
+            "allowAudio": {
+              "type": "boolean",
+              "description": "是否允许音频评论"
+            },
+            "playNum": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "播放数，可能为 null"
+            },
+            "scoreItemSupplementUrl": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "评分项补充/编辑链接，可能为 null"
+            },
+            "creatorId": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "description": "创建者ID，可能为 null"
+            },
+            "creatorName": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "创建者名称，可能为 null"
+            },
+            "creatorAvatar": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "description": "创建者头像 URL，可能为 null"
+            },
+            "subItems": {
+              "type": [
+                "array",
+                "null"
+              ],
+              "description": "子评分项列表；无子项时为 null。子项结构与父项相同，可继续嵌套（schema 仅展开一层）",
+              "items": {
+                "type": "object",
+                "description": "子评分项，结构与父评分项相同",
+                "properties": {
+                  "bizType": {
+                    "type": "string",
+                    "description": "业务类型，如 movie_movie、movie_role"
+                  },
+                  "bizId": {
+                    "type": "string",
+                    "description": "业务对象ID"
+                  },
+                  "name": {
+                    "type": "string",
+                    "description": "评分对象名称"
+                  },
+                  "pic": {
+                    "type": "string",
+                    "description": "封面图片 URL"
+                  },
+                  "coverStyle": {
+                    "type": "string",
+                    "description": "封面样式，如 rectangle（矩形）"
+                  },
+                  "desc": {
+                    "type": "string",
+                    "description": "描述文案，如上映日期、角色饰演信息"
+                  },
+                  "behave": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "行为标识，可能为 null"
+                  },
+                  "score": {
+                    "type": "number",
+                    "description": "平均评分"
+                  },
+                  "canScore": {
+                    "type": "boolean",
+                    "description": "当前是否可评分"
+                  },
+                  "showScore": {
+                    "type": "boolean",
+                    "description": "是否展示评分"
+                  },
+                  "scoreCountThreshold": {
+                    "type": "number",
+                    "description": "评分展示所需的最少评分人数阈值"
+                  },
+                  "scoreValueHighlight": {
+                    "type": "boolean",
+                    "description": "评分值是否高亮展示"
+                  },
+                  "scoreColorDay": {
+                    "type": "string",
+                    "description": "评分日间模式颜色（十六进制）"
+                  },
+                  "scoreColorNight": {
+                    "type": "string",
+                    "description": "评分夜间模式颜色（十六进制）"
+                  },
+                  "scorePersonCount": {
+                    "type": "number",
+                    "description": "评分人数"
+                  },
+                  "scoreCount": {
+                    "type": "number",
+                    "description": "评分次数"
+                  },
+                  "comment": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "description": "该评分项的热评，可能为 null",
+                    "properties": {
+                      "subjectId": {
+                        "type": "string",
+                        "description": "评论所属主题ID"
+                      },
+                      "commentId": {
+                        "type": "string",
+                        "description": "评论ID"
+                      },
+                      "commentContent": {
+                        "type": "string",
+                        "description": "评论原始文本内容"
+                      },
+                      "processCommentContent": {
+                        "type": "string",
+                        "description": "处理后的评论展示文本（含 [图片] 等占位标记）"
+                      },
+                      "ancillaryContents": {
+                        "type": "array",
+                        "description": "评论附属内容列表（图片/音频等），可能为空数组",
+                        "items": {
+                          "type": "object",
+                          "description": "评论附属内容（图片/音频等）",
+                          "properties": {
+                            "commentContentId": {
+                              "type": "string",
+                              "description": "附属内容ID"
+                            },
+                            "commentContent": {
+                              "type": "string",
+                              "description": "附属内容值，如图片 URL"
+                            },
+                            "commentContentType": {
+                              "type": "string",
+                              "description": "附属内容类型，如 IMAGE、AUDIO"
+                            },
+                            "durationInSec": {
+                              "type": [
+                                "number",
+                                "null"
+                              ],
+                              "description": "时长（秒），仅音频类型有值，否则为 null"
+                            }
+                          }
+                        }
+                      },
+                      "contentColorDay": {
+                        "type": "string",
+                        "description": "评论文本日间模式颜色（十六进制）"
+                      },
+                      "contentColorNight": {
+                        "type": "string",
+                        "description": "评论文本夜间模式颜色（十六进制）"
+                      },
+                      "lightCount": {
+                        "type": "number",
+                        "description": "评论点亮（点赞）数"
+                      },
+                      "userId": {
+                        "type": "number",
+                        "description": "评论用户ID"
+                      },
+                      "username": {
+                        "type": "string",
+                        "description": "评论用户名（可能为空字符串）"
+                      },
+                      "hasLight": {
+                        "type": "boolean",
+                        "description": "当前用户是否已点亮该评论"
+                      }
+                    }
+                  },
+                  "schema": {
+                    "type": "string",
+                    "description": "跳转到评分详情的 schema 链接"
+                  },
+                  "hexColor": {
+                    "type": "string",
+                    "description": "主题背景色（十六进制）"
+                  },
+                  "maskColor": {
+                    "type": "string",
+                    "description": "蒙层颜色（含透明度的十六进制）"
+                  },
+                  "commentCount": {
+                    "type": "number",
+                    "description": "评论数"
+                  },
+                  "summedCommentCount": {
+                    "type": "number",
+                    "description": "累计评论数（含子项）"
+                  },
+                  "itemId": {
+                    "type": "number",
+                    "description": "评分项ID"
+                  },
+                  "resourceMark": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "资源标记，可能为 null"
+                  },
+                  "resourceDetail": {
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "description": "资源详情，可能为 null"
+                  },
+                  "allowAudio": {
+                    "type": "boolean",
+                    "description": "是否允许音频评论"
+                  },
+                  "playNum": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "播放数，可能为 null"
+                  },
+                  "scoreItemSupplementUrl": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "评分项补充/编辑链接，可能为 null"
+                  },
+                  "creatorId": {
+                    "type": [
+                      "number",
+                      "null"
+                    ],
+                    "description": "创建者ID，可能为 null"
+                  },
+                  "creatorName": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "创建者名称，可能为 null"
+                  },
+                  "creatorAvatar": {
+                    "type": [
+                      "string",
+                      "null"
+                    ],
+                    "description": "创建者头像 URL，可能为 null"
+                  },
+                  "subItems": {
+                    "type": [
+                      "array",
+                      "null"
+                    ],
+                    "description": "更深层子评分项列表，结构同父项，可继续嵌套；无子项时为 null"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

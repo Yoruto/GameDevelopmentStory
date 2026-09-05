@@ -1,0 +1,41 @@
+{
+  "id": "colorbox-navigate-to",
+  "name": "站内跳转",
+  "description": "为按钮、图片和卡片配置站内、站外或 App 内页面跳转。当用户点击页面元素后前往指定活动页、内容页或外部链接时调用。",
+  "category": "设备与分享",
+  "categories": [
+    "设备与分享"
+  ],
+  "icon": "navigation",
+  "details": {
+    "capabilities": [
+      "站内跳转：为按钮、图片和卡片配置站内、站外或 App 内页面跳转。当用户点击页面元素后前往指定活动页、内容页或外部链接时调用。",
+      "调用设备能力或站内原生能力完成页面交互。",
+      "发起站内跳转、分享或端侧协同操作。"
+    ],
+    "scenarios": [
+      "活动传播、内容分享和端内页面跳转。",
+      "需要与设备或原生容器交互的移动端体验。"
+    ],
+    "usageTips": [
+      "在调用前判断当前运行环境是否支持对应能力。",
+      "将用户主动点击作为调用入口，并为失败或降级场景留出反馈。"
+    ]
+  },
+  "content": "---\nname: navigate-to\ndescription: 为按钮、图片和卡片配置站内、站外或 App 内页面跳转。当用户点击页面元素后前往指定活动页、内容页或外部链接时调用。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.navigate.to(params)`\n\n# Constraints\n\n- 跳转 URL 必须由显式配置或常量提供，不要从用户输入直接拼接到跳转方法\n- 外链必须使用 https://，相对路径仅用于当前活动页内资源或锚点跳转\n- 必须使用 SDK 统一跳转 API，严禁自行使用 window.location.href 或 window.open 进行跳转以避免损坏路由完整性\n- 如果按钮已有埋点，必须先调用 window.ColorboxAI.track 埋点方法，随后再执行跳转\n- 不要在页面加载时自动跳转；跳转必须由用户点击等明确交互触发\n- 必须根据返回的 code 判断是否成功，若 code 不等于 200，必须使用返回的 message 对用户进行友好提示（如 Toast 或弹窗）。\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| url | string | 是 | 需要跳转的目标 URL，如 https://... 或 huputiyu://... |\n| target | string | 否 | 跳转目标窗口标识，如 _self 或 _blank，可选 |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| code | number | 是 | 状态码，200 表示执行成功 |\n| message | string | 是 | 提示信息 |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.navigate.to({ url: \"https://m.hupu.com\" })\n```\n\n```javascript\nwindow.ColorboxAI.navigate.to({ url: \"huputiyu://bbs/postImg\", target: \"_self\" })\n```",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "content": "---\nname: navigate-to\ndescription: 为按钮、图片和卡片配置站内、站外或 App 内页面跳转。当用户点击页面元素后前往指定活动页、内容页或外部链接时调用。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.navigate.to(params)`\n\n# Constraints\n\n- 跳转 URL 必须由显式配置或常量提供，不要从用户输入直接拼接到跳转方法\n- 外链必须使用 https://，相对路径仅用于当前活动页内资源或锚点跳转\n- 必须使用 SDK 统一跳转 API，严禁自行使用 window.location.href 或 window.open 进行跳转以避免损坏路由完整性\n- 如果按钮已有埋点，必须先调用 window.ColorboxAI.track 埋点方法，随后再执行跳转\n- 不要在页面加载时自动跳转；跳转必须由用户点击等明确交互触发\n- 必须根据返回的 code 判断是否成功，若 code 不等于 200，必须使用返回的 message 对用户进行友好提示（如 Toast 或弹窗）。\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| url | string | 是 | 需要跳转的目标 URL，如 https://... 或 huputiyu://... |\n| target | string | 否 | 跳转目标窗口标识，如 _self 或 _blank，可选 |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| code | number | 是 | 状态码，200 表示执行成功 |\n| message | string | 是 | 提示信息 |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.navigate.to({ url: \"https://m.hupu.com\" })\n```\n\n```javascript\nwindow.ColorboxAI.navigate.to({ url: \"huputiyu://bbs/postImg\", target: \"_self\" })\n```"
+    },
+    {
+      "path": "schema.json",
+      "content": "{\n  \"name\": \"navigate-to\",\n  \"description\": \"为按钮、图片和卡片配置站内、站外或 App 内页面跳转。当用户点击页面元素后前往指定活动页、内容页或外部链接时调用。\",\n  \"inputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"url\": {\n        \"type\": \"string\",\n        \"description\": \"需要跳转的目标 URL，如 https://... 或 huputiyu://...\"\n      },\n      \"target\": {\n        \"type\": \"string\",\n        \"description\": \"跳转目标窗口标识，如 _self 或 _blank，可选\"\n      }\n    },\n    \"required\": [\n      \"url\"\n    ]\n  },\n  \"outputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"code\": {\n        \"type\": \"number\",\n        \"description\": \"状态码，200 表示执行成功\"\n      },\n      \"message\": {\n        \"type\": \"string\",\n        \"description\": \"提示信息\"\n      }\n    },\n    \"required\": [\n      \"code\",\n      \"message\"\n    ]\n  }\n}"
+    }
+  ],
+  "manifest": {
+    "capability": "navigate-to",
+    "source": "skill-package",
+    "version": 1
+  }
+}

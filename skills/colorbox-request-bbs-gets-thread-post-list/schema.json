@@ -1,0 +1,415 @@
+{
+  "name": "request-bbs-getsThreadPostList",
+  "description": "获取虎扑论坛帖子（BBS）的评论/回复列表，支持分页和排序。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "tid": {
+        "type": "string",
+        "description": "帖子唯一ID（thread ID），例如 \"640720803\""
+      },
+      "fid": {
+        "type": "string",
+        "description": "板块唯一ID（forum ID），例如 \"1389\""
+      },
+      "page": {
+        "type": "number",
+        "description": "页码，从 1 开始，默认为 1"
+      },
+      "sort": {
+        "type": "number",
+        "description": "排序类型，默认为 0"
+      },
+      "order": {
+        "type": "string",
+        "description": "排序顺序：asc（正序）或 desc（倒序），默认为 \"asc\""
+      }
+    },
+    "required": [
+      "tid"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "object",
+        "description": "成功时返回的数据载荷",
+        "properties": {
+          "list": {
+            "type": "array",
+            "description": "回复列表数据",
+            "items": {
+              "type": "object",
+              "properties": {
+                "pid": {
+                  "type": "string",
+                  "description": "回复唯一ID"
+                },
+                "puid": {
+                  "type": "string",
+                  "description": "回复用户唯一ID"
+                },
+                "content": {
+                  "type": "string",
+                  "description": "回复内容文本/HTML"
+                },
+                "create_time": {
+                  "type": "string",
+                  "description": "回复创建时间戳（秒）"
+                },
+                "via": {
+                  "type": "string",
+                  "description": "回复来源/客户端标识"
+                },
+                "attr": {
+                  "type": "object",
+                  "description": "回复属性信息",
+                  "properties": {
+                    "audit_status": {
+                      "type": "string",
+                      "description": "审核状态"
+                    }
+                  }
+                },
+                "light_count": {
+                  "type": "number",
+                  "description": "亮评/点赞数"
+                },
+                "allLightCount": {
+                  "type": "number",
+                  "description": "总点亮数"
+                },
+                "ancillaryContents": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "description": "附属内容信息，可能为空"
+                },
+                "quote_light_count": {
+                  "type": "number",
+                  "description": "被引用回复的点亮数"
+                },
+                "check_reply_info": {
+                  "type": "object",
+                  "description": "查看回复信息",
+                  "properties": {
+                    "num": {
+                      "type": "number",
+                      "description": "回复数量"
+                    },
+                    "type": {
+                      "type": "number",
+                      "description": "回复类型"
+                    }
+                  }
+                },
+                "quote": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "description": "引用回复列表，可能为空",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "header": {
+                        "type": [
+                          "array",
+                          "null"
+                        ],
+                        "description": "引用头部文案数组",
+                        "items": {
+                          "type": "string",
+                          "description": "引用头部文案"
+                        }
+                      },
+                      "content": {
+                        "type": "string",
+                        "description": "引用内容文本/HTML"
+                      },
+                      "togglecontent": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "引用内容折叠态文案"
+                      },
+                      "pid": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "被引用回复ID"
+                      },
+                      "puid": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "被引用用户唯一ID"
+                      },
+                      "attr": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "description": "被引用回复属性信息",
+                        "properties": {
+                          "audit_status": {
+                            "type": "string",
+                            "description": "审核状态"
+                          }
+                        }
+                      },
+                      "ancillaryContents": {
+                        "type": [
+                          "object",
+                          "null"
+                        ],
+                        "description": "被引用回复附属内容信息，可能为空"
+                      },
+                      "containsAi": {
+                        "type": [
+                          "number",
+                          "null"
+                        ],
+                        "description": "被引用回复是否包含 AI 内容，0/1"
+                      }
+                    }
+                  }
+                },
+                "smallcontent": {
+                  "type": "string",
+                  "description": "回复内容短文案"
+                },
+                "togglecontent": {
+                  "type": "string",
+                  "description": "回复内容折叠态文案"
+                },
+                "floor": {
+                  "type": "number",
+                  "description": "楼层数"
+                },
+                "time": {
+                  "type": "string",
+                  "description": "友好时间显示，如 \"5天前\""
+                },
+                "userName": {
+                  "type": "string",
+                  "description": "回复用户昵称"
+                },
+                "userImg": {
+                  "type": "string",
+                  "description": "回复用户头像链接"
+                },
+                "quote_deleted": {
+                  "type": "number",
+                  "description": "引用内容是否已删除，0/1"
+                },
+                "groupid": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "用户分组 ID，可能为空"
+                },
+                "certuser": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "description": "认证用户信息，可能为空"
+                },
+                "certurl": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "认证跳转链接，可能为空"
+                },
+                "cert_info": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "description": "认证信息，可能为空"
+                },
+                "cert_url": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "认证链接，可能为空"
+                },
+                "viainfo": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "description": "来源信息，可能为空"
+                },
+                "badgeOpen": {
+                  "type": "number",
+                  "description": "勋章展示开关，0/1"
+                },
+                "badgeImgUrl": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "勋章图片链接，可能为空"
+                },
+                "selfRecommend": {
+                  "type": "number",
+                  "description": "是否自荐/自推荐，0/1"
+                },
+                "grantDto": {
+                  "type": "object",
+                  "description": "送礼/赞赏聚合信息",
+                  "properties": {
+                    "detailDtoList": {
+                      "type": "array",
+                      "description": "送礼/赞赏明细列表",
+                      "items": {
+                        "type": "object",
+                        "description": "送礼/赞赏明细项"
+                      }
+                    },
+                    "totalCoins": {
+                      "type": "number",
+                      "description": "累计金币数"
+                    },
+                    "totalUsers": {
+                      "type": "number",
+                      "description": "累计送礼/赞赏用户数"
+                    },
+                    "showGiftIconMinCount": {
+                      "type": "number",
+                      "description": "展示礼物图标的最小数量阈值"
+                    }
+                  }
+                },
+                "giftList": {
+                  "type": "array",
+                  "description": "礼物列表",
+                  "items": {
+                    "type": "object",
+                    "description": "礼物项"
+                  }
+                },
+                "ornament": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "头像挂件/装饰图片链接，可能为空"
+                },
+                "badge": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "勋章图片链接，可能为空"
+                },
+                "badgeName": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "勋章名称，可能为空"
+                },
+                "badgeBgImg": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "勋章背景图链接，可能为空"
+                },
+                "badgeForwardUrl": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "勋章跳转链接，可能为空"
+                },
+                "adminsInfo": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "description": "管理员信息，可能为空"
+                },
+                "location": {
+                  "type": "string",
+                  "description": "回复用户IP属地"
+                },
+                "nftInfo": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "description": "NFT 信息，可能为空"
+                },
+                "vipInfo": {
+                  "type": [
+                    "object",
+                    "null"
+                  ],
+                  "description": "会员信息，可能为空"
+                },
+                "containsAi": {
+                  "type": "number",
+                  "description": "回复是否包含 AI 内容，0/1"
+                },
+                "deepTalkReply": {
+                  "type": "boolean",
+                  "description": "是否深度讨论回复"
+                }
+              }
+            }
+          },
+          "all_page": {
+            "type": "number",
+            "description": "总页数"
+          },
+          "ad_page_id": {
+            "type": "string",
+            "description": "广告页标识"
+          },
+          "firstReply": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "首条回复信息，可能为空"
+          },
+          "issueFirstReplyHCoin": {
+            "type": "boolean",
+            "description": "是否发放首评 H 币"
+          },
+          "extInfo": {
+            "type": [
+              "object",
+              "null"
+            ],
+            "description": "扩展信息，可能为空"
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

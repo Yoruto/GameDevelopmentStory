@@ -1,0 +1,151 @@
+{
+  "name": "request-football-playerInfo",
+  "description": "获取足球球员的基础详细资料，包括球员年龄、位置、国籍、俱乐部、身价等。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "playerId": {
+        "type": "string",
+        "description": "球员唯一ID，例如 \"84899\""
+      }
+    },
+    "required": [
+      "playerId"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "object",
+        "description": "成功时返回的数据载荷",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "资料类型（如 \"player\"）"
+          },
+          "newId": {
+            "type": "string",
+            "description": "球员新ID"
+          },
+          "oldId": {
+            "type": "string",
+            "description": "球员旧ID"
+          },
+          "teamId": {
+            "type": "string",
+            "description": "所属俱乐部ID"
+          },
+          "teamLogo": {
+            "type": "string",
+            "description": "俱乐部队徽图片 URL"
+          },
+          "teamName": {
+            "type": "string",
+            "description": "俱乐部名称（如 曼城）"
+          },
+          "playerId": {
+            "type": "string",
+            "description": "球员唯一ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "球员中文名（如 哈兰德）"
+          },
+          "enName": {
+            "type": "string",
+            "description": "球员英文名（如 E. B. Håland）"
+          },
+          "newsTag": {
+            "type": "string",
+            "description": "资讯标签名（如 埃林-布朗特-哈兰德）"
+          },
+          "avatar": {
+            "type": "string",
+            "description": "球员头像图片 URL"
+          },
+          "worth": {
+            "type": "number",
+            "description": "球员身价数值"
+          },
+          "currency": {
+            "type": "string",
+            "description": "身价货币单位（如 欧元）"
+          },
+          "headerDayBg": {
+            "type": "string",
+            "description": "日间头图背景色（如 #5C95C5）"
+          },
+          "headerNightBg": {
+            "type": "string",
+            "description": "夜间头图背景色（如 #5C95C5）"
+          },
+          "headerColor": {
+            "type": "string",
+            "description": "头图文字颜色（如 white）"
+          },
+          "foot": {
+            "type": "string",
+            "description": "惯用脚（如 左脚）"
+          },
+          "position": {
+            "type": "string",
+            "description": "场上位置（如 前锋）"
+          },
+          "age": {
+            "type": "string",
+            "description": "年龄（字符串，如 \"26\"）"
+          },
+          "height": {
+            "type": "number",
+            "description": "身高（厘米）"
+          },
+          "weight": {
+            "type": "number",
+            "description": "体重（公斤）"
+          },
+          "birthday": {
+            "type": "string",
+            "description": "生日（如 \"2000.07.21\"）"
+          },
+          "birthdaySeconds": {
+            "type": "number",
+            "description": "生日时间戳（秒）"
+          },
+          "nationality": {
+            "type": "string",
+            "description": "国籍（如 挪威）"
+          },
+          "nationLogo": {
+            "type": "string",
+            "description": "国旗图片 URL"
+          },
+          "shirtNumber": {
+            "type": "string",
+            "description": "球衣号码（字符串，如 \"9\"）"
+          },
+          "isGoalKeeper": {
+            "type": "boolean",
+            "description": "是否为守门员"
+          },
+          "encyclItemId": {
+            "type": "string",
+            "description": "百科条目ID"
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

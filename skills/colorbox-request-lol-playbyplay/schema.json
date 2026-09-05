@@ -1,0 +1,143 @@
+{
+  "name": "request-lol-playbyplay",
+  "description": "获取英雄联盟单场比赛的详细数据，包括双方队伍名称、队徽、比分、Bo次数、比赛类型等。当需要读取并显示特定英雄联盟比赛的赛况时调用。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "battleId": {
+        "type": "string",
+        "description": "比赛对局唯一ID，例如 \"1527692938526720\""
+      }
+    },
+    "required": [
+      "battleId"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "object",
+        "description": "成功时返回的数据载荷",
+        "properties": {
+          "scoreboard": {
+            "type": "object",
+            "description": "计分板信息",
+            "properties": {
+              "bo": {
+                "type": "number",
+                "description": "几局制对决（如 5）"
+              },
+              "status": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "number"
+                  },
+                  "desc": {
+                    "type": "string",
+                    "description": "比赛状态描述（如 已结束）"
+                  }
+                }
+              },
+              "liveSourceInfos": {
+                "type": "array",
+                "description": "直播源信息列表（可能为 null）",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "liveSourceName": {
+                      "type": "string",
+                      "description": "直播源名称"
+                    },
+                    "liveSourceUrl": {
+                      "type": "string",
+                      "description": "直播源跳转 URL"
+                    }
+                  }
+                }
+              },
+              "specimenInfos": {
+                "type": "array",
+                "description": "集锦信息列表",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "specimensName": {
+                      "type": "string",
+                      "description": "集锦名称"
+                    },
+                    "specimensUrl": {
+                      "type": "string",
+                      "description": "集锦跳转 URL"
+                    }
+                  }
+                }
+              },
+              "schedule_at": {
+                "type": "number",
+                "description": "开赛时间戳（秒）"
+              },
+              "team1_win_count": {
+                "type": "number",
+                "description": "战队1胜场数"
+              },
+              "team2_win_count": {
+                "type": "number",
+                "description": "战队2胜场数"
+              },
+              "sportName": {
+                "type": "string",
+                "description": "赛事名称（如 季中冠军赛）"
+              },
+              "matchTypeName": {
+                "type": "string",
+                "description": "阶段名称（如 淘汰赛）"
+              },
+              "team1_name": {
+                "type": "string",
+                "description": "战队1名称（如 HLE）"
+              },
+              "team1_logo": {
+                "type": "string",
+                "description": "战队1队徽 URL"
+              },
+              "team1_link": {
+                "type": "string",
+                "description": "战队1详情跳转链接"
+              },
+              "team2_name": {
+                "type": "string",
+                "description": "战队2名称（如 BLG）"
+              },
+              "team2_logo": {
+                "type": "string",
+                "description": "战队2队徽 URL"
+              },
+              "team2_link": {
+                "type": "string",
+                "description": "战队2详情跳转链接"
+              }
+            }
+          },
+          "refresh_time": {
+            "type": "number",
+            "description": "刷新间隔时间（秒）"
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

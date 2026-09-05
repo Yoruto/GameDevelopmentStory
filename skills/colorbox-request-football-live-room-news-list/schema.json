@@ -1,0 +1,165 @@
+{
+  "name": "request-football-liveRoomNewsList",
+  "description": "获取足球比赛直播间资讯 Tab 下的新闻/图文列表，包含标题、封面、互动数据、跳转链接、置顶状态和分页游标，适合在赛程直播间中渲染足球资讯流。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "matchId": {
+        "type": "string",
+        "description": "比赛唯一 ID，例如 \"3512534\""
+      },
+      "newsId": {
+        "type": "string",
+        "description": "分页游标，取上一页 data.result 数组最后一项的 nid；首页不传或传 \"0\""
+      },
+      "matchType": {
+        "type": "string",
+        "description": "赛事类型/业务分类，默认 football；部分通用赛事可传 common_match"
+      }
+    },
+    "required": [
+      "matchId"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "object",
+        "description": "成功时返回的数据载荷",
+        "properties": {
+          "errorCode": {
+            "type": "string",
+            "description": "业务错误码；成功时通常为空字符串"
+          },
+          "errorMsg": {
+            "type": "string",
+            "description": "业务错误信息；成功时通常为空字符串"
+          },
+          "result": {
+            "type": "array",
+            "description": "足球直播间资讯 Tab 列表",
+            "items": {
+              "type": "object",
+              "description": "足球直播间资讯 Tab 列表项",
+              "properties": {
+                "nid": {
+                  "type": "string",
+                  "description": "资讯/新闻唯一 ID，分页时可取列表最后一项的该字段作为 newsId"
+                },
+                "tid": {
+                  "type": "string",
+                  "description": "关联帖子/话题 ID"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "内容展示类型，如 IMG_TEXT、IMAGE_TOP_TEXT_BOTTOM、VIDEO"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "资讯标题"
+                },
+                "img": {
+                  "type": "string",
+                  "description": "封面图 URL"
+                },
+                "replies": {
+                  "type": "number",
+                  "description": "回复数"
+                },
+                "lights": {
+                  "type": "number",
+                  "description": "亮评/点亮数"
+                },
+                "link": {
+                  "type": "string",
+                  "description": "资讯跳转链接，如 kanqiu://bbs/topic/{tid}"
+                },
+                "linkType": {
+                  "type": "string|null",
+                  "description": "链接类型，可能为 null"
+                },
+                "badge": {
+                  "type": "array",
+                  "description": "角标列表，可能为空数组",
+                  "items": {
+                    "type": "object",
+                    "description": "角标项"
+                  }
+                },
+                "publishTime": {
+                  "type": "string",
+                  "description": "发布时间，格式如 \"2026-07-21 11:55:43\""
+                },
+                "addTime": {
+                  "type": "number",
+                  "description": "添加/发布时间戳，单位秒"
+                },
+                "oldNewsId": {
+                  "type": "string|null",
+                  "description": "旧版新闻 ID，可能为 null"
+                },
+                "top": {
+                  "type": "boolean",
+                  "description": "是否置顶"
+                },
+                "pv": {
+                  "type": "number|string|null",
+                  "description": "浏览量/PV，可能为 null"
+                },
+                "gifList": {
+                  "type": "array|null",
+                  "description": "动图列表，可能为 null",
+                  "items": {
+                    "type": "object",
+                    "description": "动图项"
+                  }
+                },
+                "read": {
+                  "type": "string",
+                  "description": "已读标识，通常与 nid 相同"
+                },
+                "showComment": {
+                  "type": "number",
+                  "description": "是否展示评论，1 表示展示，0 表示不展示"
+                }
+              }
+            }
+          },
+          "success": {
+            "type": "boolean",
+            "description": "业务是否成功"
+          },
+          "traceId": {
+            "type": "string|null",
+            "description": "链路追踪 ID，可能为 null"
+          },
+          "hostName": {
+            "type": "string",
+            "description": "服务节点主机名"
+          },
+          "msg": {
+            "type": "string",
+            "description": "返回消息，成功时可能为空字符串"
+          },
+          "status": {
+            "type": "number",
+            "description": "业务状态码，200 表示成功"
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "id": "colorbox-storage-get-value",
+  "name": "读取本地存储",
+  "description": "读取当前活动页在本地或 App 容器内已经存储的状态数据。支持项目隔离及读取合并。",
+  "category": "存储与上传",
+  "categories": [
+    "存储与上传"
+  ],
+  "icon": "hard-drive",
+  "details": {
+    "capabilities": [
+      "读取本地存储：读取当前活动页在本地或 App 容器内已经存储的状态数据。支持项目隔离及读取合并。",
+      "读取或写入本地状态，并处理文件上传流程。",
+      "提供资源保存、上传结果和后续访问所需的信息。"
+    ],
+    "scenarios": [
+      "头像、图片或活动素材上传。",
+      "需要保留用户偏好、进度或页面临时状态的功能。"
+    ],
+    "usageTips": [
+      "在上传前校验文件格式、体积和必要的内容安全要求。",
+      "本地存储只保存可公开的轻量状态，不保存敏感信息。"
+    ]
+  },
+  "content": "---\nname: storage-getValue\ndescription: 读取当前活动页在本地或 App 容器内已经存储的状态数据。支持项目隔离及读取合并。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.storage.getValue(params)`\n\n# Constraints\n\n- 必须使用统一的读取 API，禁止直接通过 window.localStorage.getItem 读取\n- 当读取的键尚未存储时，接口返回 null，前台页面需要做好对应的空值兜底\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| key | string | 否 | 待读取的数据键名称，如果不传则返回当前项目下存储的所有键值对 |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.storage.getValue(\"userLevel\").then(val => { console.log(val); })\n```",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "content": "---\nname: storage-getValue\ndescription: 读取当前活动页在本地或 App 容器内已经存储的状态数据。支持项目隔离及读取合并。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.storage.getValue(params)`\n\n# Constraints\n\n- 必须使用统一的读取 API，禁止直接通过 window.localStorage.getItem 读取\n- 当读取的键尚未存储时，接口返回 null，前台页面需要做好对应的空值兜底\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| key | string | 否 | 待读取的数据键名称，如果不传则返回当前项目下存储的所有键值对 |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.storage.getValue(\"userLevel\").then(val => { console.log(val); })\n```"
+    },
+    {
+      "path": "schema.json",
+      "content": "{\n  \"name\": \"storage-getValue\",\n  \"description\": \"读取当前活动页在本地或 App 容器内已经存储的状态数据。支持项目隔离及读取合并。\",\n  \"inputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"key\": {\n        \"type\": \"string\",\n        \"description\": \"待读取的数据键名称，如果不传则返回当前项目下存储的所有键值对\"\n      }\n    }\n  },\n  \"outputSchema\": {\n    \"type\": \"any\",\n    \"description\": \"返回读取的数据。如果传入了 key，则返回对应的值；如果不传 key，则返回包含所有项目下键值的对象，通常为 string 类型（JSON 格式）或 null\"\n  }\n}"
+    }
+  ],
+  "manifest": {
+    "capability": "storage-getValue",
+    "source": "skill-package",
+    "version": 1
+  }
+}

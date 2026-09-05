@@ -1,0 +1,300 @@
+{
+  "name": "request-match-getTabDetailScheduleList",
+  "description": "查询赛程列表详细信息，获取各场次包含的评分对象Key（scoreItemKey 包含 outBizNo 和 outBizType）。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "params": {
+        "type": "object",
+        "description": "透传给赛程接口的查询参数"
+      }
+    },
+    "required": []
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "object",
+        "description": "成功时返回的数据载荷",
+        "properties": {
+          "result": {
+            "type": "object",
+            "description": "赛程列表及关联的 scoreItemKey",
+            "properties": {
+              "anchorMatchId": {
+                "type": "string",
+                "description": "定位用比赛 ID（无则为空字符串）"
+              },
+              "dayGameData": {
+                "type": "array",
+                "description": "按天分组的赛程列表",
+                "items": {
+                  "type": "object",
+                  "description": "按天分组的赛程数据",
+                  "properties": {
+                    "dayTime": {
+                      "type": "string",
+                      "description": "日期（如 2026-07-01）"
+                    },
+                    "dateBlock": {
+                      "type": "string",
+                      "description": "日期展示文案（如 7月1日 周三）"
+                    },
+                    "matchData": {
+                      "type": "array",
+                      "description": "当天场次列表",
+                      "items": {
+                        "type": "object",
+                        "description": "单场比赛信息",
+                        "properties": {
+                          "businessType": {
+                            "type": "string",
+                            "description": "业务类型（如 common_match）"
+                          },
+                          "matchId": {
+                            "type": "string",
+                            "description": "比赛唯一 ID"
+                          },
+                          "uniqueKey": {
+                            "type": "string",
+                            "description": "唯一键（如 common_match:1441778164564949622）"
+                          },
+                          "subMatchBusinessType": {
+                            "type": "string",
+                            "description": "子业务类型（如 common_match）"
+                          },
+                          "matchType": {
+                            "type": "string",
+                            "description": "比赛类型（如 against 对阵）"
+                          },
+                          "matchStatus": {
+                            "type": "string",
+                            "description": "比赛状态（如 COMPLETED）"
+                          },
+                          "matchStatusDesc": {
+                            "type": "string",
+                            "description": "比赛状态文案（如 已结束）"
+                          },
+                          "matchStartTimeStamp": {
+                            "type": "string",
+                            "description": "开赛时间戳（毫秒字符串）"
+                          },
+                          "matchStartDate": {
+                            "type": "string",
+                            "description": "开赛日期（如 2026-07-01）"
+                          },
+                          "liveRoomLink": {
+                            "type": "string",
+                            "description": "直播间跳转 schema"
+                          },
+                          "extraPhotoLink": {
+                            "type": "string",
+                            "description": "额外图片链接（无则为空字符串）"
+                          },
+                          "matchIntroduction": {
+                            "type": "string",
+                            "description": "赛事介绍文案"
+                          },
+                          "matchName": {
+                            "type": "string",
+                            "description": "项目名称（如 女单、男双）"
+                          },
+                          "matchDesc": {
+                            "type": "string",
+                            "description": "比赛描述（可能为 null）"
+                          },
+                          "scoreCountText": {
+                            "type": "string",
+                            "description": "评分人数文案（如 69人评分）"
+                          },
+                          "againstInfo": {
+                            "type": "object",
+                            "description": "对阵信息",
+                            "properties": {
+                              "memberInfos": {
+                                "type": "array",
+                                "description": "对阵双方成员列表",
+                                "items": {
+                                  "type": "object",
+                                  "description": "对阵成员信息",
+                                  "properties": {
+                                    "memberName": {
+                                      "type": "string",
+                                      "description": "成员名称（如球员名、组合名）"
+                                    },
+                                    "memberLogo": {
+                                      "type": "string",
+                                      "description": "成员头像/Logo URL"
+                                    },
+                                    "memberBaseScore": {
+                                      "type": "string",
+                                      "description": "基础比分（字符串，如 \"3\"、\"0\"）"
+                                    },
+                                    "memberExtraScore": {
+                                      "type": "string",
+                                      "description": "额外比分（可能为 null）"
+                                    },
+                                    "memberBigScore": {
+                                      "type": "string",
+                                      "description": "大比分（可能为 null）"
+                                    },
+                                    "memberId": {
+                                      "type": "string",
+                                      "description": "成员唯一 ID"
+                                    },
+                                    "memberType": {
+                                      "type": "string",
+                                      "description": "成员类型（无则为空字符串）"
+                                    },
+                                    "memberDesc": {
+                                      "type": "string",
+                                      "description": "成员描述（无则为空字符串）"
+                                    }
+                                  }
+                                }
+                              },
+                              "winnerMemberId": {
+                                "type": "string",
+                                "description": "获胜方成员 ID"
+                              }
+                            }
+                          },
+                          "midGameStageInfo": {
+                            "type": "object",
+                            "description": "中场阶段信息（可能为 null）"
+                          },
+                          "scoreItemInfo": {
+                            "type": "object",
+                            "description": "评分卡片信息（可能为 null）",
+                            "properties": {
+                              "logo": {
+                                "type": "string",
+                                "description": "评分对象头像 URL"
+                              },
+                              "name": {
+                                "type": "string",
+                                "description": "评分对象名称"
+                              },
+                              "scoreNum": {
+                                "type": "string",
+                                "description": "评分数值（如 \"9.4\"）"
+                              },
+                              "hotComment": {
+                                "type": "string",
+                                "description": "热评文案"
+                              },
+                              "scoreCountText": {
+                                "type": "string",
+                                "description": "评分人数文案（如 \"55人评分\"）"
+                              },
+                              "jumpLink": {
+                                "type": "string",
+                                "description": "评分详情跳转 schema"
+                              },
+                              "teamLogo": {
+                                "type": "string",
+                                "description": "队伍 Logo（可能为 null）"
+                              },
+                              "scoreOutBizType": {
+                                "type": "string",
+                                "description": "评分业务类型（如 common_sports_second）"
+                              },
+                              "scoreOutBizNo": {
+                                "type": "string",
+                                "description": "评分业务号"
+                              }
+                            }
+                          },
+                          "customDescInfo": {
+                            "type": "object",
+                            "description": "自定义描述信息（可能为 null）"
+                          },
+                          "extraInfo": {
+                            "type": "object",
+                            "description": "扩展信息（可能为 null）"
+                          },
+                          "subscribeInfo": {
+                            "type": "object",
+                            "description": "订阅提醒信息",
+                            "properties": {
+                              "showSubscribe": {
+                                "type": "boolean",
+                                "description": "是否展示订阅入口"
+                              },
+                              "didSubscribe": {
+                                "type": "boolean",
+                                "description": "是否已订阅（可能为 null）"
+                              },
+                              "subScribeTitle": {
+                                "type": "string",
+                                "description": "订阅标题文案"
+                              },
+                              "subScribeType": {
+                                "type": "string",
+                                "description": "订阅类型（如 matchNotice）"
+                              },
+                              "subScribeScene": {
+                                "type": "string",
+                                "description": "订阅场景（如 commonMatchNotice）"
+                              },
+                              "subScribeBizType": {
+                                "type": "string",
+                                "description": "订阅业务类型（如 commonMatch）"
+                              },
+                              "subScribeDesc": {
+                                "type": "string",
+                                "description": "订阅描述（如项目名）"
+                              }
+                            }
+                          },
+                          "lastReqTimeStamp": {
+                            "type": "number",
+                            "description": "最近请求时间戳（毫秒）"
+                          },
+                          "liveSourceInfos": {
+                            "type": "array",
+                            "description": "直播源列表（无直播时为空数组）",
+                            "items": {
+                              "type": "object"
+                            }
+                          },
+                          "scoreItemKey": {
+                            "type": "object",
+                            "description": "评分对象 Key，用于关联评分数据",
+                            "properties": {
+                              "outBizNo": {
+                                "type": "string",
+                                "description": "外部业务号"
+                              },
+                              "outBizType": {
+                                "type": "string",
+                                "description": "外部业务类型（如 common_sports_first）"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "id": "colorbox-auth-get-user-info",
+  "name": "获取当前用户信息",
+  "description": "获取当前登录用户的基本资料（包含用户唯一标识 PUID、头像、昵称及 Token 等信息）。可用于登录态校验、页面个性化定制与特权判定。",
+  "category": "账号与云服务",
+  "categories": [
+    "账号与云服务"
+  ],
+  "icon": "key-round",
+  "details": {
+    "capabilities": [
+      "获取当前用户信息：获取当前登录用户的基本资料（包含用户唯一标识 PUID、头像、昵称及 Token 等信息）。可用于登录态校验、页面个性化定制与特权判定。",
+      "处理用户身份、云端凭据或受控服务访问。",
+      "为后续业务请求提供必要的登录态和授权上下文。"
+    ],
+    "scenarios": [
+      "需要识别当前用户并读取其授权范围的页面。",
+      "需要调用云端数据或受保护业务接口的应用。"
+    ],
+    "usageTips": [
+      "不要在客户端持久化或输出敏感凭据。",
+      "在调用受保护接口前处理未登录和授权失效状态。"
+    ]
+  },
+  "content": "---\nname: auth-getUserInfo\ndescription: 获取当前登录用户的基本资料（包含用户唯一标识 PUID、头像、昵称及 Token 等信息）。可用于登录态校验、页面个性化定制与特权判定。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.auth.getUserInfo(params)`\n\n# Constraints\n\n- 必须使用 window.ColorboxAI.auth.getUserInfo() 接口进行异步调取\n- 若当前用户未登录，接口返回的 data 可能为 null，业务端需做好未登录状态的引导（如去登录）\n- 必须根据返回的 code 判断是否成功，若 code 不等于 200，必须使用返回的 message 对用户进行友好提示（如 Toast 或弹窗）。\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| code | number | 是 | 状态码，成功为 200 |\n| message | string | 是 | 提示信息 |\n| data | object | 否 |  |\n| data.islogin | number | 否 | 是否登录：1 为已登录，0 为未登录/游客 |\n| data.puid | string | 否 | 用户唯一 ID（未登录为 null） |\n| data.nickname | string | 否 | 用户昵称（未登录为 null） |\n| data.avatar | string | 否 | 用户头像 URL 链接地址 |\n| data.userHeadUrl | string | 否 | 用户头像 URL 链接地址（同 avatar） |\n| data.authToken | string | 否 | 登录鉴权 Token 凭据（未登录为 null） |\n| data.platform | string | 否 | 当前客户端平台：iOS / Android |\n| data.night | number | 否 | 是否为夜间模式：1 为是，0 为否 |\n| data.statusbar_hight | number | 否 | 状态栏高度（单位 px），用于顶部自定义标题栏避让刘海 |\n| data.titlebar_hight | number | 否 | 标题栏高度（单位 px） |\n| data.bottomSafeHeight | number | 否 | 底部安全区高度（单位 px，如 iPhone 全面屏通常为 34px） |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.auth.getUserInfo().then(res => { if (res.code === 200 && res.data) { console.log(\"当前登录用户：\", res.data.nickname); } else { console.log(\"当前未登录\"); } });\n```",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "content": "---\nname: auth-getUserInfo\ndescription: 获取当前登录用户的基本资料（包含用户唯一标识 PUID、头像、昵称及 Token 等信息）。可用于登录态校验、页面个性化定制与特权判定。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.auth.getUserInfo(params)`\n\n# Constraints\n\n- 必须使用 window.ColorboxAI.auth.getUserInfo() 接口进行异步调取\n- 若当前用户未登录，接口返回的 data 可能为 null，业务端需做好未登录状态的引导（如去登录）\n- 必须根据返回的 code 判断是否成功，若 code 不等于 200，必须使用返回的 message 对用户进行友好提示（如 Toast 或弹窗）。\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| code | number | 是 | 状态码，成功为 200 |\n| message | string | 是 | 提示信息 |\n| data | object | 否 |  |\n| data.islogin | number | 否 | 是否登录：1 为已登录，0 为未登录/游客 |\n| data.puid | string | 否 | 用户唯一 ID（未登录为 null） |\n| data.nickname | string | 否 | 用户昵称（未登录为 null） |\n| data.avatar | string | 否 | 用户头像 URL 链接地址 |\n| data.userHeadUrl | string | 否 | 用户头像 URL 链接地址（同 avatar） |\n| data.authToken | string | 否 | 登录鉴权 Token 凭据（未登录为 null） |\n| data.platform | string | 否 | 当前客户端平台：iOS / Android |\n| data.night | number | 否 | 是否为夜间模式：1 为是，0 为否 |\n| data.statusbar_hight | number | 否 | 状态栏高度（单位 px），用于顶部自定义标题栏避让刘海 |\n| data.titlebar_hight | number | 否 | 标题栏高度（单位 px） |\n| data.bottomSafeHeight | number | 否 | 底部安全区高度（单位 px，如 iPhone 全面屏通常为 34px） |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.auth.getUserInfo().then(res => { if (res.code === 200 && res.data) { console.log(\"当前登录用户：\", res.data.nickname); } else { console.log(\"当前未登录\"); } });\n```"
+    },
+    {
+      "path": "schema.json",
+      "content": "{\n  \"name\": \"auth-getUserInfo\",\n  \"description\": \"获取当前登录用户的基本资料（包含用户唯一标识 PUID、头像、昵称及 Token 等信息）。可用于登录态校验、页面个性化定制与特权判定。\",\n  \"inputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {}\n  },\n  \"outputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"code\": {\n        \"type\": \"number\",\n        \"description\": \"状态码，成功为 200\"\n      },\n      \"message\": {\n        \"type\": \"string\",\n        \"description\": \"提示信息\"\n      },\n      \"data\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"islogin\": {\n            \"type\": \"number\",\n            \"description\": \"是否登录：1 为已登录，0 为未登录/游客\"\n          },\n          \"puid\": {\n            \"type\": \"string\",\n            \"description\": \"用户唯一 ID（未登录为 null）\"\n          },\n          \"nickname\": {\n            \"type\": \"string\",\n            \"description\": \"用户昵称（未登录为 null）\"\n          },\n          \"avatar\": {\n            \"type\": \"string\",\n            \"description\": \"用户头像 URL 链接地址\"\n          },\n          \"userHeadUrl\": {\n            \"type\": \"string\",\n            \"description\": \"用户头像 URL 链接地址（同 avatar）\"\n          },\n          \"authToken\": {\n            \"type\": \"string\",\n            \"description\": \"登录鉴权 Token 凭据（未登录为 null）\"\n          },\n          \"platform\": {\n            \"type\": \"string\",\n            \"description\": \"当前客户端平台：iOS / Android\"\n          },\n          \"night\": {\n            \"type\": \"number\",\n            \"description\": \"是否为夜间模式：1 为是，0 为否\"\n          },\n          \"statusbar_hight\": {\n            \"type\": \"number\",\n            \"description\": \"状态栏高度（单位 px），用于顶部自定义标题栏避让刘海\"\n          },\n          \"titlebar_hight\": {\n            \"type\": \"number\",\n            \"description\": \"标题栏高度（单位 px）\"\n          },\n          \"bottomSafeHeight\": {\n            \"type\": \"number\",\n            \"description\": \"底部安全区高度（单位 px，如 iPhone 全面屏通常为 34px）\"\n          }\n        }\n      }\n    },\n    \"required\": [\n      \"code\",\n      \"message\"\n    ]\n  }\n}"
+    }
+  ],
+  "manifest": {
+    "capability": "auth-getUserInfo",
+    "source": "skill-package",
+    "version": 1
+  }
+}

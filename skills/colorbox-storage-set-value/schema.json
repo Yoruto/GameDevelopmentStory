@@ -1,0 +1,43 @@
+{
+  "name": "storage-setValue",
+  "description": "为当前活动页在本地或 App 容器内安全存储指定的键值数据。支持项目隔离及多端自动同步。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "data": {
+        "type": "object",
+        "description": "需要存储的键值对对象数据，如 { score: 10 }"
+      }
+    },
+    "required": [
+      "data"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "ok": {
+        "type": "boolean",
+        "description": "是否成功发起写入"
+      },
+      "key": {
+        "type": "string",
+        "description": "写入的主键标识"
+      },
+      "keys": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        },
+        "description": "所有写入的键标识列表"
+      },
+      "size": {
+        "type": "number",
+        "description": "本次写入数据的大小，单位字节"
+      }
+    },
+    "required": [
+      "ok"
+    ]
+  }
+}

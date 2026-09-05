@@ -1,0 +1,51 @@
+{
+  "name": "closeWebview",
+  "description": "在虎扑 App 内关闭当前活动页 WebView。适用于提交成功、任务完成、用户点击关闭按钮等明确交互后的页面收起场景。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "channel": {
+        "type": "string",
+        "enum": [
+          "bridge"
+        ],
+        "description": "调用通道，固定使用 bridge。默认值为 bridge，可显式传入 \"bridge\"。"
+      }
+    }
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码，200 表示已发起关闭 WebView 的 Bridge 调用"
+      },
+      "message": {
+        "type": "string",
+        "description": "提示信息"
+      },
+      "data": {
+        "type": "object",
+        "description": "Bridge 调用信息",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "实际调用通道，固定为 bridge"
+          },
+          "method": {
+            "type": "string",
+            "description": "底层 Native Bridge 方法名，固定为 hupu.ui.pageclose"
+          },
+          "bridgeResult": {
+            "type": "object",
+            "description": "客户端 Bridge 回调结果；WebView 关闭成功时可能不会返回有效值"
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

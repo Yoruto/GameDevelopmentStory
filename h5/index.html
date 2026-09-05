@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>游戏开发物语</title>
+  <script type="application/json" id="colorbox-skill-usage">
+{
+  "skills": [
+    "colorbox-cloud-auth",
+    "colorbox-cloud-request",
+    "colorbox-security-check-audit",
+    "colorbox-storage-get-value",
+    "colorbox-storage-set-value",
+    "user-feedback"
+  ]
+}
+</script>
+  <!-- ColorboxAI JS Path（实现在 js/bridge/colorbox.js）：window.ColorboxAI.cloud.auth window.ColorboxAI.cloud.request window.ColorboxAI.security.checkAudit window.ColorboxAI.storage.getValue window.ColorboxAI.storage.setValue -->
+  <script>
+    window.ACTIVITY_API_BASE = "";
+    window.ACTIVITY_ENV_ID = "";
+  </script>
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="app">
+    <section class="scene on" id="sc-boot">
+      <div class="hero">
+        <div class="pill" id="boot-span">点月经营</div>
+        <h1>游戏开发物语</h1>
+        <p>从一间小工作室做起。招人、立项、发售，打到 2025。时间不会自己走，要点「下一月」。</p>
+        <label>公司名</label>
+        <input id="name-input" type="text" maxlength="16" value="">
+        <button class="btn wide" id="btn-start">开张</button>
+        <p class="hint">浏览器直接打开就能玩。虎扑 App 里会走正式存档和内容检查；这边是预览，进度记在这一次打开里。</p>
+        <div class="preview-flag" id="preview-flag-boot">预览模式</div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-hq">
+      <div class="top">
+        <div class="preview-flag badge" id="preview-flag-hq">预览</div>
+        <div class="top-main">
+          <span class="date" id="hq-date">—</span>
+          <span class="funds" id="hq-funds">资金 —</span>
+          <span class="fans" id="hq-fans">粉丝 —</span>
+        </div>
+        <div class="top-sub">
+          <span class="top-chip" id="hq-scale">—</span>
+          <span class="top-chip" id="hq-cap">编制 —</span>
+          <span class="top-chip" id="hq-plats-chip">平台 —</span>
+        </div>
+      </div>
+      <div class="scene-body">
+        <div class="card">
+          <div class="name" id="hq-name">喵扑studio</div>
+          <p class="hint" id="hq-ad">本月没有广告加持</p>
+          <p class="hint" id="hq-trend">当月潮流：—</p>
+          <p class="hint" id="hq-ready">待发售：无</p>
+          <p class="hint" id="hq-chart"></p>
+          <p class="hint" id="hq-mau" hidden></p>
+        </div>
+        <div class="card grow">
+          <h2>员工</h2>
+          <div class="staff-chips" id="hq-staff"></div>
+          <p class="hint warn" id="hq-staff-warn" hidden>还没有员工，先去招人</p>
+        </div>
+        <div class="hq-sums">
+          <button class="hq-sum empty" data-go="project" id="hq-sum-dev"><span>在研</span><b id="hq-dev-n">0</b><em id="hq-dev-one">还没有立项</em></button>
+          <button class="hq-sum" data-go="liveops"><span>长线</span><b id="hq-live-n">0</b><em id="hq-live-one">暂无</em></button>
+          <button class="hq-sum" data-go="released"><span>已发售</span><b id="hq-ship-n">0</b><em id="hq-ship-one">暂无</em></button>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-market">
+      <div class="scene-body">
+        <div class="card">
+          <h2 id="market-head">人才市场</h2>
+          <p class="hint" id="market-hint">招满就不能再雇。特性入职就带，不靠培训。</p>
+          <div class="grid2 list-fit" id="market-list"></div>
+        </div>
+        <div class="card grow">
+          <h2>在职 · 可辞退</h2>
+          <div class="list-fit" id="fire-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-relocate">
+      <div class="scene-body">
+        <div class="card">
+          <h2>换场地</h2>
+          <p id="relocate-copy">换场地花费由配置决定。</p>
+          <p class="hint">升级要你自己点，时间到了不会自动升。</p>
+          <button type="button" class="btn wide mt-12" id="btn-relocate">换场地</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-ad">
+      <div class="scene-body">
+        <div class="card">
+          <h2>广告营销</h2>
+          <p id="ad-copy">广告花费由配置决定。</p>
+          <button type="button" class="btn wide mt-12" id="btn-ad">投放一次</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-pitch">
+      <div class="scene-body">
+        <div class="card grow">
+          <h2>立项</h2>
+          <div class="grid2">
+            <div>
+              <p class="sec-title">题材</p>
+              <div class="chip-box" id="genre-box"></div>
+            </div>
+            <div>
+              <p class="sec-title">玩法</p>
+              <div class="chip-box" id="gameplay-box"></div>
+            </div>
+          </div>
+          <p class="sec-title pitch-plat">平台 / 类型 / 周期</p>
+          <div class="pills" id="plat-box"></div>
+          <div class="pills">
+            <span class="chip on" data-type="boxed">普通发售</span>
+            <span class="chip" data-type="liveops">长线运营</span>
+            <span class="chip" data-type="outsource">外包接活</span>
+          </div>
+          <div class="pills">
+            <span class="chip on" data-cyc="short">短</span>
+            <span class="chip" data-cyc="medium">中</span>
+            <span class="chip" data-cyc="long">长</span>
+          </div>
+          <p class="hint" id="pitch-hint">小工作室不能长线。外包接活可练级。最多 5 人，点选制作组。</p>
+          <p class="hint warn" id="pitch-empty-warn" hidden>还没有员工，先去招人再立项</p>
+          <input id="game-title" type="text" maxlength="16" placeholder="游戏名" value="夜雨江湖">
+          <p class="sec-title">制作组</p>
+          <div class="staff-chips" id="pitch-team"></div>
+          <button class="btn wide" id="btn-pitch">立项开工</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-project">
+      <div class="scene-body">
+        <div class="card" id="pj-card">
+          <h2>在研制作单</h2>
+          <div class="name" id="pj-title">没有在研</div>
+          <p class="hint" id="pj-meta"></p>
+          <div class="bar"><i id="pj-bar"></i></div>
+          <div class="grid2 mt-10">
+            <div class="stat"><b id="pj-p">—</b><span>程序</span></div>
+            <div class="stat"><b id="pj-s">—</b><span>剧本</span></div>
+            <div class="stat"><b id="pj-a">—</b><span>美术</span></div>
+            <div class="stat"><b id="pj-m">—</b><span>音乐</span></div>
+          </div>
+          <div class="item" id="pj-team"></div>
+        </div>
+        <div class="card" id="ready-card">
+          <h2>待发售</h2>
+          <p class="hint" id="ready-hint">制作完成的自制游戏会停在这里，点「发布」才上架。</p>
+          <div id="pj-ready-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-liveops">
+      <div class="scene-body">
+        <div id="liveops-list"></div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-studio">
+      <div class="scene-body">
+        <div class="card" id="studio-lock">
+          <h2>内部工作室</h2>
+          <p id="studio-lock-text">只有大公司才能成立。先换场地再回来。</p>
+        </div>
+        <div class="card" id="studio-ok">
+          <h2>成立工作室</h2>
+          <input id="studio-name" type="text" maxlength="12" value="夜猫组">
+          <p class="hint">编制仍算在公司人数上限里。负责人默认当这间工作室的制作人。点月时所有工作室一起推进。</p>
+          <div id="studio-leads"></div>
+          <button class="btn wide" id="btn-studio">成立</button>
+          <div id="studio-list" class="mt-12"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-media">
+      <div class="scene-body">
+        <div class="card" id="media-card">
+          <h2 id="media-title">媒体评分</h2>
+          <p class="hint">五家各打 1–10 分，按各自对四维的权重折分。</p>
+          <div id="media-rows"></div>
+          <p class="quote" id="media-quote"></p>
+          <div class="row item"><span>均分</span><b id="media-avg">—</b></div>
+          <div class="row item"><span id="media-baseline-label">基准（首月参照）</span><b id="media-baseline">—</b></div>
+          <div class="row item"><span id="media-sales-label">本月实销</span><b id="media-sales">—</b></div>
+          <p class="hint" id="media-sales-hint">基准是发售公式算出的首月参照，不是账上实销。</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-tga">
+      <div class="scene-body">
+        <div class="card">
+          <h2>年度盛典 · 每年 11 月</h2>
+          <p class="hint">参选：去年 12 月到今年 11 月发售的游戏。奖杯抬粉丝和角色荣誉，不发真奖品。</p>
+          <div id="tga-rows"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-released">
+      <div class="scene-body">
+        <div class="card">
+          <h2>待发售</h2>
+          <p class="hint" id="released-ready-hint">点「发布」才走媒体评分和销量，未发布不算发售、不占份额。</p>
+          <div id="released-ready-list"></div>
+        </div>
+        <div class="card">
+          <h2>已发售</h2>
+          <div id="released-list"></div>
+        </div>
+        <div class="card">
+          <h2>系列</h2>
+          <p class="hint">媒体均分够高会自动开系列。系列抬粉丝和续作销量。</p>
+          <div id="series-list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-share">
+      <div class="scene-body">
+        <div class="card grow">
+          <h2>市场 · 三端份额</h2>
+          <div id="hq-share-rows"></div>
+          <div class="row item"><span>本月我方出货</span><b id="hq-mysales">0</b></div>
+          <p class="hint" id="share-hint">三端份额看本公司累计销量对上全市场（含对手出货）。点月后会变。</p>
+          <h2 class="sec-title mt-10" id="chart-head">本月畅销榜</h2>
+          <p class="hint" id="chart-hint">按本月销量排序。</p>
+          <div class="list-fit" id="month-chart"></div>
+          <div class="list-fit" id="rival-month"></div>
+          <h2 class="sec-title mt-10">热门月活</h2>
+          <div class="list-fit" id="rival-mau"></div>
+          <p class="hint" id="hq-console">自研主机：大公司且粉丝够才开放。</p>
+          <div class="pills" id="hq-plats"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-calendar">
+      <div class="scene-body">
+        <div class="card grow">
+          <h2 id="calendar-head">发售日历</h2>
+          <p class="hint" id="calendar-hint">其他厂商计划发售。不含自家待发售。</p>
+          <div class="cal-grid" id="calendar-grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-settled">
+      <div class="scene-body">
+        <div class="card">
+          <h2>生涯结算 · 打完 2025.12</h2>
+          <div class="name" id="end-name">喵扑studio</div>
+          <div class="grid2 mt-10">
+            <div class="stat"><b id="end-scale">—</b><span>规模</span></div>
+            <div class="stat"><b id="end-fans">—</b><span>粉丝</span></div>
+            <div class="stat"><b id="end-games">—</b><span>作品</span></div>
+            <div class="stat"><b id="end-series">—</b><span>系列</span></div>
+          </div>
+          <div class="row item"><span>最高媒体均分</span><b id="end-avg">—</b></div>
+          <div class="row item"><span>最高首发</span><b id="end-sales">—</b></div>
+          <div class="row item"><span>长线最高月收</span><b id="end-live">—</b></div>
+          <div class="row item"><span>自研主机</span><b id="end-console">—</b></div>
+          <p class="hint">只在页里看，不发到微信/微博。可以再开一局。</p>
+          <button type="button" class="btn wide mt-12" id="btn-again1">再开一局</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-bankrupt">
+      <div class="scene-body">
+        <div class="card">
+          <h2>破产 · 本局失败</h2>
+          <p>发薪之后资金变成负数，公司撑不住了。没有「先裁人再撑一个月」的缓冲。</p>
+          <div class="row item"><span>结束于</span><b id="brk-date">—</b></div>
+          <div class="row item"><span>资金</span><b class="stars warn" id="brk-funds">—</b></div>
+          <button type="button" class="btn wide mt-12" id="btn-again2">再开一局</button>
+        </div>
+      </div>
+    </section>
+
+    <div class="dock-shell off" id="dock-shell">
+      <div class="dock-l2" id="dock-ops">
+        <button data-go="relocate">换场地</button>
+        <button data-go="ad">广告</button>
+        <button data-go="project">在研</button>
+        <button data-go="liveops">长线</button>
+        <button data-go="studio">工作室</button>
+      </div>
+      <div class="dock-l2" id="dock-intel">
+        <button data-go="share">市场</button>
+        <button data-go="calendar">日历</button>
+        <button data-go="media">媒体评分</button>
+        <button data-go="tga">年度奖</button>
+        <button data-go="released">作品系列</button>
+        <button data-go="settled">生涯结算</button>
+        <button data-go="bankrupt">破产示意</button>
+        <button id="btn-restart">再开一局</button>
+      </div>
+      <div class="dock-bar">
+        <button class="dock-back off" id="btn-dock-back" type="button">返回</button>
+        <div class="dock-slot off" id="dock-sub-slot"></div>
+        <div class="dock-l1" id="dock-l1">
+          <button data-go="market">招人</button>
+          <button data-go="pitch">立项</button>
+          <button data-sheet="ops" id="btn-sheet-ops">经营</button>
+          <button data-sheet="intel" id="btn-sheet-intel">情报</button>
+        </div>
+        <button class="dock-tick" id="btn-tick">下一月</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="mask" id="dlg-mask">
+    <div class="dlg dlg-info" id="dlg">
+      <p class="dlg-kicker" id="dlg-kicker">提示</p>
+      <h2 id="dlg-title">提示</h2>
+      <p class="dlg-body" id="dlg-body"></p>
+      <div class="dlg-extra" id="dlg-extra"></div>
+      <div class="dlg-actions" id="dlg-actions">
+        <button class="btn ghost dlg-cancel off" id="dlg-cancel" type="button">取消</button>
+        <button class="btn dlg-ok" id="dlg-ok" type="button">确定</button>
+      </div>
+    </div>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script src="js/config.generated.js"></script>
+  <script src="js/sim/ns.js"></script>
+  <script src="js/sim/rng.js"></script>
+  <script src="js/sim/util.js"></script>
+  <script src="js/sim/company.js"></script>
+  <script src="js/sim/staff.js"></script>
+  <script src="js/sim/project.js"></script>
+  <script src="js/sim/liveops.js"></script>
+  <script src="js/sim/series.js"></script>
+  <script src="js/sim/rivals.js"></script>
+  <script src="js/sim/events.js"></script>
+  <script src="js/sim/lifecycle.js"></script>
+  <script src="js/sim/media.js"></script>
+  <script src="js/sim/awards.js"></script>
+  <script src="js/sim/tick.js"></script>
+  <script src="js/sim/actions.js"></script>
+  <script src="js/bridge/colorbox.js"></script>
+  <script src="js/save/port.js"></script>
+  <script src="js/ui/dom.js"></script>
+  <script src="js/ui/paint.js"></script>
+  <script src="js/ui/panels.js"></script>
+  <script src="js/ui/app.js"></script>
+</body>
+</html>

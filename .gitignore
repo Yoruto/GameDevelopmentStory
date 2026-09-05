@@ -1,0 +1,14 @@
+# 云服务凭据（敏感，不入库；仅部署阶段读取）
+credentials.json
+
+# Cursor 从 .cursor/skills 发现技能；该目录是指向 skills/ 的本地 junction，不入库
+.cursor/skills
+
+# 运行状态与本地产物
+state/*.json
+skills/runbook/state/
+__pycache__/
+*.pyc
+
+# 本地云查询快照（不是凭据，但也不入库）
+env-detail.json

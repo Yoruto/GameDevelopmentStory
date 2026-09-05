@@ -1,0 +1,190 @@
+{
+  "name": "request-activity-getVoteDetail",
+  "description": "查询投票活动详情，包括活动基本信息、投票分组及候选选项数据。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "activityId": {
+        "type": "string",
+        "description": "投票活动唯一ID，例如 \"1\""
+      }
+    },
+    "required": [
+      "activityId"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "object",
+        "description": "成功时返回的数据载荷",
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "活动ID"
+          },
+          "name": {
+            "type": "string",
+            "description": "活动名称"
+          },
+          "startDt": {
+            "type": "string",
+            "description": "活动开始时间（如 \"2026-07-17 14:50:44\"）"
+          },
+          "endDt": {
+            "type": "string",
+            "description": "活动结束时间（如 \"2026-07-19 23:59:59\"）"
+          },
+          "userRemainVoteNum": {
+            "type": "number",
+            "description": "当前用户剩余投票次数"
+          },
+          "promoteOptionCount": {
+            "type": "number",
+            "description": "推广/置顶选项数量"
+          },
+          "groups": {
+            "type": "array",
+            "description": "投票分组（赛道）列表",
+            "items": {
+              "type": "object",
+              "description": "投票分组（赛道），父子结构相同，可递归嵌套",
+              "properties": {
+                "id": {
+                  "type": "number",
+                  "description": "分组ID"
+                },
+                "activityId": {
+                  "type": "number",
+                  "description": "所属活动ID"
+                },
+                "name": {
+                  "type": "string",
+                  "description": "分组名称"
+                },
+                "pic": {
+                  "type": "string",
+                  "description": "分组图片 URL"
+                },
+                "selectedPic": {
+                  "type": "string",
+                  "description": "分组选中态图片 URL"
+                },
+                "voteNum": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "分组总投票数（可能为 null）"
+                },
+                "userVoteNum": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "当前用户在该分组的投票数（可能为 null）"
+                },
+                "allowMaxVoteNum": {
+                  "type": "number",
+                  "description": "该分组允许的最大投票数"
+                },
+                "parentId": {
+                  "type": "number",
+                  "description": "父分组ID，0 表示顶级分组"
+                },
+                "sort": {
+                  "type": "number",
+                  "description": "排序序号"
+                },
+                "items": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "description": "该分组内的候选项列表（可能为 null，候选项通常挂在子分组下）",
+                  "items": {
+                    "type": "object",
+                    "description": "投票候选项",
+                    "properties": {
+                      "id": {
+                        "type": "number",
+                        "description": "选项ID"
+                      },
+                      "activityId": {
+                        "type": "number",
+                        "description": "所属活动ID"
+                      },
+                      "groupId": {
+                        "type": "number",
+                        "description": "所属分组ID"
+                      },
+                      "name": {
+                        "type": "string",
+                        "description": "选项名称"
+                      },
+                      "pic": {
+                        "type": "string",
+                        "description": "选项图片 URL"
+                      },
+                      "voteNum": {
+                        "type": "number",
+                        "description": "该选项得票数"
+                      },
+                      "userVoteNum": {
+                        "type": "number",
+                        "description": "当前用户已投给该选项的票数"
+                      },
+                      "allowMaxVoteNum": {
+                        "type": "number",
+                        "description": "该选项允许的最大投票数"
+                      },
+                      "itemDesc": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "选项描述（可能为 null）"
+                      },
+                      "jumpUrl": {
+                        "type": [
+                          "string",
+                          "null"
+                        ],
+                        "description": "选项跳转链接（可能为 null）"
+                      }
+                    }
+                  }
+                },
+                "subGroups": {
+                  "type": "array",
+                  "description": "子分组列表，结构与本分组相同，可继续嵌套",
+                  "items": {
+                    "$circular": true,
+                    "description": "circular schema reference"
+                  }
+                }
+              }
+            }
+          },
+          "status": {
+            "type": "string",
+            "description": "活动状态（如 ENDED 已结束、START 进行中）"
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

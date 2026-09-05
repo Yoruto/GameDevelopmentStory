@@ -1,0 +1,54 @@
+{
+  "name": "cloud-auth",
+  "description": "使用当前虎扑登录态向鉴权中心一步换取活动 CloudBase 环境的 Bearer accessToken（服务端完成 ticket + signin/custom），并通过 storage 持久化存储 Session。活动页访问需登录的云函数网关接口前调用。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "envId": {
+        "type": "string",
+        "description": "活动 CloudBase 环境 ID（腾讯云 EnvId，非 alias）"
+      }
+    },
+    "required": [
+      "envId"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码，成功为 200"
+      },
+      "message": {
+        "type": "string",
+        "description": "提示信息"
+      },
+      "data": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "description": "CloudBase Bearer accessToken"
+          },
+          "expiresIn": {
+            "type": "number",
+            "description": "有效期（秒）"
+          },
+          "envId": {
+            "type": "string",
+            "description": "活动环境 EnvId"
+          },
+          "customUserId": {
+            "type": "string",
+            "description": "自定义登录用户 ID（通常为虎扑 puid）"
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

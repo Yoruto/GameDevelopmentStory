@@ -1,0 +1,30 @@
+{
+  "name": "social-share",
+  "description": "唤起原生分享面板，支持分享微信、微博。当页面需要进行社交平台分享时引导 AI 调用。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "title": {
+        "type": "string",
+        "description": "分享标题"
+      },
+      "link": {
+        "type": "string",
+        "description": "分享链接 URL，必须是 http/https 开头的完整链接"
+      },
+      "text": {
+        "type": "string",
+        "description": "可选，分享的副标题/描述文本"
+      },
+      "imageUrl": {
+        "type": "string",
+        "description": "可选，分享卡片的缩略图图片 URL"
+      }
+    },
+    "required": [
+      "title",
+      "link"
+    ]
+  },
+  "outputSchema": null
+}

@@ -1,0 +1,156 @@
+{
+  "name": "request-news-playerNewsList",
+  "description": "获取篮球/足球球员的资讯新闻列表。支持分页加载下一页。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "playerId": {
+        "type": "string",
+        "description": "球员ID，例如 \"1901000000473842\" (篮球) 或 \"30389\" (足球)"
+      },
+      "newsId": {
+        "type": "string",
+        "description": "用于分页的分界新闻ID，取上一页 data 数组最后一项的 nid，不传则默认为第一页。"
+      },
+      "page": {
+        "type": "number",
+        "description": "当前页码，仅篮球分类分页时有效，不传则默认为第一页。"
+      },
+      "category": {
+        "type": "string",
+        "description": "赛事类别：basketball(篮球) 或 football(足球)"
+      }
+    },
+    "required": [
+      "playerId",
+      "category"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "object",
+        "description": "成功时返回的数据载荷",
+        "properties": {
+          "data": {
+            "type": "array",
+            "description": "新闻资讯列表",
+            "items": {
+              "type": "object",
+              "description": "球员资讯新闻列表项",
+              "properties": {
+                "nid": {
+                  "type": "string",
+                  "description": "新闻唯一 ID，分页游标取列表最后一项的该字段"
+                },
+                "tid": {
+                  "type": "string",
+                  "description": "关联帖子/话题 ID"
+                },
+                "type": {
+                  "type": "string",
+                  "description": "内容展示类型，如 IMG_TEXT（图文）、VIDEO（视频）、LINK（跳转）"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "新闻标题"
+                },
+                "img": {
+                  "type": "string",
+                  "description": "封面图 URL"
+                },
+                "replies": {
+                  "type": "number",
+                  "description": "回复数"
+                },
+                "lights": {
+                  "type": "number",
+                  "description": "亮评数"
+                },
+                "link": {
+                  "type": "string",
+                  "description": "跳转链接，如 kanqiu://bbs/topic/{tid}"
+                },
+                "linkType": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "链接类型；type 为 LINK 时可能为 \"POST\"，其余多为 null"
+                },
+                "badge": {
+                  "type": "array",
+                  "items": {
+                    "type": "object"
+                  },
+                  "description": "角标列表，可能为空数组"
+                },
+                "publishTime": {
+                  "type": "string",
+                  "description": "发布时间，格式如 \"2026-07-20 17:40:56\""
+                },
+                "addTime": {
+                  "type": "number",
+                  "description": "发布时间戳（秒）"
+                },
+                "oldNewsId": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "description": "旧版新闻 ID，可能为 null"
+                },
+                "top": {
+                  "type": "boolean",
+                  "description": "是否置顶"
+                },
+                "pv": {
+                  "type": [
+                    "number",
+                    "null"
+                  ],
+                  "description": "浏览量，可能为 null"
+                },
+                "gifList": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "object"
+                  },
+                  "description": "动图列表，可能为 null"
+                },
+                "read": {
+                  "type": "string",
+                  "description": "已读标识，通常与 nid 相同"
+                },
+                "showComment": {
+                  "type": "number",
+                  "description": "是否展示评论，1 表示展示"
+                }
+              }
+            }
+          },
+          "nextPage": {
+            "type": "number",
+            "description": "下一页页码；用于篮球分页的 page 参数"
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

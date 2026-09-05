@@ -1,0 +1,41 @@
+{
+  "id": "colorbox-security-check-audit",
+  "name": "内容安全检测",
+  "description": "在用户提交文本内容或触发图片生成前，调用风控接口进行敏感内容安全检测。支持敏感词检测，自动识别未登录状态并统一返回 code、message 与 data 结构。",
+  "category": "安全与合规",
+  "categories": [
+    "安全与合规"
+  ],
+  "icon": "lock",
+  "details": {
+    "capabilities": [
+      "内容安全检测：在用户提交文本内容或触发图片生成前，调用风控接口进行敏感内容安全检测。支持敏感词检测，自动识别未登录状态并统一返回 code、message 与 data 结构。",
+      "对用户输入、页面内容或资源使用进行安全检查。",
+      "提供审核结果，便于应用决定拦截、提示或继续执行。"
+    ],
+    "scenarios": [
+      "发布内容、提交表单和加载外部资源之前的检查。",
+      "需要满足平台安全规范与风险控制要求的功能。"
+    ],
+    "usageTips": [
+      "将安全检查放在提交或发布前的关键路径上。",
+      "根据结果给出可执行的用户提示，避免暴露内部规则。"
+    ]
+  },
+  "content": "---\nname: security-checkAudit\ndescription: 在用户提交文本内容或触发图片生成前，调用风控接口进行敏感内容安全检测。支持敏感词检测，自动识别未登录状态并统一返回 code、message 与 data 结构。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.security.checkAudit(params)`\n\n# Constraints\n\n- 必须且只能通过 window.ColorboxAI.security.checkAudit(content) 接口进行敏感词检测，严禁直接手写原始风控接口 URL\n- 未登录时，返回 { code: 401, message: \"用户未登录\", data: null }；前端应及时拦截提交并提示用户登录\n- 校验正常请求成功时，返回 { code: 200, message: \"success\", data: boolean }，其中 data 为 true 代表安全通过，data 为 false 代表包含敏感内容需予以拦截提示\n- 接口异常或网络超时等系统级错误时，返回 { code: 500, message: \"请求失败\", data: null }，需做好友好兜底提示\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| content | string | 是 | 待检测的文本内容字符串 |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| code | number | 是 | 状态码：200 成功，401 未登录，500 异常 |\n| message | string | 是 | 提示信息 |\n| data | boolean | 否 | 是否安全通过，true 表示安全，false 表示包含敏感拦截 |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.security.checkAudit(\"测试文本\").then(res => { if (res.code === 200 && res.data === true) { console.log(\"通过\"); } })\n```",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "content": "---\nname: security-checkAudit\ndescription: 在用户提交文本内容或触发图片生成前，调用风控接口进行敏感内容安全检测。支持敏感词检测，自动识别未登录状态并统一返回 code、message 与 data 结构。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.security.checkAudit(params)`\n\n# Constraints\n\n- 必须且只能通过 window.ColorboxAI.security.checkAudit(content) 接口进行敏感词检测，严禁直接手写原始风控接口 URL\n- 未登录时，返回 { code: 401, message: \"用户未登录\", data: null }；前端应及时拦截提交并提示用户登录\n- 校验正常请求成功时，返回 { code: 200, message: \"success\", data: boolean }，其中 data 为 true 代表安全通过，data 为 false 代表包含敏感内容需予以拦截提示\n- 接口异常或网络超时等系统级错误时，返回 { code: 500, message: \"请求失败\", data: null }，需做好友好兜底提示\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| content | string | 是 | 待检测的文本内容字符串 |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| code | number | 是 | 状态码：200 成功，401 未登录，500 异常 |\n| message | string | 是 | 提示信息 |\n| data | boolean | 否 | 是否安全通过，true 表示安全，false 表示包含敏感拦截 |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.security.checkAudit(\"测试文本\").then(res => { if (res.code === 200 && res.data === true) { console.log(\"通过\"); } })\n```"
+    },
+    {
+      "path": "schema.json",
+      "content": "{\n  \"name\": \"security-checkAudit\",\n  \"description\": \"在用户提交文本内容或触发图片生成前，调用风控接口进行敏感内容安全检测。支持敏感词检测，自动识别未登录状态并统一返回 code、message 与 data 结构。\",\n  \"inputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"content\": {\n        \"type\": \"string\",\n        \"description\": \"待检测的文本内容字符串\"\n      }\n    },\n    \"required\": [\n      \"content\"\n    ]\n  },\n  \"outputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"code\": {\n        \"type\": \"number\",\n        \"description\": \"状态码：200 成功，401 未登录，500 异常\"\n      },\n      \"message\": {\n        \"type\": \"string\",\n        \"description\": \"提示信息\"\n      },\n      \"data\": {\n        \"type\": \"boolean\",\n        \"description\": \"是否安全通过，true 表示安全，false 表示包含敏感拦截\"\n      }\n    },\n    \"required\": [\n      \"code\",\n      \"message\"\n    ]\n  }\n}"
+    }
+  ],
+  "manifest": {
+    "capability": "security-checkAudit",
+    "source": "skill-package",
+    "version": 1
+  }
+}

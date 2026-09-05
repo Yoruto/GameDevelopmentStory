@@ -1,0 +1,43 @@
+{
+  "name": "request-bbs-replyPost",
+  "description": "在虎扑 App 内通过 Bridge 创建帖子回复，支持传入帖子 tid 和回帖内容 content。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "tid": {
+        "type": "string",
+        "description": "目标帖子 ID，例如 \"640720803\""
+      },
+      "content": {
+        "type": "string",
+        "description": "回帖内容字符串，不能为空"
+      }
+    },
+    "required": [
+      "tid",
+      "content"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "object",
+        "description": "成功时返回的数据载荷",
+        "properties": {}
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

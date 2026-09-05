@@ -1,0 +1,4 @@
+interface:
+  display_name: "游戏跳转"
+  short_description: "处理 h5game.hupu.com 在 App 内外的跳转改写"
+  default_prompt: "使用 $game-jump 处理活动页里指向 h5game.hupu.com 的链接跳转改造，App 内走 window.ColorboxAI.navigate.to。"

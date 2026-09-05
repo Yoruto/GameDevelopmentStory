@@ -1,0 +1,291 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+<script type="application/json" id="colorbox-skill-usage">
+{
+  "skills": [
+    "colorbox-cloud-auth",
+    "colorbox-cloud-request",
+    "user-feedback"
+  ]
+}
+</script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>积分排行榜</title>
+    <style>
+      :root {
+        color: #3d3d3d;
+        background: #f4f7f8;
+        font-family:
+          'PingFang SC',
+          -apple-system,
+          BlinkMacSystemFont,
+          'Segoe UI',
+          Roboto,
+          Helvetica,
+          Arial,
+          sans-serif;
+        font-variant-numeric: tabular-nums;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        min-width: 320px;
+        min-height: 100vh;
+        margin: 0;
+        background: #f4f7f8;
+      }
+
+      main {
+        width: min(100%, 390px);
+        min-height: 100vh;
+        padding: 34px 16px 24px;
+        margin: 0 auto;
+        background: #ffffff;
+      }
+
+      header {
+        padding-bottom: 15px;
+        border-bottom: 1px solid #edf3f4;
+      }
+
+      h1 {
+        margin: 0;
+        color: #1a1f26;
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 1.35;
+      }
+
+      .live-status {
+        display: block;
+        margin-top: 5px;
+        color: #4a8b8f;
+        font-size: 11px;
+        line-height: 1.4;
+      }
+
+      .my-rank {
+        display: grid;
+        gap: 3px;
+        padding: 15px 0 14px;
+        border-bottom: 1px solid #edf3f4;
+      }
+
+      .my-rank-label {
+        color: #6f7e8c;
+        font-size: 12px;
+        line-height: 1.4;
+      }
+
+      .my-rank-value {
+        color: #1a1f26;
+        font-size: 20px;
+        font-weight: 600;
+        line-height: 1.35;
+      }
+
+      .leaderboard {
+        padding-top: 1px;
+        border-top: 1px solid #d8e3e8;
+      }
+
+      .load-status {
+        padding: 22px 0;
+        color: #6f7e8c;
+        font-size: 12px;
+        text-align: center;
+      }
+
+      .leaderboard-row {
+        display: grid;
+        grid-template-columns: 24px 32px minmax(0, 1fr) auto;
+        min-height: 58px;
+        align-items: center;
+        column-gap: 8px;
+        border-bottom: 1px solid #edf3f4;
+      }
+
+      .leaderboard-row.current-user {
+        padding: 0 8px;
+        margin: 0 -8px;
+        background: #f0f7f7;
+        border-bottom-color: #d5e8e8;
+      }
+
+      .rank {
+        display: grid;
+        min-width: 24px;
+        place-items: center;
+        color: #6f7e8c;
+        font-size: 12px;
+        line-height: 1;
+      }
+
+      .rank.top-one {
+        color: #b27a2c;
+      }
+
+      .rank.top-two {
+        color: #778692;
+      }
+
+      .rank.top-three {
+        color: #9b633e;
+      }
+
+      .avatar {
+        display: grid;
+        width: 32px;
+        height: 32px;
+        place-items: center;
+        color: #ffffff;
+        font-size: 12px;
+        background: #78aeb0;
+        border-radius: 50%;
+      }
+
+      .current-user .avatar {
+        background: #4a8b8f;
+      }
+
+      .name {
+        min-width: 0;
+        overflow: hidden;
+        color: #3d3d3d;
+        font-size: 13px;
+        line-height: 1.4;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .me {
+        display: inline-block;
+        padding: 1px 4px;
+        margin-left: 5px;
+        color: #4a8b8f;
+        font-size: 10px;
+        line-height: 1.2;
+        background: #dceeee;
+      }
+
+      .score {
+        color: #1a1f26;
+        font-size: 13px;
+        font-weight: 600;
+        line-height: 1.35;
+      }
+
+      @media (min-width: 480px) {
+        body {
+          display: grid;
+          place-items: center;
+          padding: 24px;
+        }
+
+        main {
+          min-height: 640px;
+          border: 1px solid #d8e3e8;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>积分排行榜</h1>
+        <span class="live-status">实时榜单</span>
+      </header>
+
+      <section class="my-rank" aria-label="我的排名">
+        <span class="my-rank-label">我的排名</span>
+        <strong class="my-rank-value" id="my-rank-value">正在加载</strong>
+      </section>
+
+      <section class="leaderboard" aria-label="积分排行榜列表" id="leaderboard-list">
+        <div class="load-status" id="load-status">正在加载榜单...</div>
+      </section>
+    </main>
+
+    <script>
+      window.ACTIVITY_API_BASE = "";
+      window.ACTIVITY_ENV_ID = "";
+
+      const rankValue = document.getElementById("my-rank-value");
+      const leaderboardList = document.getElementById("leaderboard-list");
+      const loadStatus = document.getElementById("load-status");
+
+      function showStatus(message) {
+        loadStatus.textContent = message;
+      }
+
+      function initials(name) {
+        return String(name || "虎").trim().slice(0, 1) || "虎";
+      }
+
+      function renderLeaderboard(entries) {
+        if (!entries.length) {
+          showStatus("暂时还没有成绩");
+          return;
+        }
+        leaderboardList.innerHTML = entries.map((entry) => {
+          const rankClass = entry.rank === 1 ? "top-one" : entry.rank === 2 ? "top-two" : entry.rank === 3 ? "top-three" : "";
+          const currentClass = entry.isCurrent ? " current-user" : "";
+          const currentLabel = entry.isCurrent ? '<span class="me">我</span>' : "";
+          return `<div class="leaderboard-row${currentClass}">
+            <span class="rank ${rankClass}">${entry.rank}</span>
+            <span class="avatar" aria-hidden="true">${initials(entry.displayName)}</span>
+            <span class="name">${escapeHtml(entry.displayName)}${currentLabel}</span>
+            <span class="score">${Number(entry.score).toLocaleString("zh-CN")}</span>
+          </div>`;
+        }).join("");
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>'"]/g, (char) => ({
+          "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
+        }[char]));
+      }
+
+      async function request(path, options = {}) {
+        if (!window.ACTIVITY_API_BASE || !window.ACTIVITY_ENV_ID || !window.ColorboxAI?.cloud) {
+          throw new Error("榜单服务暂未配置");
+        }
+        const response = await window.ColorboxAI.cloud.request({
+          url: window.ACTIVITY_API_BASE + path,
+          method: options.method || "GET",
+          data: options.data,
+          envId: window.ACTIVITY_ENV_ID,
+          auth: true
+        });
+        if (response.statusCode === 401) throw new Error("请先登录");
+        if (response.statusCode !== 200 || response.code !== 0) {
+          throw new Error(response.message || "榜单加载失败");
+        }
+        return response.data;
+      }
+
+      async function loadLeaderboard() {
+        try {
+          const auth = await window.ColorboxAI.cloud.auth({ envId: window.ACTIVITY_ENV_ID });
+          if (!auth || auth.code !== 200) throw new Error(auth?.message || "请先登录");
+          const [entries, mine] = await Promise.all([
+            request("/leaderboard"),
+            request("/leaderboard/me")
+          ]);
+          renderLeaderboard(Array.isArray(entries) ? entries : []);
+          rankValue.textContent = mine ? `第 ${mine.rank} 名` : "暂未上榜";
+        } catch (error) {
+          rankValue.textContent = "暂不可用";
+          showStatus(error.message || "榜单加载失败");
+        }
+      }
+
+      loadLeaderboard();
+    </script>
+  </body>
+</html>

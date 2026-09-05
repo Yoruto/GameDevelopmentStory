@@ -1,0 +1,60 @@
+{
+  "name": "cloud-request",
+  "description": "向活动 CloudBase 网关发起 HTTP 请求。若本地已有 cloud.auth 登录态，自动附加 Authorization Bearer；需登录的写接口可传 auth:true + envId 自动先登录。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "url": {
+        "type": "string",
+        "description": "完整请求 URL（通常为 ACTIVITY_API_BASE + path）"
+      },
+      "method": {
+        "type": "string",
+        "description": "HTTP 方法，支持 GET / POST，默认 GET"
+      },
+      "headers": {
+        "type": "object",
+        "description": "自定义请求头，可选"
+      },
+      "data": {
+        "type": "object",
+        "description": "请求数据；GET 作为 query，POST 作为 JSON body，可选"
+      },
+      "envId": {
+        "type": "string",
+        "description": "活动 EnvId；auth 为 true 或需要自动登录时必填"
+      },
+      "auth": {
+        "type": "boolean",
+        "description": "是否要求登录。true 时若无 Bearer 会先调用 cloud.auth；默认 false"
+      }
+    },
+    "required": [
+      "url"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "statusCode": {
+        "type": "number",
+        "description": "HTTP 状态码"
+      },
+      "code": {
+        "type": "number",
+        "description": "业务 code（若响应体含 code）"
+      },
+      "message": {
+        "type": "string",
+        "description": "提示信息"
+      },
+      "data": {
+        "type": "object",
+        "description": "响应 data 字段或完整 JSON"
+      }
+    },
+    "required": [
+      "statusCode"
+    ]
+  }
+}

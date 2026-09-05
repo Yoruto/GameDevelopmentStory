@@ -1,0 +1,24 @@
+{
+  "metaActivityId": "project-ai-demo",
+  "alias": "ai-demo",
+  "envId": "ai-demo-envid-xxx",
+  "resources": {
+    "functions": [
+      "activity_api"
+    ],
+    "gatewayRoutes": [
+      "/api",
+      "/api/posts"
+    ]
+  },
+  "publicBaseUrl": "https://<envId>-<appid>.<region>.app.tcloudbase.com",
+  "verification": {
+    "ok": true,
+    "healthChecked": true,
+    "postsReadChecked": true,
+    "postsWriteChecked": true
+  },
+  "activity": {
+    "status": "verified"
+  }
+}

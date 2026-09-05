@@ -1,0 +1,360 @@
+{
+  "name": "request-basketball-playerInfo",
+  "description": "获取篮球球员（NBA / CBA）的基础头部及属性资料。",
+  "inputSchema": {
+    "type": "object",
+    "properties": {
+      "playerId": {
+        "type": "string",
+        "description": "球员唯一ID，例如 \"1305275826765299712\""
+      },
+      "leagueType": {
+        "type": "string",
+        "description": "联赛类型：CBA 或 NBA"
+      }
+    },
+    "required": [
+      "playerId",
+      "leagueType"
+    ]
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {
+      "code": {
+        "type": "number",
+        "description": "状态码。200 表示成功，401 表示未登录，404 表示内容不存在，500 表示服务器错误"
+      },
+      "message": {
+        "type": "string",
+        "description": "错误提示信息。当 code 不等于 200 时必须用于向用户友好提示"
+      },
+      "data": {
+        "type": "object",
+        "description": "成功时返回的数据载荷",
+        "properties": {
+          "player": {
+            "type": "object",
+            "description": "球员详细属性集合",
+            "properties": {
+              "playerId": {
+                "type": "string",
+                "description": "球员唯一ID"
+              },
+              "name": {
+                "type": "string",
+                "description": "球员中文名（如 乔丹-米奇）"
+              },
+              "alias": {
+                "type": "string",
+                "description": "球员别名（如 米奇）"
+              },
+              "teamLinkUrl": {
+                "type": "string",
+                "description": "球队详情跳转链接"
+              },
+              "teamDayColor": {
+                "type": "string",
+                "description": "球队日间主题色（十六进制，无 # 前缀）"
+              },
+              "teamNightColor": {
+                "type": "string",
+                "description": "球队夜间主题色（十六进制，无 # 前缀）"
+              },
+              "teamLogoLink": {
+                "type": "string",
+                "description": "球队队徽图片 URL"
+              },
+              "age": {
+                "type": "string",
+                "description": "年龄（字符串）"
+              },
+              "lastSeason": {
+                "type": "string",
+                "description": "上赛季信息（可能为 null）"
+              },
+              "wage": {
+                "type": "string",
+                "description": "工资（可能为 null）"
+              },
+              "salary": {
+                "type": "string",
+                "description": "薪资（可能为 null）"
+              },
+              "salaryRank": {
+                "type": "string",
+                "description": "薪资排名（可能为 null）"
+              },
+              "country": {
+                "type": "string",
+                "description": "国籍（如 美国）"
+              },
+              "nativePlace": {
+                "type": "string",
+                "description": "籍贯（可能为 null）"
+              },
+              "sameCountryCount": {
+                "type": "number",
+                "description": "同国籍球员数（可能为 null）"
+              },
+              "sameNativePlaceCount": {
+                "type": "number",
+                "description": "同籍贯球员数（可能为 null）"
+              },
+              "sameCollegeCount": {
+                "type": "number",
+                "description": "同大学球员数（可能为 null）"
+              },
+              "draftRound": {
+                "type": "number",
+                "description": "NBA 选秀轮次（可能为 null）"
+              },
+              "draftPick": {
+                "type": "number",
+                "description": "NBA 选秀顺位（可能为 null）"
+              },
+              "cbaDraftYear": {
+                "type": "number",
+                "description": "CBA 选秀年份（可能为 null）"
+              },
+              "cbaDraftTeamId": {
+                "type": "string",
+                "description": "CBA 选秀球队ID"
+              },
+              "cbaDraftRound": {
+                "type": "number",
+                "description": "CBA 选秀轮次（可能为 null）"
+              },
+              "cbaDraftPick": {
+                "type": "number",
+                "description": "CBA 选秀顺位（可能为 null）"
+              },
+              "contractDetails": {
+                "type": "string",
+                "description": "NBA 合同详情（可能为 null）"
+              },
+              "cbaContractDetails": {
+                "type": "string",
+                "description": "CBA 合同详情（可能为 null）"
+              },
+              "deathTime": {
+                "type": "string",
+                "description": "去世时间（可能为 null）"
+              },
+              "deathDate": {
+                "type": "string",
+                "description": "去世日期（可能为 null）"
+              },
+              "playerLink": {
+                "type": "string",
+                "description": "球员详情跳转链接（可能为 null）"
+              },
+              "teamName": {
+                "type": "string",
+                "description": "当前球队简称（如 青岛）"
+              },
+              "teamInfoList": {
+                "type": "array",
+                "description": "球员所属球队信息列表",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "teamId": {
+                      "type": "string",
+                      "description": "球队ID"
+                    },
+                    "leagueType": {
+                      "type": "string",
+                      "description": "联赛类型（如 CBA、NBA）"
+                    },
+                    "teamName": {
+                      "type": "string",
+                      "description": "球队简称"
+                    },
+                    "teamFullName": {
+                      "type": "string",
+                      "description": "球队全称"
+                    },
+                    "bbr": {
+                      "type": "string",
+                      "description": "球队 BBR 标识"
+                    },
+                    "dayColor": {
+                      "type": "string",
+                      "description": "日间主题色"
+                    },
+                    "nightColor": {
+                      "type": "string",
+                      "description": "夜间主题色"
+                    },
+                    "shirtNumber": {
+                      "type": "string",
+                      "description": "球衣号码（可能为 null）"
+                    },
+                    "logoLink": {
+                      "type": "string",
+                      "description": "队徽图片 URL"
+                    }
+                  }
+                }
+              },
+              "nbaGdcId": {
+                "type": "number",
+                "description": "NBA GDC ID（可能为 null）"
+              },
+              "cbaGdcId": {
+                "type": "number",
+                "description": "CBA GDC ID（可能为 null）"
+              },
+              "gid": {
+                "type": "number",
+                "description": "内部 gid"
+              },
+              "info": {
+                "type": "string",
+                "description": "额外说明信息（可能为 null）"
+              },
+              "encyclItemId": {
+                "type": "number",
+                "description": "百科词条ID"
+              },
+              "leaveTeam": {
+                "type": "boolean",
+                "description": "是否已离队"
+              },
+              "countryPhoto": {
+                "type": "string",
+                "description": "国旗图片 URL"
+              },
+              "eng_name": {
+                "type": "string",
+                "description": "英文全名"
+              },
+              "first_name": {
+                "type": "string",
+                "description": "英文名"
+              },
+              "last_name": {
+                "type": "string",
+                "description": "英文姓"
+              },
+              "nick": {
+                "type": "string",
+                "description": "昵称（可能为 null）"
+              },
+              "photo": {
+                "type": "string",
+                "description": "球员头像小图 URL"
+              },
+              "big_photo": {
+                "type": "string",
+                "description": "球员头像大图 URL"
+              },
+              "number": {
+                "type": "string",
+                "description": "球衣号码（如 \"55\"）"
+              },
+              "position": {
+                "type": "string",
+                "description": "场上位置（如 中锋）"
+              },
+              "birth_date": {
+                "type": "string",
+                "description": "出生日期（如 1994年07月09日）"
+              },
+              "nba_first_year": {
+                "type": "number",
+                "description": "NBA 首秀年份（可能为 null）"
+              },
+              "cba_first_year": {
+                "type": "number",
+                "description": "CBA 首秀年份"
+              },
+              "height": {
+                "type": "number",
+                "description": "身高（米，如 2.03）"
+              },
+              "weight": {
+                "type": "number",
+                "description": "体重（公斤，如 107）"
+              },
+              "draft_year": {
+                "type": "number",
+                "description": "选秀年份（可能为 null）"
+              },
+              "draft_team_id": {
+                "type": "string",
+                "description": "选秀球队ID"
+              },
+              "high_school": {
+                "type": "string",
+                "description": "高中（可能为 null）"
+              },
+              "college_school": {
+                "type": "string",
+                "description": "大学（可能为 null）"
+              },
+              "wingspan": {
+                "type": "number",
+                "description": "臂展（可能为 null）"
+              },
+              "standing_reach": {
+                "type": "number",
+                "description": "站立摸高（可能为 null）"
+              },
+              "territorial_pick": {
+                "type": "number",
+                "description": "地区选秀标记"
+              },
+              "team_id": {
+                "type": "string",
+                "description": "球队ID（可能为 null）"
+              }
+            }
+          },
+          "pageTab": {
+            "type": "array",
+            "description": "球员页 Tab 列表",
+            "items": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "description": "Tab 标题（如 数据、投篮、生涯）"
+                },
+                "pageLink": {
+                  "type": "string",
+                  "description": "Tab 路径（如 /data、/shot）"
+                },
+                "show": {
+                  "type": "boolean",
+                  "description": "是否展示该 Tab"
+                }
+              }
+            }
+          },
+          "tagId": {
+            "type": "string",
+            "description": "关联话题标签ID（可能为 null）"
+          },
+          "tagName": {
+            "type": "string",
+            "description": "关联话题标签名（可能为 null）"
+          },
+          "tagViewCount": {
+            "type": "number",
+            "description": "话题浏览数（可能为 null）"
+          },
+          "tagThreadCount": {
+            "type": "number",
+            "description": "话题帖子数（可能为 null）"
+          }
+        }
+      }
+    },
+    "required": [
+      "code",
+      "message"
+    ]
+  }
+}

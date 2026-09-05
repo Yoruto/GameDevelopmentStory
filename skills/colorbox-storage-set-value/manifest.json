@@ -1,0 +1,41 @@
+{
+  "id": "colorbox-storage-set-value",
+  "name": "写入本地存储",
+  "description": "为当前活动页在本地或 App 容器内安全存储指定的键值数据。支持项目隔离及多端自动同步。",
+  "category": "存储与上传",
+  "categories": [
+    "存储与上传"
+  ],
+  "icon": "bluetooth",
+  "details": {
+    "capabilities": [
+      "写入本地存储：为当前活动页在本地或 App 容器内安全存储指定的键值数据。支持项目隔离及多端自动同步。",
+      "读取或写入本地状态，并处理文件上传流程。",
+      "提供资源保存、上传结果和后续访问所需的信息。"
+    ],
+    "scenarios": [
+      "头像、图片或活动素材上传。",
+      "需要保留用户偏好、进度或页面临时状态的功能。"
+    ],
+    "usageTips": [
+      "在上传前校验文件格式、体积和必要的内容安全要求。",
+      "本地存储只保存可公开的轻量状态，不保存敏感信息。"
+    ]
+  },
+  "content": "---\nname: storage-setValue\ndescription: 为当前活动页在本地或 App 容器内安全存储指定的键值数据。支持项目隔离及多端自动同步。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.storage.setValue(params)`\n\n# Constraints\n\n- 必须使用统一的存储 API，禁止直接使用 window.localStorage 或 window.sessionStorage\n- 单次写入的数据大小不得超过 200KB\n- 数据必须传入普通对象键值对格式\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| data | object | 是 | 需要存储的键值对对象数据，如 { score: 10 } |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| ok | boolean | 是 | 是否成功发起写入 |\n| key | string | 否 | 写入的主键标识 |\n| keys | array | 否 | 所有写入的键标识列表 |\n| keys[] | string | 否 | 数组元素 |\n| size | number | 否 | 本次写入数据的大小，单位字节 |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.storage.setValue({ userLevel: 5 })\n```",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "content": "---\nname: storage-setValue\ndescription: 为当前活动页在本地或 App 容器内安全存储指定的键值数据。支持项目隔离及多端自动同步。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.storage.setValue(params)`\n\n# Constraints\n\n- 必须使用统一的存储 API，禁止直接使用 window.localStorage 或 window.sessionStorage\n- 单次写入的数据大小不得超过 200KB\n- 数据必须传入普通对象键值对格式\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| data | object | 是 | 需要存储的键值对对象数据，如 { score: 10 } |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| ok | boolean | 是 | 是否成功发起写入 |\n| key | string | 否 | 写入的主键标识 |\n| keys | array | 否 | 所有写入的键标识列表 |\n| keys[] | string | 否 | 数组元素 |\n| size | number | 否 | 本次写入数据的大小，单位字节 |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.storage.setValue({ userLevel: 5 })\n```"
+    },
+    {
+      "path": "schema.json",
+      "content": "{\n  \"name\": \"storage-setValue\",\n  \"description\": \"为当前活动页在本地或 App 容器内安全存储指定的键值数据。支持项目隔离及多端自动同步。\",\n  \"inputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"data\": {\n        \"type\": \"object\",\n        \"description\": \"需要存储的键值对对象数据，如 { score: 10 }\"\n      }\n    },\n    \"required\": [\n      \"data\"\n    ]\n  },\n  \"outputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"ok\": {\n        \"type\": \"boolean\",\n        \"description\": \"是否成功发起写入\"\n      },\n      \"key\": {\n        \"type\": \"string\",\n        \"description\": \"写入的主键标识\"\n      },\n      \"keys\": {\n        \"type\": \"array\",\n        \"items\": {\n          \"type\": \"string\"\n        },\n        \"description\": \"所有写入的键标识列表\"\n      },\n      \"size\": {\n        \"type\": \"number\",\n        \"description\": \"本次写入数据的大小，单位字节\"\n      }\n    },\n    \"required\": [\n      \"ok\"\n    ]\n  }\n}"
+    }
+  ],
+  "manifest": {
+    "capability": "storage-setValue",
+    "source": "skill-package",
+    "version": 1
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "id": "colorbox-request",
+  "name": "通用业务请求",
+  "description": "在活动页中向指定接口发起通用的 HTTP 请求，支持配置自定义方法、请求头与请求体数据。由 SDK 统一进行跨域与转发调度，可选走 Native Bridge 通道。",
+  "category": "应用基础",
+  "categories": [
+    "应用基础"
+  ],
+  "icon": "cable",
+  "details": {
+    "capabilities": [
+      "通用业务请求：在活动页中向指定接口发起通用的 HTTP 请求，支持配置自定义方法、请求头与请求体数据。由 SDK 统一进行跨域与转发调度，可选走 Native Bridge 通道。",
+      "提供应用运行时可复用的基础服务能力。",
+      "帮助页面完成通用数据处理和平台能力接入。"
+    ],
+    "scenarios": [
+      "需要补齐应用基础交互或服务调用的功能。",
+      "需要组合多个技能完成完整业务流程的页面。"
+    ],
+    "usageTips": [
+      "先确认该能力的输入输出，再与业务状态进行组合。",
+      "为异步调用增加加载、失败和重试体验。"
+    ]
+  },
+  "content": "---\nname: request\ndescription: 在活动页中向指定接口发起通用的 HTTP 请求，支持配置自定义方法、请求头与请求体数据。由 SDK 统一进行跨域与转发调度，可选走 Native Bridge 通道。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.request(params)`\n\n# Constraints\n\n- 严禁自行使用 window.fetch 或 XMLHttpRequest，必须使用统一的 window.ColorboxAI.request 接口以避免跨域失败\n- 所有包含机密敏感信息的请求必须在安全风控允许下进行\n- channel 为 bridge 时依赖 App 内 HupuBridge（或 iframe 父容器代理）；纯 Web 环境会自动回退 fetch\n- 数据能力调用必须避免无条件循环、无限轮询和重复渲染触发；同一参数的返回结果应优先保存在组件状态中复用。\n- 列表/分页类接口连续自动翻页最多 5 页，必须在无下一页、返回空列表或达到页数上限时停止。\n- SDK 前端已启用请求保护：默认不限制单能力并发和分钟调用量，不启用相同请求在途合并或 GET 短缓存；同 URL 在 10000ms 内最多 20 次；同一页面同接口（去掉 query/hash 参数后相同即为同一接口）在 5000ms 内最多 20 次，首次超过限制返回 429，后续同窗口请求静默丢弃，且同一窗口内只上报一次异常日志。不要自行循环重试或重复触发请求，若接口真实返回 408、429 或 503 等错误码，必须停止继续请求并给用户友好提示。\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| url | string | 是 | 需要请求的接口 URL 链接，支持 HTTP/HTTPS 协议 |\n| method | string | 否 | HTTP 请求方法，例如 \"GET\", \"POST\", \"PUT\", \"DELETE\"，默认为 \"GET\" |\n| headers | object | 否 | 自定义请求头，以键值对表示，可选 |\n| data | object | 否 | 请求体数据对象；GET 时作为 query 参数，POST 时作为请求体，可选 |\n| timeout | number | 否 | 超时时间限制（单位：毫秒），可选 |\n| channel | string | 否 | 请求通道。fetch 为 Web 请求（默认）；bridge 为 Native 请求（hupu.common.request），仅 App / Bridge 可用，不可用时自动回退 fetch |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| statusCode | number | 是 | 响应的 HTTP 状态码，例如 200 |\n| data | object | 是 | 响应的 JSON 数据体，可能为任何 JSON 对象或结构 |\n| headers | object | 是 | 响应头信息 |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.request({ url: \"https://activity.hupu.com/api/info\", method: \"GET\" }).then(res => { console.log(res.data); })\n```\n\n```javascript\nwindow.ColorboxAI.request({ url: \"https://bbs.mobileapi.hupu.com/1/8.2.53/threads/getsThreadPostList\", method: \"GET\", channel: \"bridge\", data: { tid: \"640720803\" } }).then(res => { console.log(res.data); })\n```\n\n# Frontend Request Guard\n\n| 策略 | 默认值 |\n| --- | --- |\n| 同请求在途合并窗口 | 不启用（0ms） |\n| GET 缓存 TTL | 不启用（0ms） |\n| 请求超时 | 8000ms |\n| 单能力最大并发 | 不限制 |\n| 单能力分钟调用上限 | 不限制 |\n| 同 URL 窗口调用上限 | 20 次 / 10000ms（超过限制排队等待） |\n| 同页面同接口窗口调用上限（去掉 query/hash 参数） | 20 次 / 5000ms（首次超过限制返回 429，后续同窗口请求静默丢弃，异常日志只上报一次） |\n| 连续失败熔断 | 3 次失败后熔断 30000ms |\n| 自动分页建议上限 | 5 页 |",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "content": "---\nname: request\ndescription: 在活动页中向指定接口发起通用的 HTTP 请求，支持配置自定义方法、请求头与请求体数据。由 SDK 统一进行跨域与转发调度，可选走 Native Bridge 通道。\n---\n\n# Usage\n\n- JS Path: `window.ColorboxAI.request(params)`\n\n# Constraints\n\n- 严禁自行使用 window.fetch 或 XMLHttpRequest，必须使用统一的 window.ColorboxAI.request 接口以避免跨域失败\n- 所有包含机密敏感信息的请求必须在安全风控允许下进行\n- channel 为 bridge 时依赖 App 内 HupuBridge（或 iframe 父容器代理）；纯 Web 环境会自动回退 fetch\n- 数据能力调用必须避免无条件循环、无限轮询和重复渲染触发；同一参数的返回结果应优先保存在组件状态中复用。\n- 列表/分页类接口连续自动翻页最多 5 页，必须在无下一页、返回空列表或达到页数上限时停止。\n- SDK 前端已启用请求保护：默认不限制单能力并发和分钟调用量，不启用相同请求在途合并或 GET 短缓存；同 URL 在 10000ms 内最多 20 次；同一页面同接口（去掉 query/hash 参数后相同即为同一接口）在 5000ms 内最多 20 次，首次超过限制返回 429，后续同窗口请求静默丢弃，且同一窗口内只上报一次异常日志。不要自行循环重试或重复触发请求，若接口真实返回 408、429 或 503 等错误码，必须停止继续请求并给用户友好提示。\n\n# Parameters\n\n| 参数名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| url | string | 是 | 需要请求的接口 URL 链接，支持 HTTP/HTTPS 协议 |\n| method | string | 否 | HTTP 请求方法，例如 \"GET\", \"POST\", \"PUT\", \"DELETE\"，默认为 \"GET\" |\n| headers | object | 否 | 自定义请求头，以键值对表示，可选 |\n| data | object | 否 | 请求体数据对象；GET 时作为 query 参数，POST 时作为请求体，可选 |\n| timeout | number | 否 | 超时时间限制（单位：毫秒），可选 |\n| channel | string | 否 | 请求通道。fetch 为 Web 请求（默认）；bridge 为 Native 请求（hupu.common.request），仅 App / Bridge 可用，不可用时自动回退 fetch |\n\n# Returns\n\n- Type: `Promise<Response>`\n\n### Response Properties\n\n| 属性名 | 类型 | 是否必填 | 说明 |\n| --- | --- | --- | --- |\n| statusCode | number | 是 | 响应的 HTTP 状态码，例如 200 |\n| data | object | 是 | 响应的 JSON 数据体，可能为任何 JSON 对象或结构 |\n| headers | object | 是 | 响应头信息 |\n\n# Examples\n\n```javascript\nwindow.ColorboxAI.request({ url: \"https://activity.hupu.com/api/info\", method: \"GET\" }).then(res => { console.log(res.data); })\n```\n\n```javascript\nwindow.ColorboxAI.request({ url: \"https://bbs.mobileapi.hupu.com/1/8.2.53/threads/getsThreadPostList\", method: \"GET\", channel: \"bridge\", data: { tid: \"640720803\" } }).then(res => { console.log(res.data); })\n```\n\n# Frontend Request Guard\n\n| 策略 | 默认值 |\n| --- | --- |\n| 同请求在途合并窗口 | 不启用（0ms） |\n| GET 缓存 TTL | 不启用（0ms） |\n| 请求超时 | 8000ms |\n| 单能力最大并发 | 不限制 |\n| 单能力分钟调用上限 | 不限制 |\n| 同 URL 窗口调用上限 | 20 次 / 10000ms（超过限制排队等待） |\n| 同页面同接口窗口调用上限（去掉 query/hash 参数） | 20 次 / 5000ms（首次超过限制返回 429，后续同窗口请求静默丢弃，异常日志只上报一次） |\n| 连续失败熔断 | 3 次失败后熔断 30000ms |\n| 自动分页建议上限 | 5 页 |"
+    },
+    {
+      "path": "schema.json",
+      "content": "{\n  \"name\": \"request\",\n  \"description\": \"在活动页中向指定接口发起通用的 HTTP 请求，支持配置自定义方法、请求头与请求体数据。由 SDK 统一进行跨域与转发调度，可选走 Native Bridge 通道。\",\n  \"inputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"url\": {\n        \"type\": \"string\",\n        \"description\": \"需要请求的接口 URL 链接，支持 HTTP/HTTPS 协议\"\n      },\n      \"method\": {\n        \"type\": \"string\",\n        \"description\": \"HTTP 请求方法，例如 \\\"GET\\\", \\\"POST\\\", \\\"PUT\\\", \\\"DELETE\\\"，默认为 \\\"GET\\\"\"\n      },\n      \"headers\": {\n        \"type\": \"object\",\n        \"description\": \"自定义请求头，以键值对表示，可选\"\n      },\n      \"data\": {\n        \"type\": \"object\",\n        \"description\": \"请求体数据对象；GET 时作为 query 参数，POST 时作为请求体，可选\"\n      },\n      \"timeout\": {\n        \"type\": \"number\",\n        \"description\": \"超时时间限制（单位：毫秒），可选\"\n      },\n      \"channel\": {\n        \"type\": \"string\",\n        \"enum\": [\n          \"fetch\",\n          \"bridge\"\n        ],\n        \"description\": \"请求通道。fetch 为 Web 请求（默认）；bridge 为 Native 请求（hupu.common.request），仅 App / Bridge 可用，不可用时自动回退 fetch\"\n      }\n    },\n    \"required\": [\n      \"url\"\n    ]\n  },\n  \"outputSchema\": {\n    \"type\": \"object\",\n    \"properties\": {\n      \"statusCode\": {\n        \"type\": \"number\",\n        \"description\": \"响应的 HTTP 状态码，例如 200\"\n      },\n      \"data\": {\n        \"type\": \"object\",\n        \"description\": \"响应的 JSON 数据体，可能为任何 JSON 对象或结构\"\n      },\n      \"headers\": {\n        \"type\": \"object\",\n        \"description\": \"响应头信息\"\n      }\n    },\n    \"required\": [\n      \"statusCode\",\n      \"data\",\n      \"headers\"\n    ]\n  }\n}"
+    }
+  ],
+  "manifest": {
+    "capability": "request",
+    "source": "skill-package",
+    "version": 1
+  }
+}

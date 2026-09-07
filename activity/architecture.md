@@ -35,7 +35,7 @@
             ├─ 在研详情：待发售列表与「发布」
             ├─ 长线维护 / 关服
             ├─ 成立内部工作室（仅大公司）
-            ├─ 情报：三端份额、畅销榜、发售日历、对手月活
+            ├─ 情报：三端份额、畅销榜、发售日历（含长线版本）、对手月活
             ├─ 点「下一月」→ 结算中（锁操作）
             │     ├─ 事件（notice 确认 / choice 必须选）
             │     ├─ 外包交付 / 制作完成尚未发布
@@ -60,7 +60,7 @@ BOOT ──► NEW_GAME ──► PLAYING ──► MONTH_TICK（锁 UI）──
               │                      └─ 已过结束年月 ──► SETTLED
 ```
 
-媒体评分面板在玩家点 `releaseGame` 成功后弹出，**不**在点月自动队列里。
+媒体评分面板在玩家点 `releaseGame` 成功后弹出。移动端长线**大版本**发售也会在点月 queue 里带媒体分。
 
 | phase | 含义 | 允许的操作 |
 |-------|------|------------|
@@ -78,9 +78,9 @@ BOOT ──► NEW_GAME ──► PLAYING ──► MONTH_TICK（锁 UI）──
 2. 潮流刷新 → 当月事件（historical + random；choice 只入队）  
 3. 对手按日历本月计划出货  
 4. 自制进 `readyToShip`；外包自动交付  
-5. 盒装 lifecycle（玩家+对手）+ 长线月结 → `monthlyChart`  
+5. 盒装 lifecycle（玩家+对手）+ 长线月结 + 移动端长线版本发售 → `monthlyChart`  
 6. 发薪；资金 < 0 → `BANKRUPT`  
-7. 若本月 = `awards.month`：TGA  
+7. 若本月 = `awards.month`：TGA（盒装看发售窗口；最佳长线看仍在运营）  
 8. 人才市场刷新  
 9. 日历 +1；跨年调薪并生成新年对手日历；过结束年月 → `SETTLED`
 
@@ -102,6 +102,7 @@ BOOT ──► NEW_GAME ──► PLAYING ──► MONTH_TICK（锁 UI）──
 
 ```
 activity/config.json          # 数值唯一源
+activity/career-world.json    # 生涯公司/作品表；sync 时并入 careerWorld
 scripts/sync_config.py        # 同步生成物
 tests/run-sim-tests.js        # 不启动浏览器的数值测试
 h5/
@@ -116,7 +117,7 @@ h5/
     bridge/colorbox.js        # ColorboxAI 封装
 ```
 
-`sim/` 文件：`ns.js` `rng.js` `util.js` `company.js` `staff.js` `project.js` `liveops.js` `series.js` `rivals.js` `events.js` `lifecycle.js` `media.js` `awards.js` `tick.js` `actions.js`。
+`sim/` 文件：`ns.js` `rng.js` `util.js` `company.js` `staff.js` `project.js` `liveops.js` `series.js` `rivals.js` `events.js` `lifecycle.js` `media.js` `awards.js` `career.js` `tick.js` `actions.js`。
 
 | 层 | 职责 | 禁止 |
 |----|------|------|
@@ -129,7 +130,7 @@ h5/
 
 ### 改数值
 
-1. 只改 `activity/config.json`。  
+1. 只改 `activity/config.json`（生涯作品改 `activity/career-world.json`）。  
 2. `python scripts/sync_config.py`  
 3. `node tests/run-sim-tests.js`（必须绿）
 
@@ -252,9 +253,11 @@ Windows 可用 `python`；若失败再试 `python3`。
 | `lifetimeSales` `monthSales` `onSale` | 累计、本月实销、是否在售 |
 | `monthSalesForYear` `monthSalesForMonth` | 本月实销已入账的戳，避免发售当月点月再加一遍 |
 | `outsourceFee` | 仅外包 |
-| `liveOps` | `{ active, maintainerIds, monthsLive, peak, closedYear, closedMonth }`；月开支读配置不存档 |
+| `liveOps` | `{ active, maintainerIds, monthsLive, peak, versionMajor, versionMinor, closedYear, closedMonth }`；月开支与版本间隔读配置不存档 |
+| `versionMajor` `versionMinor` | 长线当前版本；1.0 是首发。移动端长线才推进 |
+| `lastVersionYear` `lastVersionMonth` | 最近一次版本发售年月；同月不重复发 |
 
-旧档缺 `baselineSales` 时从 `launchSales` 迁移。`tailLeft` 在 tick 时忽略。
+旧档缺 `baselineSales` 时从 `launchSales` 迁移。`tailLeft` 在 tick 时忽略。缺版本字段的旧长线按 1.0 展示，到点再发下一版。
 
 ### 7.6 只读展示接口
 
@@ -264,6 +267,10 @@ monthlyChart(state, config) → [{ rank, source, title, pub, monthSales, avg, pl
 salesFactor(m, score, config) → number   # Y(m)；掉榜看它
 boxedBaselineFormula(st, project, config, consumeAd?) → number
 getRivalCalendar(state, year) → { year, months }
+listLiveOpsVersionDrops(state, year, config) → [{ month, label, isVersion, ... }]
+liveOpsVersionLabel(title, ver, config) → string
+isLiveOpsTitle(g) → boolean
+liveOpsAwardEligible(g, year, config) → boolean
 ```
 
 ### 7.7 逻辑接口（UI 只调这些改 state）
@@ -285,7 +292,7 @@ errorMessage(error) → string
 
 `PitchInput`：`title, genreId, gameplayId, platformId, releaseType, cycle, producerId, memberIds, seriesId?, studioId?`。
 
-`queue` 项：`notes` / `event`（`presentation: notice|choice`）/ `rivals` / `ready` / `outsource` / `awards`。发售媒体分只在 `releaseGame` 成功后由 UI 弹出。
+`queue` 项：`notes` / `event`（`presentation: notice|choice`）/ `rivals` / `ready` / `outsource` / `awards` / `media`（长线大版本）。自制首发媒体分仍在 `releaseGame` 成功后由 UI 弹出。
 
 ---
 

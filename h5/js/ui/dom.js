@@ -16,6 +16,8 @@
 
   ui.session = {
     state: null,
+    pendingName: "",
+    pendingRole: "",
     pitchPick: { genre: "", play: "", plat: "" },
     uiPage: { fire: 0, released: 0, series: 0, live: 0, genre: 0, play: 0, rival: 0, project: 0, chart: 0 },
     tickPages: [],
@@ -87,7 +89,9 @@
   ui.syncDock = function () {
     var dock = ui.$("dock-shell");
     if (!dock) return;
-    var boot = ui.$("sc-boot").classList.contains("on");
+    var boot = ui.$("sc-boot").classList.contains("on") ||
+      (ui.$("sc-role") && ui.$("sc-role").classList.contains("on")) ||
+      (ui.$("sc-offer") && ui.$("sc-offer").classList.contains("on"));
     dock.classList.toggle("off", boot);
     var hq = ui.$("sc-hq").classList.contains("on");
     var sheet = ui.l2Open();

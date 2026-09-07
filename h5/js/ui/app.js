@@ -122,28 +122,49 @@
   function bind() {
     var config = cfg();
     ui.paintStaticCopy();
-    ui.$("name-input").value = config.company.defaultName;
+    ui.$("name-input").value = (cfg().copy && cfg().copy.career && cfg().copy.career.defaultName) || "";
 
     ui.$("btn-start").addEventListener("click", function () {
-      var v = ui.$("name-input").value.replace(/^\s+|\s+$/g, "") || config.company.defaultName;
+      var copyC = sim.careerCopy(config);
+      var v = ui.$("name-input").value.replace(/^\s+|\s+$/g, "") || copyC.defaultName;
       ui.$("name-input").value = v;
       ui.showPreviewFlag();
       GDS.bridge.auditText(v).then(function (res) {
         if (!res.ok) { ui.toast(res.message); return; }
         GDS.save.restoreOrNull().then(function (saved) {
-          if (saved && saved.company && saved.phase === "PLAYING") {
+          if (saved && saved.mode === "career" && saved.phase === "PLAYING" && saved.career) {
             ui.session.state = saved;
+            ui.paintStaticCopy();
+            ui.paintHq();
+            ui.show("sc-hq");
+            GDS.save.persist(saved);
             ui.toast("读到云端/缓存进度，接着玩");
-          } else {
-            ui.session.state = sim.createNewGame(v, config);
+            return;
           }
-          ui.session.state = sim.syncOwnConsole(ui.session.state, config);
-          ui.paintStaticCopy();
-          ui.paintHq();
-          ui.show("sc-hq");
-          GDS.save.persist(ui.session.state);
+          if (saved && saved.mode === "career" && saved.phase === "OFFER" && saved.career) {
+            ui.session.state = saved;
+            ui.session.pendingName = saved.career.characterName;
+            ui.session.pendingRole = saved.career.roleId;
+            ui.paintCareerOffers();
+            ui.show("sc-offer");
+            return;
+          }
+          ui.session.pendingName = v;
+          ui.paintCareerRoles();
+          ui.show("sc-role");
         });
       });
+    });
+
+    ui.$("btn-role").addEventListener("click", function () {
+      var copyC = sim.careerCopy(config);
+      var roleId = ui.session.pendingRole;
+      var name = ui.session.pendingName || copyC.defaultName;
+      if (!roleId) { ui.toast(sim.errorMessage(sim.ERR.CAREER_ROLE_INVALID)); return; }
+      ui.session.state = sim.createCareerGame(name, roleId, config);
+      ui.paintCareerOffers();
+      ui.show("sc-offer");
+      GDS.save.persist(ui.session.state);
     });
 
     function backToBoot() { ui.show("sc-boot"); }
@@ -155,6 +176,11 @@
       el.addEventListener("click", function () {
         if (!ui.session.state) { ui.toast("先开张"); return; }
         var go = el.getAttribute("data-go");
+        var blocked = {
+          market: 1, pitch: 1, relocate: 1, ad: 1, studio: 1, liveops: 1,
+          share: 1, released: 1, project: 1, bankrupt: 1
+        };
+        if (sim.isCareerMode(ui.session.state) && blocked[go]) return;
         ui.closeDockSheets();
         if (go === "market") ui.paintMarket();
         if (go === "pitch") ui.paintPitch();
@@ -267,8 +293,12 @@
       try {
         var tick = sim.tickMonth(ui.session.state, config);
         ui.session.state = tick.state;
-        ui.session.tickPages = tick.queue;
+        ui.session.tickPages = tick.queue || [];
         ui.session.tickStep = 0;
+        if (!ui.session.tickPages.length) {
+          ui.finishTickUi();
+          return;
+        }
         ui.showTickPage();
       } catch (err) {
         ui.$("btn-tick").disabled = false;
@@ -294,29 +324,89 @@
     doc.addEventListener("click", function (ev) {
       var t = ev.target;
       if (!t || !t.getAttribute) return;
+      var offerId = t.getAttribute("data-offer");
+      if (offerId) {
+        ui.applySim(sim.acceptOpeningOffer(ui.session.state, offerId, config), "", function () {
+          ui.paintHq();
+          ui.show("sc-hq");
+        });
+        return;
+      }
+      var rolePick = t.getAttribute("data-role");
+      if (rolePick) {
+        ui.session.pendingRole = rolePick;
+        ui.paintCareerRoles();
+        return;
+      }
       var releaseId = t.getAttribute("data-release");
       if (releaseId) {
         ui.releaseReadyGame(releaseId);
         return;
       }
+      var hopPick = t.getAttribute("data-hop-pick");
+      if (hopPick) {
+        ui.session.pickedHopOffer = hopPick;
+        ui.paintHq();
+        return;
+      }
+      var hopApply = t.getAttribute("data-hop-apply");
+      if (hopApply) {
+        var hopId = ui.session.pickedHopOffer;
+        var hopCopy = sim.careerCopy(config);
+        if (!hopId) {
+          ui.toast(hopCopy.hopPickHint || "先选一家再申请");
+          return;
+        }
+        var hopResult = sim.applyYearEndOffer(ui.session.state, hopId, config);
+        ui.applySim(hopResult, (hopResult && hopResult.notice) || "", function () {
+          ui.session.pickedHopOffer = null;
+          ui.paintHq();
+          ui.show("sc-hq");
+        });
+        return;
+      }
+      var hopOffer = t.getAttribute("data-hop-offer");
+      if (hopOffer) {
+        var hopResult2 = sim.applyYearEndOffer(ui.session.state, hopOffer, config);
+        ui.applySim(hopResult2, (hopResult2 && hopResult2.notice) || "", function () {
+          ui.paintHq();
+          ui.show("sc-hq");
+        });
+        return;
+      }
       var optId = t.getAttribute("data-event-opt");
       if (optId && ui.session.dlgHook.mode === "tick-choice") {
         var page = ui.session.tickPages[ui.session.tickStep];
-        if (!page || !page.eventId) return;
-        var picked = sim.resolveEventChoice(ui.session.state, page.eventId, optId, config);
+        if (!page) return;
+        var picked;
+        if (page.type === "hop") {
+          if (optId === "stay") picked = sim.declineYearEndOffers(ui.session.state, config);
+          else picked = sim.applyYearEndOffer(ui.session.state, optId, config);
+        } else if (page.type === "invite") {
+          if (optId === "accept") picked = sim.acceptCareerInvite(ui.session.state, page.inviteId, config);
+          else if (optId === "counter") picked = sim.counterCareerInvite(ui.session.state, page.inviteId, config);
+          else picked = sim.declineCareerInvite(ui.session.state, page.inviteId, config);
+        } else {
+          if (!page.eventId) return;
+          picked = sim.resolveEventChoice(ui.session.state, page.eventId, optId, config);
+        }
         if (!picked || !picked.ok) {
           ui.toast(sim.errorMessage(picked && picked.error));
           return;
         }
         ui.session.state = picked.state;
+        if (picked.notice) ui.toast(picked.notice);
         ui.advanceTickQueue();
       }
     });
 
     ui.showPreviewFlag();
     GDS.save.restoreOrNull().then(function (saved) {
-      if (saved && saved.company) {
-        ui.$("name-input").value = saved.company.name || config.company.defaultName;
+      var copyC = sim.careerCopy(config);
+      if (saved && saved.mode === "career" && saved.career) {
+        ui.$("name-input").value = saved.career.characterName || copyC.defaultName || "";
+      } else {
+        ui.$("name-input").value = copyC.defaultName || ui.$("name-input").value;
       }
     });
   }

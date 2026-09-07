@@ -9,25 +9,92 @@
     var pay = config.staff.salary;
     var raw = (pay.base + s.level * pay.perLevel + sim.avgStat(s) * pay.perAvgStat) *
       (1 + (s.honor || 0) * pay.honorBonusPerPoint);
-    return Math.round(raw);
+    var mult = 1;
+    (s.traits || []).forEach(function (id) {
+      var t = sim.traitDef(id, config);
+      if (t && t.salaryMult != null) mult *= t.salaryMult;
+    });
+    return Math.round(raw * mult);
+  };
+
+  sim.traitDef = function (id, config) {
+    return (config && config.traits && config.traits[id]) || null;
+  };
+
+  sim.traitIds = function (config) {
+    var out = [];
+    var traits = (config && config.traits) || {};
+    var k;
+    for (k in traits) {
+      if (!Object.prototype.hasOwnProperty.call(traits, k)) continue;
+      if (k === "comment") continue;
+      if (traits[k] && traits[k].displayName) out.push(k);
+    }
+    return out;
+  };
+
+  sim.hasTrait = function (s, id) {
+    return !!(s && (s.traits || []).indexOf(id) >= 0);
+  };
+
+  sim.bestTraitValue = function (st, memberIds, producerId, traitId, producerKey, memberKey, config) {
+    var best = 0;
+    var t = sim.traitDef(traitId, config);
+    if (!t) return 0;
+    (memberIds || []).forEach(function (id) {
+      var s = sim.findStaff(st, id);
+      if (!s || !sim.hasTrait(s, traitId)) return;
+      var isP = producerId && s.id === producerId;
+      var v = isP ? (t[producerKey] || 0) : (t[memberKey] || 0);
+      if (v > best) best = v;
+    });
+    return best;
   };
 
   sim.drawTraits = function (st, config) {
-    var m = config.staff.talentMarket;
-    var r = sim.rand(st);
-    var both = m.traitChanceBoth;
-    var spark = m.traitChanceSpark;
-    var meti = m.traitChanceMeticulous;
-    if (r < both) return ["sparkOfInspiration", "meticulous"];
-    if (r < both + spark) return ["sparkOfInspiration"];
-    if (r < both + spark + meti) return ["meticulous"];
-    return [];
+    var ids = sim.traitIds(config);
+    var m = (config.staff && config.staff.talentMarket) || {};
+    var maxN = m.maxTraits != null ? m.maxTraits : 2;
+    var weights = m.traitCountWeights || {};
+    var countItems = [];
+    var n;
+    for (n = 0; n <= maxN; n++) {
+      countItems.push({
+        n: n,
+        weight: weights[String(n)] != null ? weights[String(n)] : (n === 0 ? 1 : 0)
+      });
+    }
+    var picked = sim.pickWeighted(st, countItems);
+    var count = picked ? picked.n : 0;
+    if (count > ids.length) count = ids.length;
+    var pool = ids.map(function (id) {
+      var t = config.traits[id];
+      return { id: id, weight: t && t.hireWeight != null ? t.hireWeight : 1 };
+    });
+    var out = [];
+    var i, choice;
+    for (i = 0; i < count; i++) {
+      if (!pool.length) break;
+      choice = sim.pickWeighted(st, pool);
+      if (!choice) break;
+      out.push(choice.id);
+      pool = pool.filter(function (x) { return x.id !== choice.id; });
+    }
+    return out;
   };
 
   sim.traitName = function (id, config) {
-    var t = config.traits[id];
+    var t = sim.traitDef(id, config);
     if (t && t.displayName) return t.displayName;
     return id === "sparkOfInspiration" ? "灵光一闪" : (id === "meticulous" ? "一丝不苟" : id);
+  };
+
+  sim.traitSummaryLine = function (s, config) {
+    return (s.traits || []).map(function (id) {
+      var t = sim.traitDef(id, config);
+      if (!t) return "";
+      return t.summary ? (t.displayName + "：" + t.summary) : t.displayName;
+    }).filter(Boolean).join(" ");
   };
 
   sim.staffLine = function (s, config) {

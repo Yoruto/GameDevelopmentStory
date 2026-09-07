@@ -66,6 +66,10 @@
     }
     .top .date { font-weight: 800; color: var(--gold); font-size: 16px; }
     .top .funds { color: var(--green); font-weight: 700; }
+    .funds-wrap { display: flex; align-items: baseline; gap: 6px; }
+    .pay-delta { color: var(--green); font-weight: 700; font-size: 13px; }
+    .media-outlet { margin: 8px 0; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+    .media-outlet .quote { margin: 4px 0 0; font-size: 12px; }
     .top .fans { color: var(--text); font-size: 13px; }
     .top-sub {
       display: flex; gap: 8px; overflow-x: auto; margin-top: 6px;
@@ -349,6 +353,18 @@
     .mt-8 { margin-top: 8px; }
     .mt-10 { margin-top: 10px; }
     .mt-12 { margin-top: 12px; }
+    #app.mode-career .studio-only { display: none !important; }
+    #app.mode-company .career-only { display: none !important; }
+    #app.mode-career #dock-ops { display: none !important; }
+    .offer-card {
+      background: var(--card2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 10px;
+      margin-top: 8px;
+    }
+    .offer-card.picked { border-color: var(--gold); }
+    .offer-card .hint { margin: 4px 0; }
     .pitch-plat { margin-top: 4px; }
     #studio-ok { display: none; }
 

@@ -9,7 +9,7 @@ alwaysApply: true
 后续改本仓库游戏时必须遵守。不要把逻辑塞回 `h5/index.html`。
 
 1. **数字只来自 config。** 玩法数字只改 `activity/config.json`，然后跑 `python scripts/sync_config.py`。禁止在 HTML / UI / sim 里写死开局资金、换场地、广告、编制、对手出货、基准销量、盒装 lifecycle（`tMin` / `tSpan` / `x0Min` / `x0Span` / `k` / `dropOffY` / `maxMonths` / `chartSize`）等平衡数字。禁止再维护一份 `CFG` 缩写表。
-2. **规则只放 sim。** 状态转移只写在 `h5/js/sim/`。禁止在 click handler 里改资金、员工、项目、质量。UI 只调用 sim 公开函数：`createNewGame` / `hire` / `fire` / `relocate` / `buyAd` / `foundStudio` / `pitchProject` / `pitchOutsource` / `assignLiveOps` / `shutdownLiveOps` / `releaseGame` / `resolveEventChoice` / `tickMonth`。只读展示还可调 `marketShares` / `monthlyChart` / `salesFactor` / `getRivalCalendar`。
+2. **规则只放 sim。** 状态转移只写在 `h5/js/sim/`。禁止在 click handler 里改资金、员工、项目、质量。UI 只调用 sim 公开函数：`createNewGame` / `hire` / `fire` / `relocate` / `buyAd` / `foundStudio` / `pitchProject` / `pitchOutsource` / `assignLiveOps` / `shutdownLiveOps` / `releaseGame` / `resolveEventChoice` / `tickMonth`。只读展示还可调 `marketShares` / `monthlyChart` / `salesFactor` / `getRivalCalendar` / `listLiveOpsVersionDrops` / `liveOpsVersionLabel` / `isLiveOpsTitle`。
 3. **sim 保持纯。** `h5/js/sim/` 禁止 `document`、`window.ColorboxAI`、存档 IO。入参带 `config`，不要闭包偷读全局 DOM。
 4. **改完必测。** 改 `activity/config.json` 或 `h5/js/sim/` 之后必须跑 `node tests/run-sim-tests.js`，修到绿再结束。
 5. **已定案不要推翻：** 云端存档、自动记进度、不分享、公司名默认「喵扑studio」、点月手动、禁止 `localStorage`。

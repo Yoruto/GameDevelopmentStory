@@ -3,30 +3,64 @@
   var DIMS = ["program", "script", "art", "music"];
 
   sim.advanceProjectMonth = function (st, p, config, notes) {
-    var spark = config.traits.sparkOfInspiration;
-    var meti = config.traits.meticulous;
     var team = p.memberIds.map(function (id) { return sim.findStaff(st, id); }).filter(Boolean);
     DIMS.forEach(function (dim) {
       team.forEach(function (s) {
         var isP = s.id === p.producerId;
         var minR = 1;
-        if ((s.traits || []).indexOf("meticulous") >= 0) minR += isP ? meti.producerMinRollBonus : meti.memberMinRollBonus;
+        (s.traits || []).forEach(function (id) {
+          var t = sim.traitDef(id, config);
+          if (!t) return;
+          minR += isP ? (t.producerMinRollBonus || 0) : (t.memberMinRollBonus || 0);
+        });
         var hi = Math.max(minR, s[dim] || 1);
         var roll = sim.irand(st, Math.min(minR, hi), hi);
         p.stats[dim] += Math.ceil(roll / p.totalMonths);
-        if ((s.traits || []).indexOf("sparkOfInspiration") >= 0) {
-          if (sim.rand(st) < (isP ? spark.producerTriggerRate : spark.memberTriggerRate)) {
-            p.stats[dim] += isP ? spark.producerDimBonus : spark.memberDimBonus;
-            notes.push(s.n + "灵感月，" + dim + "多跳一截");
+        (s.traits || []).forEach(function (id) {
+          var t = sim.traitDef(id, config);
+          if (!t) return;
+          var rate = isP ? t.producerTriggerRate : t.memberTriggerRate;
+          if (rate && sim.rand(st) < rate) {
+            p.stats[dim] += isP ? (t.producerDimBonus || 0) : (t.memberDimBonus || 0);
+            notes.push(s.n + (t.triggerNote || "触发特性") + "，" + dim + "多跳一截");
           }
+        });
+      });
+    });
+    var vibeBonus = 0;
+    var vibeRate = 0;
+    var vibeName = "";
+    team.forEach(function (s) {
+      var isP = s.id === p.producerId;
+      (s.traits || []).forEach(function (id) {
+        var t = sim.traitDef(id, config);
+        if (!t || (t.teamDimBonus == null && t.producerTeamDimBonus == null && t.memberTeamDimBonus == null)) return;
+        var b = isP ? (t.producerTeamDimBonus || t.teamDimBonus || 0) : (t.memberTeamDimBonus || t.teamDimBonus || 0);
+        var r = isP ? (t.producerTeamTriggerRate || t.teamTriggerRate || 1) : (t.memberTeamTriggerRate || t.teamTriggerRate || 1);
+        if (b > vibeBonus) {
+          vibeBonus = b;
+          vibeRate = r;
+          vibeName = s.n;
         }
       });
     });
+    if (vibeBonus && sim.rand(st) < vibeRate) {
+      var vibeDim = sim.pick(st, DIMS);
+      p.stats[vibeDim] += vibeBonus;
+      notes.push(vibeName + "把组里气氛带起来了，" + vibeDim + "多跳一截");
+    }
     var expAmt = config.staff.experience.expPerDevelopmentMonth;
     if (p.releaseType === "outsource" && config.outsource && config.outsource.expPerDevelopmentMonth != null) {
       expAmt = config.outsource.expPerDevelopmentMonth;
     }
-    team.forEach(function (s) { sim.addExp(st, s, expAmt, config); });
+    team.forEach(function (s) {
+      var extra = 0;
+      (s.traits || []).forEach(function (id) {
+        var t = sim.traitDef(id, config);
+        if (t && t.expBonusDev) extra += t.expBonusDev;
+      });
+      sim.addExp(st, s, expAmt + extra, config);
+    });
     p.monthsLeft -= 1;
   };
 
@@ -78,7 +112,7 @@
   sim.releaseProject = function (st, p, config, notes) {
     if (p.releaseType === "outsource") return sim.releaseOutsource(st, p, config, notes);
     var team = p.memberIds.map(function (id) { return sim.findStaff(st, id); }).filter(Boolean);
-    var media = sim.scoreMedia(st, p.stats, team, config);
+    var media = sim.scoreMedia(st, p.stats, team, config, p.producerId);
     var formula = sim.boxedBaselineFormula(st, p, config, true);
     var boxed = p.releaseType === "boxed";
     var baseline = boxed ? formula : 0;
@@ -91,6 +125,19 @@
         s.honor = (s.honor || 0) + config.staff.honor.fromHighScore;
         s.salary = sim.calcSalary(s, config);
       });
+    }
+    var fanGain = 0;
+    team.forEach(function (s) {
+      var isP = s.id === p.producerId;
+      (s.traits || []).forEach(function (id) {
+        var t = sim.traitDef(id, config);
+        if (!t) return;
+        fanGain += isP ? (t.producerFansOnRelease || 0) : (t.memberFansOnRelease || 0);
+      });
+    });
+    if (fanGain) {
+      st.company.fans = Math.max(0, st.company.fans + fanGain);
+      notes.push("人气特性让粉丝 +" + fanGain);
     }
     var rec = {
       id: p.id,
@@ -116,7 +163,14 @@
       tailLeft: 0,
       seriesId: p.seriesId || null,
       liveOps: p.releaseType === "liveops"
-        ? { active: true, maintainerIds: p.memberIds.slice(), monthsLive: 0, peak: 0 }
+        ? {
+          active: true,
+          maintainerIds: p.memberIds.slice(),
+          monthsLive: 0,
+          peak: 0,
+          versionMajor: ((config.liveOps && config.liveOps.versions && config.liveOps.versions.startMajor) || 1),
+          versionMinor: 0
+        }
         : null
     };
     sim.maybeOpenSeries(st, rec, config, notes);

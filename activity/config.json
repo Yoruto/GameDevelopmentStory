@@ -1,5 +1,5 @@
 {
-  "comment": "数值与设定表唯一源。玩法见 activity/design.md，目录与接口见 activity/architecture.md，索引见 activity/README.md。改平衡只改本文件，不要把数字写回玩法正文。改完跑 python scripts/sync_config.py，再 node tests/run-sim-tests.js。",
+  "comment": "数值与设定表唯一源。玩法见 activity/design.md，目录与接口见 activity/architecture.md，索引见 activity/README.md。生涯世界表见 activity/career-world.json（sync 时并入 careerWorld）。改平衡只改本文件或生涯表，不要把数字写回玩法正文。改完跑 python scripts/sync_config.py，再 node tests/run-sim-tests.js。",
   "copy": {
     "comment": "展示文案与人才市场姓名池。不是玩法公式，但页面禁止再手写一份。",
     "scaleLabels": {
@@ -7,14 +7,51 @@
       "medium": "中等",
       "large": "大公司"
     },
-    "staffNamePool": ["林七", "苏棠", "阿肥", "小野", "老周", "阿喵", "阿扑", "K", "沈衡", "白露"],
-    "mediaQuotes": [
-      "IGM：骨架立住了，能熬夜打完。",
-      "机刻：文本有味道，节奏还差点意思。",
-      "游民星宫：画面先声夺人，后劲看运营。",
-      "触悦：听感先把人留住，关卡还得再磨。",
-      "发米通：评测席吵翻了，玩家倒还买账。"
-    ],
+    "staffNamePool": ["林七", "苏棠", "阿肥", "小野", "老周", "阿喵", "阿扑", "K", "沈衡", "白露", "陈皮", "北北", "阿凯", "江晚", "老胡"],
+      "mediaQuotes": [
+        "IGM：骨架立住了，能熬夜打完。",
+        "机刻：文本有味道，节奏还差点意思。",
+        "游民星宫：画面先声夺人，后劲看运营。",
+        "触悦：听感先把人留住，关卡还得再磨。",
+        "发米通：评测席吵翻了，玩家倒还买账。",
+        "IGM：操作有手感，就是教程爱讲课。",
+        "机刻：剧情敢写，也敢在终盘把人踹下去。",
+        "游民星宫：过场像海报，战斗别让我连点确认。",
+        "触悦：BGM先把人留住，关卡别再复制粘贴。",
+        "发米通：这分打得难受，评论区已经开始复盘制作人。",
+        "IGM：中期有点空，但收尾那下是真的。",
+        "机刻：设定能圆，角色别再互相发通稿。",
+        "游民星宫：建模能打，UI还停留在内测群。",
+        "触悦：进门一首就够用，后面别降调降到睡着。",
+        "发米通：不是神作，但比上周那堆买量的像样。"
+      ],
+      "mediaQuotePools": {
+        "program": {
+          "high": ["骨架立住了，能熬夜打完。", "操作有手感，帧时间和手感都在线。", "系统咬合紧，中期不塌。"],
+          "mid": ["能打完，偶发卡顿。", "教程爱讲课，但能跑通。"],
+          "low": ["崩溃和加载把人劝退。", "手感发飘，中期明显空。"]
+        },
+        "script": {
+          "high": ["文本有味道，敢把人踹下去。", "设定能圆，角色不发通稿。", "关卡在教，不在念。"],
+          "mid": ["故事能看完，节奏差点意思。", "人设记得住，后半有点赶。"],
+          "low": ["台词像说明书。", "终盘把人踹下崖，还没铺垫。"]
+        },
+        "art": {
+          "high": ["画面先声夺人。", "过场像海报。", "美术方向清楚，第一眼就站住。"],
+          "mid": ["建模能打，UI还像内测。", "好看，但镜头有点吵。"],
+          "low": ["素材重复，场景像走廊。", "海报强，进门就泄气。"]
+        },
+        "music": {
+          "high": ["听感先把人留住。", "进门一首就够用。", "配乐把情绪托住了。"],
+          "mid": ["BGM能听，后面别降调睡着。", "主题有记忆点，循环偏密。"],
+          "low": ["垫乐感太重。", "音效抢戏，旋律站不住。"]
+        },
+        "overall": {
+          "high": ["评测席吵翻了，玩家倒还买账。", "不是神作，但比上周那堆买量的像样。"],
+          "mid": ["能打完，记不住。", "中期有点空，收尾那下是真的。"],
+          "low": ["这分打得难受。", "评论区已经开始复盘制作人。"]
+        }
+      },
     "ownConsolePlatform": {
       "id": "ownConsole",
       "displayName": "自研主机",
@@ -37,28 +74,117 @@
     "mauLabel": "月活",
     "shareHint": "三端份额 = 该端本公司累计销量 ÷（本公司该端累计销量 + 对手该端累计出货）。点月后对手出货会改份额。外包默认不占份额。",
     "calendarTitle": "发售日历",
-    "calendarHint": "其他厂商计划发售。开局已有当年表；每年 12 月点「下一月」后生成下一年 1–12 月。不含自家待发售。",
+    "calendarHint": "其他厂商计划发售。开局已有当年表；每年 12 月点「下一月」后生成下一年 1–12 月。不含自家待发售。带移动端的长线会按版本继续出现，如 原神.2.0。",
     "calendarEntry": "日历",
     "calendarShipped": "已发",
     "calendarMoved": "已改期",
     "calendarEmpty": "暂无",
     "chartTitle": "本月畅销榜",
-    "chartHint": "按本月实销排序。本公司在售盒装 + 对手在售。停售看相对基准的 Y，不看实销低不低。",
+    "chartHint": "按本月实销排序。席位不够用市场上的假游戏填满。本公司盒装或长线掉出榜后停止发售/停止运营。",
     "chartEmpty": "这个月还没有在售作品上榜。",
     "chartPlayerTag": "本公司",
+    "chartFillerTag": "市场",
+    "chartDropBoxedNote": "掉出畅销榜，停止发售",
+    "chartDropLiveopsNote": "掉出畅销榜，停止运营",
     "onSaleLabel": "在售",
     "offSaleLabel": "已停售",
+    "liveopsActiveLabel": "运营中",
+    "liveopsClosedLabel": "已关服",
+    "liveopsPeakLabel": "最高月收",
+    "liveopsMonthsLabel": "已运营",
+    "liveopsVersionTag": "版本",
+    "liveopsVersionKicker": "版本更新",
+    "liveopsVersionNote": "上线",
+    "awardsHint": "每年 11 月过月时评选。盒装看去年 12 月到今年 11 月发售；最佳长线评仍在运营的长线，不限于发售当年。",
     "baselineSalesLabel": "基准（首月参照）",
     "monthActualSalesLabel": "本月实销",
     "launchActualSalesLabel": "发售当月实销",
-    "mediaSalesHint": "基准是发售公式算出的首月参照，不是账上实销。有的事件只砸本月实销，有的会改写基准、之后每月都按新基准走。"
+    "mediaSalesHint": "基准是发售公式算出的首月参照，不是账上实销。有的事件只砸本月实销，有的会改写基准、之后每月都按新基准走。",
+    "career": {
+      "comment": "个人线展示文案。角色名默认不要用公司名喵扑studio。",
+      "bootPill": "1995 刚毕业",
+      "bootLead": "刚毕业入行。先写名字、选一个擅长，再从三份 offer 里挑一家入职。时间不会自己走，要点「下一月」。",
+      "nameLabel": "角色名",
+      "defaultName": "阿喵",
+      "startButton": "下一步",
+      "roleTitle": "擅长",
+      "roleHint": "锁定主职。本版不当制作人，也不开公司。",
+      "roleNext": "看 offer",
+      "offerTitle": "三份 offer",
+      "offerHint": "小作坊、稳定大厂、野牌各一家。岗位已按你的擅长锁定。",
+      "acceptButton": "入职",
+      "salaryLabel": "月薪",
+      "livingLabel": "生活费",
+      "riskLabel": "风险",
+      "savingsLabel": "积蓄",
+      "fameLabel": "声望",
+      "roleChipLabel": "岗位",
+      "companyChipLabel": "公司",
+      "idleHint": "待命。组里这会儿没有在研。",
+      "preparingHint": "筹备中，下一段会开工。",
+      "postLaunchPhase": "后续支持",
+      "postLaunchHotfix": "热修",
+      "playerHead": "自身",
+      "projectHead": "在研作品",
+      "xpLabel": "工作室经验",
+      "skillLabel": "熟练度",
+      "skillEmpty": "题材/玩法熟练度还没攒起来。",
+      "genreLabel": "题材",
+      "gameplayLabel": "玩法",
+      "payDeltaPrefix": "+",
+      "studioLabel": "工作室",
+      "siblingStudios": "本公司其他工作室",
+      "inDevLabel": "在研",
+      "onSaleLabel": "在售",
+      "hopKicker": "跳槽",
+      "hopTitle": "全球 offer",
+      "hopBody": "一次只能申请一家。大厂更难进，失败要等到明年。",
+      "hopLocked": "今年已经申请过，明年再试。",
+      "hopStay": "先留下",
+      "hopAccept": "申请",
+      "hopPickHint": "先点选一家，再申请。",
+      "hopInternal": "内部调动",
+      "hopChance": "通过率",
+      "hopFailNotice": "没通过，明年再试。",
+      "hopOkNotice": "跳槽成功。",
+      "inviteKicker": "挖人",
+      "inviteTitle": "入职邀请",
+      "inviteAccept": "跳槽加入",
+      "inviteCounter": "现公司还价",
+      "inviteDecline": "留下",
+      "phasePrefix": "阶段",
+      "progressLabel": "进度",
+      "waitRole": "待命",
+      "colleagueTitle": "制作组",
+      "talentMarketSoon": "人才市场将在下一段开放。",
+      "yearEndKicker": "年底",
+      "yearEndTitle": "这一年收束了",
+      "awardKicker": "年度盛典",
+      "awardTitle": "颁奖夜",
+      "awardBody": "盒装看窗口内发售；最佳长线评仍在运营的长线，按峰值现场比，不预填得主。",
+      "shipKicker": "发售",
+      "eventKicker": "开发事件",
+      "intel": "情报",
+      "nextMonth": "下一月",
+      "tgaEntry": "年度奖",
+      "calendarEntry": "发售情报",
+      "restart": "再开一局",
+      "settledEntry": "生涯结算",
+      "dimProgram": "程序",
+      "dimDesign": "策划",
+      "dimArt": "美术",
+      "dimMusic": "音乐"
+    }
   },
   "calendar": {
-    "comment": "一局起止；点「下一月」才推进。",
+    "comment": "一局起止；点「下一月」才推进。现行经营局仍是 2015–2025。个人生涯档的 1995–2025 在 activity/career-world.json。",
     "startYear": 2015,
     "startMonth": 1,
     "endYear": 2025,
     "endMonth": 12
+  },
+  "careerWorld": {
+    "comment": "本对象在 sync 与测试加载时由 activity/career-world.json 整段替换。改公司、作品、细节、四维、开发事件、useAlias 只改那份表。useAlias：false 展示 name 真名，true 展示 alias 化名。"
   },
   "economy": {
     "comment": "货币只有整数「资金」。开局能撑过第一款中作薪资，换场地要心疼，卖得好能赚回来。",
@@ -105,7 +231,7 @@
   "staff": {
     "comment": "编制上限跟规模走。特性只在雇佣时抽，升级只加四维。",
     "salary": {
-      "comment": "月薪 = (base + level×perLevel + 四维均值×perAvgStat) × (1 + 荣誉×honorBonusPerPoint)，每年 1 月再乘一次年加薪。",
+      "comment": "月薪 = (base + level×perLevel + 四维均值×perAvgStat) × (1 + 荣誉×honorBonusPerPoint) × 特性 salaryMult，每年 1 月再乘一次年加薪。",
       "base": 1700,
       "perLevel": 320,
       "perAvgStat": 28,
@@ -119,9 +245,13 @@
       "levelMax": 5,
       "statMin": 7,
       "statMax": 24,
-      "traitChanceSpark": 0.25,
-      "traitChanceMeticulous": 0.25,
-      "traitChanceBoth": 0.08
+      "maxTraits": 2,
+      "traitCountWeights": {
+        "comment": "雇佣时抽 0～2 条。权重只影响条数，具体抽哪条看 traits.*.hireWeight。",
+        "0": 42,
+        "1": 50,
+        "2": 8
+      }
     },
     "experience": {
       "comment": "做游戏每月攒经验；升级所需 = expRequiredBase + 当前等级×expRequiredPerLevel。四维各加随机区间内整数。",
@@ -140,10 +270,13 @@
     }
   },
   "traits": {
-    "comment": "天生，雇佣时抽出；升级不加特性。一个人可以 0～2 条。",
+    "comment": "天生，雇佣时抽出；升级不加特性。一个人 0～maxTraits 条。抽哪条看 hireWeight。效果数字只在本表。",
     "sparkOfInspiration": {
       "displayName": "灵光一闪",
+      "summary": "开发时有机会灵感月，某一维多跳一截。",
+      "hireWeight": 18,
       "comment": "灵感月：当月某一维额外加上 bonus；制作人更容易触发、加成更大。",
+      "triggerNote": "灵感月",
       "producerTriggerRate": 0.18,
       "memberTriggerRate": 0.08,
       "producerDimBonus": 4,
@@ -151,11 +284,55 @@
     },
     "meticulous": {
       "displayName": "一丝不苟",
+      "summary": "成品更稳，评分更不容易翻车。",
+      "hireWeight": 18,
       "comment": "稳定性：把当月该人贡献的随机下限从 1 抬高；制作人抬整款游戏的翻车保护（发售分下限）。",
       "producerMinRollBonus": 3,
       "memberMinRollBonus": 1,
       "producerScoreFloorBonus": 0.4,
       "memberScoreFloorBonus": 0.1
+    },
+    "grindKing": {
+      "displayName": "肝帝",
+      "summary": "做游戏和养长线都涨经验更快。",
+      "hireWeight": 14,
+      "expBonusDev": 8,
+      "expBonusLive": 4
+    },
+    "crowdMagnet": {
+      "displayName": "人气王",
+      "summary": "作品真正发布时多带一截粉丝。",
+      "hireWeight": 12,
+      "producerFansOnRelease": 180,
+      "memberFansOnRelease": 50
+    },
+    "thrifty": {
+      "displayName": "省钱怪",
+      "summary": "同样能力，月薪更便宜。",
+      "hireWeight": 12,
+      "salaryMult": 0.85
+    },
+    "teamPlayer": {
+      "displayName": "气氛组",
+      "summary": "在组里时，整月有机会给在研某一维加一截。",
+      "hireWeight": 12,
+      "producerTeamDimBonus": 3,
+      "memberTeamDimBonus": 2,
+      "producerTeamTriggerRate": 0.55,
+      "memberTeamTriggerRate": 0.3
+    },
+    "trendRider": {
+      "displayName": "跟风选手",
+      "summary": "发售对上潮流时，基准销量再乘一截。",
+      "hireWeight": 10,
+      "producerTrendSalesExtra": 0.15,
+      "memberTrendSalesExtra": 0.06
+    },
+    "liveOpsAce": {
+      "displayName": "长线操盘",
+      "summary": "去维护长线时，月收更高。",
+      "hireWeight": 10,
+      "liveRevenueMult": 0.4
     }
   },
   "development": {
@@ -187,7 +364,7 @@
     "percentDecimals": 1
   },
   "lifecycle": {
-    "comment": "盒装发售生命周期（长线运营与外包不走本曲线）。发售公式写入 baselineSales，作为 Y=1.0 的首月参照，不是账上实销。当月真实销量=round(baselineSales×Y(m)×当月瞬时修正)。Y(m)=T+(1-T)/(1+e^(k·(x-x0)))，x=m-1。T=tMin+(S-scoreMin)/(scoreMax-scoreMin)×tSpan；x0=x0Min+同比例×x0Span。S=媒体均分，可为小数。文档 2.2 表曾写评分1的 x0=2.0，与线性插值公式不一致，实现用公式：S=scoreMin → T=tMin、x0=x0Min；S=scoreMax → T=tMin+tSpan、x0=x0Min+x0Span。k 不随评分变。无均分不套 scoreMax。掉榜只看 Y(m)<dropOffY 或 m>maxMonths，不看实销/基准比。chartSize 只给畅销榜席位。查表仅测试对照，运行时不算 12 格表。launchSales 记发售当月实销，后续月乘数只用 baselineSales。",
+    "comment": "盒装发售生命周期（外包不走本曲线；长线用月收看榜，不走 Y）。发售公式写入 baselineSales，作为 Y=1.0 的首月参照，不是账上实销。当月真实销量=round(baselineSales×Y(m)×当月瞬时修正)。Y(m)=T+(1-T)/(1+e^(k·(x-x0)))，x=m-1。T=tMin+(S-scoreMin)/(scoreMax-scoreMin)×tSpan；x0=x0Min+同比例×x0Span。S=媒体均分，可为小数。文档 2.2 表曾写评分1的 x0=2.0，与线性插值公式不一致，实现用公式：S=scoreMin → T=tMin、x0=x0Min；S=scoreMax → T=tMin+tSpan、x0=x0Min+x0Span。k 不随评分变。无均分不套 scoreMax。停售看畅销榜：先结算本月实销，再按实销排 chartSize 席（不足用 chartFillers 填满），未进榜的盒装停售、长线走 shutdownLive。假游戏只占席，不是玩家可经营实体。dropOffY 不参与停售，避免榜内作品被 Y 提前杀掉。maxMonths 只让 Y 变为 0（实销 0 则排不进榜）。查表仅测试对照。launchSales 记发售当月实销，后续月乘数只用 baselineSales。",
     "maxMonths": 12,
     "k": 1.2,
     "tMin": 0.05,
@@ -197,7 +374,39 @@
     "scoreMin": 1,
     "scoreMax": 10,
     "dropOffY": 0.18,
-    "chartSize": 20
+    "chartSize": 30,
+    "chartFillers": [
+      { "id": "fill-01", "title": "星海旅人", "pub": "灯塔社", "monthSales": 7200 },
+      { "id": "fill-02", "title": "方块工坊", "pub": "沙盒屋", "monthSales": 6980 },
+      { "id": "fill-03", "title": "夜城传说", "pub": "月面组", "monthSales": 6760 },
+      { "id": "fill-04", "title": "跳跳骑士", "pub": "纸飞机", "monthSales": 6540 },
+      { "id": "fill-05", "title": "像素牧场", "pub": "盐汽水", "monthSales": 6320 },
+      { "id": "fill-06", "title": "雾港列车", "pub": "雾港制作", "monthSales": 6100 },
+      { "id": "fill-07", "title": "青砖侠", "pub": "青砖厂", "monthSales": 5880 },
+      { "id": "fill-08", "title": "纸飞机大冒险", "pub": "纸飞机", "monthSales": 5660 },
+      { "id": "fill-09", "title": "野猫酒馆", "pub": "野猫组", "monthSales": 5440 },
+      { "id": "fill-10", "title": "回声山谷", "pub": "回声馆", "monthSales": 5220 },
+      { "id": "fill-11", "title": "灯塔守夜", "pub": "灯塔社", "monthSales": 5000 },
+      { "id": "fill-12", "title": "沙盒星球", "pub": "沙盒屋", "monthSales": 4780 },
+      { "id": "fill-13", "title": "月面邮局", "pub": "月面组", "monthSales": 4560 },
+      { "id": "fill-14", "title": "汽水大战", "pub": "汽水铺", "monthSales": 4340 },
+      { "id": "fill-15", "title": "蘑菇守卫", "pub": "蘑菇屋", "monthSales": 4120 },
+      { "id": "fill-16", "title": "云端茶馆", "pub": "云端造", "monthSales": 3900 },
+      { "id": "fill-17", "title": "深海邮差", "pub": "深海铺", "monthSales": 3680 },
+      { "id": "fill-18", "title": "草原车手", "pub": "草原社", "monthSales": 3460 },
+      { "id": "fill-19", "title": "城堡维修工", "pub": "城堡组", "monthSales": 3240 },
+      { "id": "fill-20", "title": "无名卡带", "pub": "卡带厂", "monthSales": 3020 },
+      { "id": "fill-21", "title": "街角超人", "pub": "街角造", "monthSales": 2800 },
+      { "id": "fill-22", "title": "竹林刺客", "pub": "竹林社", "monthSales": 2580 },
+      { "id": "fill-23", "title": "冬日邮差", "pub": "冬日馆", "monthSales": 2360 },
+      { "id": "fill-24", "title": "机械喵", "pub": "机械铺", "monthSales": 2140 },
+      { "id": "fill-25", "title": "热修英雄", "pub": "热修组", "monthSales": 1920 },
+      { "id": "fill-26", "title": "码头谜案", "pub": "码头屋", "monthSales": 1700 },
+      { "id": "fill-27", "title": "星际菜场", "pub": "菜场造", "monthSales": 1480 },
+      { "id": "fill-28", "title": "幽灵公交", "pub": "公交社", "monthSales": 1260 },
+      { "id": "fill-29", "title": "最后一格", "pub": "格子铺", "monthSales": 1080 },
+      { "id": "fill-30", "title": "旅人便当", "pub": "便当馆", "monthSales": 900 }
+    ]
   },
   "release": {
     "comment": "发售公式写入盒装 baselineSales（首月参照）。粉丝保底 + 四维合计×系数，再乘广告与潮流倍率。当月实销=round(baseline×Y(m)×当月修正)。自制完工进 readyToShip，点发布才结算；外包到期仍自动交付。长线/外包不走盒装 lifecycle。",
@@ -210,6 +419,8 @@
       "minScore": 1,
       "maxScore": 10,
       "scoreDivisor": 6.5,
+      "highScore": 8,
+      "lowScore": 5,
       "outlets": [
         {
           "id": "handleZhi",
@@ -265,14 +476,25 @@
     }
   },
   "liveOps": {
-    "comment": "中等公司才可立项。至少 1 人占编；人走或无人 = 关服。超过 1 人时，每人额外按 extraStaffRevenueRate 加月收。月收明显低于一款正常发售，但占人、开支稳定。",
+    "comment": "中等公司才可立项。至少 1 人占编；人走或无人 = 关服。超过 1 人时，每人额外按 extraStaffRevenueRate 加月收。月收明显低于一款正常发售，但占人、开支稳定。versions：带移动端的长线按 大版本.小版本 多次发售（1.0 是首发，之后每隔 mobileIntervalMonths 发一版，满 minorPerMajor 进下一档大版本）。不是新立项。关服后停止。PC/主机-only 长线不走这套。",
     "minScale": "medium",
     "minMaintainStaff": 1,
     "staffLeaveClosesServer": true,
     "monthlyCost": 2200,
     "monthlyRevenuePerQualitySum": 20,
     "extraStaffRevenueRate": 0.35,
-    "shutdownPenalty": 600
+    "shutdownPenalty": 600,
+    "versions": {
+      "comment": "labelPattern 的 {title}.{major}.{minor} 即 原神.2.0。requiresMobile=true 时只看 platformId=mobile 或 platforms 含 mobile。质量/月收数字只改这里。",
+      "requiresMobile": true,
+      "mobileIntervalMonths": 2,
+      "minorPerMajor": 6,
+      "startMajor": 1,
+      "qualityBump": 2,
+      "revenueBumpRate": 0.2,
+      "mediaOnMajor": true,
+      "labelPattern": "{title}.{major}.{minor}"
+    }
   },
   "series": {
     "comment": "媒体五家均分达到门槛可开系列；新作按比例继承系列粉丝与保底销量。",
@@ -282,7 +504,7 @@
   },
   "world": {
     "comment": "市场份额只展示。对手不当第二玩家。点月按发售日历执行本月计划，不另骰一套无关随机发售。每年 12 月点下一月进入新年时生成下一年表；开局生成当年。盒装销量事件：monthSalesMult/Delta 只改本月实销；baselineSalesMult/Delta 改基准，之后每月都用新基准×Y(m)。salesTarget 默认 playerOnSale。别人家提前发不改玩家基准。",
-    "monthlyEventChance": 0.22,
+    "monthlyEventChance": 0.28,
     "events": [
       {
         "id": "inspirationBurst",
@@ -290,7 +512,7 @@
         "presentation": "notice",
         "weight": 2,
         "displayName": "灵感加班",
-        "text": "有人夜里没走，在研质量悄悄涨了一截。",
+        "text": "制作组有人通宵没走。凌晨三点的工位照片流到群里，在研质量悄悄涨了一截。待发售的成品不受影响。",
         "qualityDelta": 4,
         "_comment": "随机通知。qualityDelta 加到在研某一维；待发售不受影响。"
       },
@@ -300,7 +522,7 @@
         "presentation": "notice",
         "weight": 1,
         "displayName": "社区翻车",
-        "text": "帖子里吵起来了，粉丝和资金都挨了一刀。",
+        "text": "步行街有人开盒式对线，楼主还@了公司号。粉丝和资金都挨了一刀。",
         "fundsDelta": -3500,
         "fansDelta": -220
       },
@@ -310,7 +532,7 @@
         "presentation": "notice",
         "weight": 1,
         "displayName": "意外出圈",
-        "text": "一段实机被到处转，账上和粉丝都暖了。",
+        "text": "一段实机被转到亮了又黑，评论区全是「这谁做的」。账上和粉丝都暖了。",
         "fundsDelta": 4200,
         "fansDelta": 380
       },
@@ -320,7 +542,7 @@
         "presentation": "notice",
         "weight": 1,
         "displayName": "设备加购",
-        "text": "新机器到了，钱包瘪一截，制作倒是顺了。",
+        "text": "新机器到了，报销单拍成九宫格发群里。钱包瘪一截，制作倒是顺了。",
         "fundsDelta": -5200,
         "qualityDelta": 3
       },
@@ -330,7 +552,7 @@
         "presentation": "notice",
         "weight": 1,
         "displayName": "行业展会",
-        "text": "展台花了钱，换来一波新面孔。",
+        "text": "展台花了钱，换来一波专门来盖「来过」的新面孔。",
         "fundsDelta": -2800,
         "fansDelta": 260
       },
@@ -340,7 +562,7 @@
         "presentation": "notice",
         "weight": 1,
         "displayName": "赶工见效",
-        "text": "这月拼了一把，质量上去了，也多烧了点钱。",
+        "text": "这月拼了一把，质量上去了，也多烧了点钱。群里开始有人发「我没事」。",
         "fundsDelta": -1500,
         "qualityDelta": 5
       },
@@ -350,7 +572,7 @@
         "presentation": "notice",
         "weight": 1,
         "displayName": "差评风波",
-        "text": "评分站被刷了，口碑和资金一起掉。",
+        "text": "评分站被刷了。官方号刚想解释，已经被截图打码。口碑和资金一起掉。",
         "fundsDelta": -2000,
         "fansDelta": -180,
         "qualityDelta": -3
@@ -361,7 +583,7 @@
         "presentation": "notice",
         "weight": 1,
         "displayName": "进度延误",
-        "text": "技术债爆了，在研还要再磨一个月。待发售的成品不受影响。",
+        "text": "技术债爆了，匿名区已经在问「是不是跳票」。在研还要再磨一个月。待发售的成品不受影响。",
         "devMonthsDelta": 1
       },
       {
@@ -370,7 +592,7 @@
         "presentation": "notice",
         "weight": 1,
         "displayName": "竞品跳档",
-        "text": "有大厂把原定更晚的作品提前到了下个月。",
+        "text": "有大厂把原定更晚的作品提前到了下个月。档期贴贴，评论区开始比名单。",
         "rivalAdvance": {
           "publisherId": "ea",
           "seriesName": "战地"
@@ -397,12 +619,87 @@
         "salesTarget": "playerOnSale"
       },
       {
+        "id": "fanArtBoom",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 2,
+        "displayName": "同人出圈",
+        "text": "一张二创被转到热评，画师还在作品里写了公司名。粉丝涨了一截。",
+        "fansDelta": 240
+      },
+      {
+        "id": "engineLicenseHike",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "引擎涨价",
+        "text": "授权费邮件来了。财务说这月先把发票认了。",
+        "fundsDelta": -3800
+      },
+      {
+        "id": "springFestivalClash",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "档期撞车",
+        "text": "大作扎堆，商店首页看不见自家封面。本月实销被挤。基准不变，下月仍按原曲线。",
+        "monthSalesMult": 0.7,
+        "salesTarget": "playerOnSale"
+      },
+      {
+        "id": "qaPanic",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "测试炸锅",
+        "text": "测试包被说「能过门但不能过月」。在研某一维被打回一截。待发售不受影响。",
+        "qualityDelta": -4
+      },
+      {
+        "id": "voiceDelay",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "配音档期",
+        "text": "声优档期撞了。在研还得再等一个月。待发售的成品不受影响。",
+        "devMonthsDelta": 1
+      },
+      {
+        "id": "indieNom",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "独立提名",
+        "text": "被塞进一个小奖短名单。奖杯还没影，名字倒是被转了几圈。",
+        "fansDelta": 160,
+        "fundsDelta": 800
+      },
+      {
+        "id": "poachRumor",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "挖角传闻",
+        "text": "对家在匿名区放风。你先发了一笔留人津贴，风声暂时压下去。",
+        "fundsDelta": -2200
+      },
+      {
+        "id": "hotfixPraise",
+        "source": "random",
+        "presentation": "notice",
+        "weight": 1,
+        "displayName": "热修被夸",
+        "text": "半夜补丁发出去，楼里开始说「这公司还在」。粉丝暖了，在研也顺了一截。",
+        "fansDelta": 140,
+        "qualityDelta": 3
+      },
+      {
         "id": "crunchChoice",
         "source": "random",
         "presentation": "choice",
         "weight": 1,
         "displayName": "进度告急",
-        "text": "制作组说按现在的节奏可能赶不上。你怎么处理？",
+        "text": "制作组说按现在的节奏可能赶不上。群里已经有人在问「这周还加班吗」。你怎么处理？",
         "options": [
           {
             "id": "crunch",
@@ -425,6 +722,142 @@
             "devMonthsDelta": -1,
             "monthSalesMult": 0.5,
             "salesTarget": "playerOnSale"
+          }
+        ]
+      },
+      {
+        "id": "streamerCollabChoice",
+        "source": "random",
+        "presentation": "choice",
+        "weight": 1,
+        "displayName": "要不要请人播",
+        "text": "运营扔来一份名单：请人播要花钱，自己发实机不一定有人看，买量又像在交保护费。",
+        "options": [
+          {
+            "id": "payStreamer",
+            "label": "请人播",
+            "fundsDelta": -3200,
+            "fansDelta": 280
+          },
+          {
+            "id": "selfClip",
+            "label": "自己发实机",
+            "fansDelta": 80
+          },
+          {
+            "id": "buyTraffic",
+            "label": "花钱买量",
+            "fundsDelta": -4500,
+            "fansDelta": 360,
+            "monthSalesMult": 1.2,
+            "salesTarget": "playerOnSale"
+          }
+        ]
+      },
+      {
+        "id": "weekendCrunchChoice",
+        "source": "random",
+        "presentation": "choice",
+        "weight": 1,
+        "displayName": "周末还来吗",
+        "text": "有人把工位照片发到群里，配文「自愿」。周末到底还来不来？",
+        "options": [
+          {
+            "id": "comeIn",
+            "label": "周末加班",
+            "qualityDelta": 4,
+            "fundsDelta": -900
+          },
+          {
+            "id": "compTime",
+            "label": "调休",
+            "devMonthsDelta": 1
+          },
+          {
+            "id": "payBonus",
+            "label": "发加班补贴",
+            "fundsDelta": -1800,
+            "qualityDelta": 2
+          }
+        ]
+      },
+      {
+        "id": "leakChoice",
+        "source": "random",
+        "presentation": "choice",
+        "weight": 1,
+        "displayName": "包体流出",
+        "text": "测试包被人传了。匿名区已经在猜发售日。官方号要不要下场？",
+        "options": [
+          {
+            "id": "stayQuiet",
+            "label": "装死"
+          },
+          {
+            "id": "officialPost",
+            "label": "官方下场",
+            "fansDelta": -80,
+            "fundsDelta": -600
+          },
+          {
+            "id": "leanIn",
+            "label": "干脆预热",
+            "fansDelta": 220,
+            "qualityDelta": -2
+          }
+        ]
+      },
+      {
+        "id": "channelShareChoice",
+        "source": "random",
+        "presentation": "choice",
+        "weight": 1,
+        "displayName": "渠道分成",
+        "text": "渠道说这个窗口能给推荐，条件是分成再让一截。财务把表格拍过来了。",
+        "options": [
+          {
+            "id": "acceptCut",
+            "label": "答应分成",
+            "fundsDelta": -2400,
+            "monthSalesMult": 1.25,
+            "salesTarget": "playerOnSale"
+          },
+          {
+            "id": "refuseCut",
+            "label": "拒绝"
+          },
+          {
+            "id": "switchStore",
+            "label": "换渠道",
+            "fundsDelta": -1200,
+            "fansDelta": 60
+          }
+        ]
+      },
+      {
+        "id": "reviewReplyChoice",
+        "source": "random",
+        "presentation": "choice",
+        "weight": 1,
+        "displayName": "差评要回吗",
+        "text": "置顶差评写「制作人出来」。官方号已经有人把草稿写好了，就差你点头。",
+        "options": [
+          {
+            "id": "clapBack",
+            "label": "官方回喷",
+            "fansDelta": -160,
+            "fundsDelta": -400
+          },
+          {
+            "id": "ignore",
+            "label": "冷处理"
+          },
+          {
+            "id": "apologize",
+            "label": "发致歉",
+            "fansDelta": 90,
+            "fundsDelta": -700,
+            "qualityDelta": 2
           }
         ]
       }
@@ -509,6 +942,178 @@
         "text": "市场突然爱看武侠。对上题材的发售会更好卖。",
         "setTrend": {
           "genreId": "wuxia"
+        }
+      },
+      {
+        "id": "kingGloryRelease",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2015,
+        "month": 10,
+        "displayName": "《王者荣耀》上线",
+        "text": "腾讯把《王者荣耀》丢上了移动端。MOBA 从网吧话题变成地铁话题，还看不出会有多疯。",
+        "rivalRelease": {
+          "publisherId": "tencent",
+          "publisherName": "腾讯游戏",
+          "title": "王者荣耀",
+          "series": "王者荣耀",
+          "genreId": "fantasy",
+          "gameplayId": "moba",
+          "platformId": "mobile",
+          "avg": 8.1,
+          "sales": 48000,
+          "mau": 0,
+          "live": true,
+          "keep": true
+        }
+      },
+      {
+        "id": "kingGloryTrend",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2015,
+        "month": 11,
+        "after": {
+          "prevEventId": "kingGloryRelease"
+        },
+        "displayName": "MOBA 成了潮流",
+        "text": "玩家开始喜欢 MOBA。之后自制 MOBA 能吃到潮流销量加成。",
+        "setTrend": {
+          "gameplayId": "moba"
+        }
+      },
+      {
+        "id": "autoChessWave",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2018,
+        "month": 6,
+        "displayName": "自走棋杀出模组区",
+        "text": "论坛里全是「又肝了一晚上棋子」。有人说这只是玩法实验，有人已经在问正版什么时候来。",
+        "fansDelta": 280
+      },
+      {
+        "id": "autoChessTrend",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2018,
+        "month": 7,
+        "after": {
+          "prevEventId": "autoChessWave"
+        },
+        "displayName": "自走棋成了口味",
+        "text": "市场突然爱看自走棋。对上玩法的发售会更好卖。",
+        "setTrend": {
+          "gameplayId": "autoChess"
+        }
+      },
+      {
+        "id": "stayHomeBoom",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2020,
+        "month": 2,
+        "displayName": "大家突然都有时间玩游戏",
+        "text": "日历空了，在线挤了。粉丝涨了一截；在售盒装这月实销被抬高，基准不变。",
+        "fansDelta": 520,
+        "monthSalesMult": 1.35,
+        "salesTarget": "allOnSale"
+      },
+      {
+        "id": "openWorldLiveRelease",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2020,
+        "month": 9,
+        "displayName": "《原神》上线",
+        "text": "米哈游把《原神》丢上了架。开放世界长线第一次被这么多人同时讨论抽卡和爬山。",
+        "rivalRelease": {
+          "publisherId": "mihoyo",
+          "publisherName": "米哈游",
+          "title": "原神",
+          "series": "原神",
+          "genreId": "fantasy",
+          "gameplayId": "openWorld",
+          "platformId": "mobile",
+          "avg": 8.6,
+          "sales": 54000,
+          "mau": 0,
+          "live": true,
+          "keep": true
+        }
+      },
+      {
+        "id": "openWorldLiveMau",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2020,
+        "month": 10,
+        "after": {
+          "prevEventId": "openWorldLiveRelease",
+          "releaseTitle": "原神",
+          "monthDelay": 1
+        },
+        "displayName": "《原神》把服务器打满",
+        "text": "《原神》月活被推到台前。情报里能看到数字，不是一句传闻。",
+        "setRivalMau": {
+          "title": "原神",
+          "mau": 12000000
+        }
+      },
+      {
+        "id": "fantasyTrend2020",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2020,
+        "month": 11,
+        "after": {
+          "prevEventId": "openWorldLiveMau"
+        },
+        "displayName": "奇幻成了口味",
+        "text": "玩家开始喜欢奇幻。之后自制奇幻能吃到潮流销量加成。",
+        "setTrend": {
+          "genreId": "fantasy"
+        }
+      },
+      {
+        "id": "licenseWinterChoice",
+        "source": "historical",
+        "presentation": "choice",
+        "year": 2022,
+        "month": 8,
+        "displayName": "窗口变窄了",
+        "text": "宣发排期被抽走一截。有人劝你先接外包过冬，有人说这时候更该把名字打出去。",
+        "options": [
+          {
+            "id": "outsourceWinter",
+            "label": "先接外包过冬",
+            "fundsDelta": 3600,
+            "fansDelta": -80
+          },
+          {
+            "id": "pushMarketing",
+            "label": "硬刚宣发",
+            "fundsDelta": -4200,
+            "fansDelta": 240
+          },
+          {
+            "id": "keepStaff",
+            "label": "先把人留住",
+            "fundsDelta": -1800
+          }
+        ]
+      },
+      {
+        "id": "mythSingleHit",
+        "source": "historical",
+        "presentation": "notice",
+        "year": 2024,
+        "month": 8,
+        "displayName": "国产单机神话刷屏",
+        "text": "一款西行故事把评论区占满了。粉丝涨了一截，市场突然爱看神话。",
+        "fansDelta": 640,
+        "setTrend": {
+          "genreId": "myth"
         }
       }
     ],
@@ -1912,35 +2517,61 @@
     }
   },
   "awards": {
-    "comment": "每年 11 月过月时评选；窗口为去年 12 月～今年 11 月（规则，月份写在这里供实现读取）。",
+    "comment": "每年 11 月过月时评选；盒装窗口为去年 12 月～今年 11 月（规则，月份写在这里供实现读取）。经营局读发售作品媒体均分/四维/销量；生涯评奖读 careerWorld.titles[].stats 与 score，不读空的 titleDetails.awards。最佳长线只收 releaseType=liveops / live / liveOps 作品，已发售且仍在运营（或窗口内关服）即可，不限于发售当年。评选按 list 的 scoreFrom/stat 字段，不要在 JS 写死奖项 id。design 与员工 script 互通。",
     "month": 11,
     "windowStartMonth": 12,
     "windowLabel": "lastDecember-thisNovember",
     "fanBonusWinner": 500,
+    "nomineeCount": 5,
+    "career": {
+      "comment": "生涯盒装候选是窗口内发售的 titles；最佳长线读已发售且仍算长线的 titles（releaseType=liveops 或 liveAfterRelease）。用 stats + score + 长线峰值现场比，禁止预填历史得主。",
+      "statsFrom": "titles[].stats",
+      "scoreFrom": "titles[].score",
+      "ignoreAwardsArray": true
+    },
     "list": [
       {
         "id": "goty",
-        "displayName": "年度游戏"
+        "displayName": "年度游戏",
+        "scoreFrom": "avg"
       },
       {
-        "id": "bestProduction",
-        "displayName": "最佳制作"
-      },
-      {
-        "id": "bestLiveOps",
-        "displayName": "最佳长线运营"
+        "id": "bestGameplay",
+        "displayName": "最佳玩法",
+        "stat": "program",
+        "scoreFrom": "stat"
       },
       {
         "id": "bestNarrative",
-        "displayName": "最佳叙事"
+        "displayName": "最佳叙事",
+        "stat": "design",
+        "statAliases": ["script"],
+        "scoreFrom": "stat"
       },
       {
         "id": "bestVisual",
-        "displayName": "最佳视觉"
+        "displayName": "最佳视觉",
+        "stat": "art",
+        "scoreFrom": "stat"
+      },
+      {
+        "id": "bestAudio",
+        "displayName": "最佳配乐",
+        "stat": "music",
+        "scoreFrom": "stat"
       },
       {
         "id": "playersChoice",
-        "displayName": "玩家之选"
+        "displayName": "玩家之选",
+        "scoreFrom": "sales",
+        "fallback": "prestige"
+      },
+      {
+        "id": "bestLiveOps",
+        "displayName": "最佳长线运营",
+        "scoreFrom": "livePeak",
+        "fallback": "qsum",
+        "liveOnly": true
       }
     ]
   },

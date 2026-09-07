@@ -16,23 +16,31 @@
     }
   }
 
-  function settleLiveOpsMonth(st, g, config, notes) {
+  function settleLiveOpsMonth(st, g, config, notes, mediaPacks) {
     var ms = (g.liveOps.maintainerIds || []).filter(function (id) { return !!sim.findStaff(st, id); });
+    var rev, shipped;
     g.liveOps.maintainerIds = ms;
     if (ms.length < (config.liveOps.minMaintainStaff || 1)) {
       sim.shutdownLive(st, g, config, notes);
       return;
     }
-    var rev = sim.liveOpsRevenue(g, config);
+    rev = sim.liveOpsRevenue(g, config, st);
+    if (sim.applyLiveOpsVersion) {
+      shipped = sim.applyLiveOpsVersion(st, g, config, notes, mediaPacks, rev);
+      if (shipped && shipped.rev != null) rev = shipped.rev;
+    }
     st.company.funds += rev;
     st.company.funds -= config.liveOps.monthlyCost;
     st.monthSales += rev;
+    g.monthSales = rev;
+    sim.stampMonthSales(g, st);
     g.liveOps.monthsLive += 1;
     if (rev > (g.liveOps.peak || 0)) g.liveOps.peak = rev;
     notes.push(g.title + "长线 +" + rev + " / 开支 -" + config.liveOps.monthlyCost);
   }
 
   sim.tickMonth = function (state, config) {
+    if (state && state.mode === "career") return sim.tickCareerMonth(state, config);
     var st = sim.clone(state);
     sim.ensureGameExtras(st);
     var notes = [];
@@ -50,7 +58,12 @@
       if (g.liveOps && g.liveOps.active) {
         var keepers = (g.liveOps.maintainerIds || []).map(function (id) { return sim.findStaff(st, id); }).filter(Boolean);
         keepers.forEach(function (s) {
-          sim.addExp(st, s, config.staff.experience.expPerLiveOpsMonth, config);
+          var extra = 0;
+          (s.traits || []).forEach(function (id) {
+            var t = sim.traitDef(id, config);
+            if (t && t.expBonusLive) extra += t.expBonusLive;
+          });
+          sim.addExp(st, s, config.staff.experience.expPerLiveOpsMonth + extra, config);
           var dim = sim.pick(st, DIMS);
           g.stats[dim] += 1;
         });
@@ -86,12 +99,13 @@
 
     st.released.forEach(function (g) {
       sim.tickLifecycle(st, g, config);
-      if (g.liveOps && g.liveOps.active) settleLiveOpsMonth(st, g, config, notes);
+      if (g.liveOps && g.liveOps.active) settleLiveOpsMonth(st, g, config, notes, mediaPacks);
     });
     (st.rivalReleased || []).forEach(function (g) {
       sim.tickRivalLifecycle(st, g, config);
+      if (sim.applyLiveOpsVersion) sim.applyLiveOpsVersion(st, g, config, notes, null);
     });
-    st.monthChart = sim.monthlyChart(st, config);
+    sim.applyChartDropOff(st, config, notes);
 
     var pay = 0;
     st.staff.forEach(function (s) {

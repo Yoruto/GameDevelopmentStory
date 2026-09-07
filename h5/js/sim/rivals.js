@@ -516,6 +516,8 @@
       monthSalesForMonth: spec.live ? null : st.month,
       live: !!spec.live,
       livePeak: spec.livePeak != null ? spec.livePeak : (spec.live ? Math.round(sales * ship.livePeakRateMin) : 0),
+      versionMajor: spec.live ? ((config.liveOps && config.liveOps.versions && config.liveOps.versions.startMajor) || 1) : 0,
+      versionMinor: spec.live ? 0 : 0,
       mau: spec.mau || 0,
       keep: !!spec.keep,
       releasedYear: st.year,
@@ -525,7 +527,7 @@
     st.rivalMonth.push(rec);
     st.rivalWindow.push(rec);
     if (!rec.live) sim.keepRivalOnSale(st, rec);
-    else if (rec.keep || rec.mau) sim.keepRivalHit(st, rec);
+    else sim.keepRivalHit(st, rec);
     markCalendarShipped(st, rec);
     return rec;
   };
@@ -611,6 +613,8 @@
       monthSalesForMonth: live ? null : st.month,
       live: live,
       livePeak: live ? Math.round(sales * (ship.livePeakRateMin + sim.rand(st) * ship.livePeakRateSpan)) : 0,
+      versionMajor: live ? ((config.liveOps && config.liveOps.versions && config.liveOps.versions.startMajor) || 1) : 0,
+      versionMinor: live ? 0 : 0,
       mau: plan.mau || 0,
       keep: !!plan.keep,
       releasedYear: st.year,
@@ -620,7 +624,7 @@
     st.rivalMonth.push(rec);
     st.rivalWindow.push(rec);
     if (!rec.live) sim.keepRivalOnSale(st, rec);
-    else if (rec.keep || rec.mau) sim.keepRivalHit(st, rec);
+    else sim.keepRivalHit(st, rec);
     if (pub) {
       if (!st.rivalSequel[pub.id]) st.rivalSequel[pub.id] = {};
       st.rivalSequel[pub.id][series.name] = (st.rivalSequel[pub.id][series.name] || 0) + 1;

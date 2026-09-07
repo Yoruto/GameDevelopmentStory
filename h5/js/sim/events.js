@@ -329,6 +329,9 @@
   };
 
   sim.resolveEventChoice = function (state, eventId, optionId, config) {
+    if (state && state.mode === "career" && sim.resolveCareerEventChoice) {
+      return sim.resolveCareerEventChoice(state, eventId, optionId, config);
+    }
     var ev = sim.findEventDef(config, eventId);
     if (!ev) return sim.fail(state, sim.ERR.EVENT_NOT_FOUND);
     if ((ev.presentation || "notice") !== "choice") return sim.fail(state, sim.ERR.EVENT_NOT_CHOICE);

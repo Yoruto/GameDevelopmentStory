@@ -11,8 +11,8 @@
 
 ## 怎么改数值
 
-1. 只改 `activity/config.json`（不要把平衡数字抄进 design / HTML / sim）。
-2. `python scripts/sync_config.py`（同步 `h5/config.json` 与 `h5/js/config.generated.js`）。Windows 若失败再试 `python3`。
+1. 只改 `activity/config.json`（生涯作品改 `career-world.json`）。不要把平衡数字抄进 design / HTML / sim。
+2. `python scripts/sync_config.py`（同步 `h5/config.json` 与 `h5/js/config.generated.js`，并并入生涯表）。Windows 若失败再试 `python3`。
 3. `node tests/run-sim-tests.js`，必须绿。
 
 基准销量、盒装 Logistic 生命周期（`lifecycle` 的 T / x0 / k、`dropOffY`、`maxMonths`、`chartSize`）也只改这份 json。
@@ -21,9 +21,10 @@
 
 | 文件 | 给谁看 |
 |------|--------|
-| [design.md](design.md) | 现行玩法：点月、三端、外包、待发售、事件、生命周期、畅销榜、长线/工作室/评分/年度奖 |
+| [design.md](design.md) | 现行玩法：点月、三端、外包、待发售、事件、生命周期、畅销榜、长线/版本发售/工作室/评分/年度奖 |
 | [architecture.md](architecture.md) | view / sim / config、公开接口、存档字段、测试与改数流程 |
 | [requirements.md](requirements.md) | 已拍板业务：云档、不分享、公司名默认「喵扑studio」 |
 | `config.json` | 数值唯一源；改完必须 sync + 测 |
+| `career-world.json` | 生涯公司/作品表；sync 时并入 `careerWorld`。长线版本不预填目录，由 sim 按发售日推算 |
 
 仓库根 `README.md` 是 Colorbox 通用技能包说明，不是本游戏手册。

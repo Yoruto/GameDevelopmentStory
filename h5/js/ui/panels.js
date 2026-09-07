@@ -27,12 +27,15 @@
     var g = lives[ui.session.uiPage.live];
     var card = doc.createElement("div");
     card.className = "card";
-    var name = doc.createElement("div"); name.className = "name"; name.textContent = g.title;
+    var name = doc.createElement("div"); name.className = "name";
+    name.textContent = (sim.liveOpsUsesVersions && sim.liveOpsUsesVersions(g, config) && sim.liveOpsVersionLabel)
+      ? sim.liveOpsVersionLabel(g.title, sim.liveOpsCurrentVersion(g, config), config)
+      : g.title;
     var hint = doc.createElement("p"); hint.className = "hint";
     hint.textContent = sim.contentName(config.content.genres, g.genreId) + " · 已运营 " + g.liveOps.monthsLive + " 月 · 最高月收 " + (g.liveOps.peak || 0);
     card.appendChild(name); card.appendChild(hint);
     var keepers = g.liveOps.maintainerIds || [];
-    var rev = sim.liveOpsRevenue(g, config);
+    var rev = sim.liveOpsRevenue(g, config, state);
     [["本月预估收入", String(rev)], ["固定开支", String(config.liveOps.monthlyCost)], ["维护", keepers.map(function (id) {
       var s = sim.findStaff(state, id); return s ? s.n : id;
     }).join("、") || "无人"]].forEach(function (pair) {
@@ -151,7 +154,10 @@
       nm.textContent = c.n + " · Lv" + c.level;
       var line = doc.createElement("p");
       line.className = "hint";
-      line.textContent = "月薪 " + c.salary;
+      line.textContent = "程" + c.program + " 剧" + c.script + " 美" + c.art + " 音" + c.music + " · 月薪 " + c.salary;
+      var traitP = doc.createElement("p");
+      traitP.className = "hint";
+      traitP.textContent = sim.traitSummaryLine(c, config) || "无特性";
       var btn = doc.createElement("button");
       btn.className = "btn ghost wide";
       btn.textContent = "雇佣";
@@ -160,7 +166,7 @@
           ui.paintHq(); ui.paintMarket();
         });
       });
-      card.appendChild(nm); card.appendChild(line); card.appendChild(btn);
+      card.appendChild(nm); card.appendChild(line); card.appendChild(traitP); card.appendChild(btn);
       m.appendChild(card);
     });
     var f = ui.$("fire-list");
@@ -179,7 +185,8 @@
       var row = doc.createElement("div");
       row.className = "item";
       var left = doc.createElement("span");
-      left.textContent = s.n + " · Lv" + s.level;
+      left.textContent = s.n + " · Lv" + s.level +
+        ((s.traits || []).length ? " · " + (s.traits || []).map(function (id) { return sim.traitName(id, config); }).join("/") : "");
       var btn = doc.createElement("button");
       btn.className = "btn ghost";
       btn.textContent = "辞退";
@@ -275,7 +282,8 @@
     state.staff.forEach(function (s) {
       var ch = doc.createElement("span");
       ch.className = "chip";
-      ch.textContent = s.n + " · Lv" + s.level;
+      ch.textContent = s.n + " · Lv" + s.level +
+        ((s.traits || []).length ? " · " + (s.traits || []).map(function (id) { return sim.traitName(id, config); }).join("/") : "");
       ch.setAttribute("data-sid", s.id);
       if (s.status !== "idle") {
         ch.style.opacity = ".4";

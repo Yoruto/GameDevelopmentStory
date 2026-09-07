@@ -12,9 +12,63 @@
     var config = cfg();
     if (!state) return;
     var copy = config.copy || {};
+    var careerCopy = sim.careerCopy ? sim.careerCopy(config) : {};
     var head = ui.$("calendar-head");
     var hint = ui.$("calendar-hint");
-    var cal = sim.getRivalCalendar(state, state.year);
+    var grid = ui.$("calendar-grid");
+    var m, cell, lab, empty, line, pack, plans, titles, shipped, cal;
+    if (!grid) return;
+    grid.textContent = "";
+    if (sim.isCareerMode && sim.isCareerMode(state)) {
+      pack = sim.careerYearReleases(state.year, config, state);
+      if (head) head.textContent = (careerCopy.calendarEntry || copy.calendarTitle || "发售情报") + " · " + pack.year;
+      if (hint) hint.textContent = copy.calendarHint || hint.textContent;
+      shipped = {};
+      (state.worldReleased || []).forEach(function (g) { shipped[g.id] = true; });
+      for (m = 1; m <= 12; m++) {
+        cell = doc.createElement("div");
+        cell.className = "cal-cell";
+        if (m === state.month) cell.classList.add("now");
+        if (m < state.month) cell.classList.add("past");
+        lab = doc.createElement("div");
+        lab.className = "cal-m";
+        lab.textContent = m + "月";
+        cell.appendChild(lab);
+        titles = (pack.months && pack.months[m]) || [];
+        if (!titles.length) {
+          empty = doc.createElement("span");
+          empty.className = "cal-g cal-tag";
+          empty.textContent = copy.calendarEmpty || "暂无";
+          cell.appendChild(empty);
+        } else {
+          titles.slice(0, 4).forEach(function (t) {
+            line = doc.createElement("span");
+            line.className = "cal-g";
+            if (t.isVersion) {
+              if (m < state.month) line.className += " shipped";
+              line.textContent = (t.label || sim.worldLabel(t, config)) +
+                (m < state.month ? (" · " + (copy.calendarShipped || "已发")) : "") +
+                " · " + (copy.liveopsVersionTag || "版本");
+            } else if (shipped[t.id] || m < state.month) {
+              line.className += " shipped";
+              line.textContent = sim.worldLabel(t, config) + " · " + (copy.calendarShipped || "已发");
+              if (sim.isLiveOpsTitle && sim.isLiveOpsTitle(t)) {
+                line.textContent += " · " + (((copy.releaseTypes || {}).liveops) || "");
+              }
+            } else {
+              line.textContent = sim.worldLabel(t, config);
+              if (sim.isLiveOpsTitle && sim.isLiveOpsTitle(t)) {
+                line.textContent += " · " + (((copy.releaseTypes || {}).liveops) || "");
+              }
+            }
+            cell.appendChild(line);
+          });
+        }
+        grid.appendChild(cell);
+      }
+      return;
+    }
+    cal = sim.getRivalCalendar(state, state.year);
     if (head) head.textContent = (copy.calendarTitle || "发售日历") + " · " + cal.year;
     if (hint) hint.textContent = copy.calendarHint || hint.textContent;
     var grid = ui.$("calendar-grid");
@@ -30,7 +84,13 @@
       lab.className = "cal-m";
       lab.textContent = m + "月";
       cell.appendChild(lab);
-      var plans = cal.months[m] || [];
+      var plans = (cal.months[m] || []).slice();
+      if (sim.listLiveOpsVersionDrops) {
+        sim.listLiveOpsVersionDrops(state, state.year, config).forEach(function (d) {
+          if (d.month !== m) return;
+          plans.push(d);
+        });
+      }
       if (!plans.length) {
         var empty = doc.createElement("span");
         empty.className = "cal-g cal-tag";
@@ -41,6 +101,15 @@
           var line = doc.createElement("span");
           line.className = "cal-g";
           var mark = "";
+          if (plan.isVersion) {
+            if (m < state.month) line.className += " shipped";
+            line.textContent = (plan.label || plan.title || "") +
+              (m < state.month ? (" · " + (copy.calendarShipped || "已发")) : "") +
+              " · " + (copy.liveopsVersionTag || "版本") +
+              (plan.source === "player" ? (" · " + (copy.chartPlayerTag || "本公司")) : "");
+            cell.appendChild(line);
+            return;
+          }
           if (plan.status === "shipped") {
             mark = " · " + (copy.calendarShipped || "已发");
             line.className += " shipped";
@@ -87,7 +156,7 @@
       var left = doc.createElement("span");
       var who = row.source === "player"
         ? (copy.chartPlayerTag || "本公司")
-        : (row.pub || "");
+        : (row.pub || copy.chartFillerTag || "");
       left.textContent = row.rank + ". " + (who ? who + " · " : "") + "《" + row.title + "》";
       var b = doc.createElement("b");
       b.textContent = row.monthSales + (row.avg ? " · " + row.avg : "");
@@ -188,10 +257,296 @@
       : ("自研主机：大公司且粉丝够 " + config.company.unlockOwnConsoleMinFans + " 才并入主机端加成。");
   };
 
+  ui.paintCareerRoles = function () {
+    var config = cfg();
+    var copy = sim.careerCopy(config);
+    var box = ui.$("role-box");
+    var roles, title, hint, btn;
+    if (!box) return;
+    box.textContent = "";
+    roles = sim.careerPlayableRoles(config);
+    if (!ui.session.pendingRole && roles[0]) ui.session.pendingRole = roles[0].id;
+    title = ui.$("role-title");
+    hint = ui.$("role-hint");
+    btn = ui.$("btn-role");
+    if (title) title.textContent = copy.roleTitle || "擅长";
+    if (hint) hint.textContent = copy.roleHint || "";
+    if (btn) btn.textContent = copy.roleNext || "看 offer";
+    roles.forEach(function (r) {
+      var chip = doc.createElement("button");
+      chip.type = "button";
+      chip.className = "chip" + (r.id === ui.session.pendingRole ? " on" : "");
+      chip.textContent = sim.worldLabel(r, config);
+      chip.setAttribute("data-role", r.id);
+      box.appendChild(chip);
+    });
+  };
+
+  ui.paintCareerOffers = function () {
+    var state = st();
+    var config = cfg();
+    var copy = sim.careerCopy(config);
+    var box = ui.$("offer-list");
+    var title, hint;
+    if (!box || !state || !state.career) return;
+    box.textContent = "";
+    title = ui.$("offer-title");
+    hint = ui.$("offer-hint");
+    if (title) title.textContent = copy.offerTitle || "三份 offer";
+    if (hint) hint.textContent = copy.offerHint || "";
+    (state.career.openingOffers || []).forEach(function (o) {
+      var co = sim.careerCompany(o.companyId, config);
+      var role = sim.careerRole(o.roleId, config);
+      var card = doc.createElement("div");
+      var name = doc.createElement("div");
+      var meta = doc.createElement("p");
+      var risk = doc.createElement("p");
+      var go = doc.createElement("button");
+      card.className = "offer-card";
+      name.className = "name";
+      name.textContent = co ? sim.worldLabel(co, config) : o.companyId;
+      meta.className = "hint";
+      meta.textContent = (role ? sim.worldLabel(role, config) : "") +
+        " · " + (copy.salaryLabel || "月薪") + " " + o.salary;
+      risk.className = "hint";
+      risk.textContent = (copy.riskLabel || "风险") + "：" + (o.risk || "");
+      go.type = "button";
+      go.className = "btn wide mt-8";
+      go.textContent = copy.acceptButton || "入职";
+      go.setAttribute("data-offer", o.id);
+      card.appendChild(name);
+      card.appendChild(meta);
+      card.appendChild(risk);
+      card.appendChild(go);
+      box.appendChild(card);
+    });
+  };
+
+  ui.paintCareerHq = function () {
+    var state = st();
+    var config = cfg();
+    var copy = sim.careerCopy(config);
+    var career, co, role, view, live, job, box, tickBtn, self, head, stats;
+    var hopCard, hopList, hopMonth, payEl, roleEl, nameEl, metaEl, xpEl;
+    if (!state || !state.career) return;
+    sim.ensureCareerExtras(state);
+    career = state.career;
+    co = sim.careerCompany(career.companyId, config);
+    role = sim.careerRole(career.roleId, config);
+    view = sim.careerProjectView(state, config);
+    live = view.liveStats;
+    stats = career.stats || {};
+    ui.$("hq-name").textContent = career.characterName;
+    ui.$("end-name").textContent = career.characterName;
+    ui.$("hq-date").textContent = sim.dateText(state);
+    ui.$("hq-funds").textContent = (copy.savingsLabel || "积蓄") + " " + career.savings;
+    payEl = ui.$("hq-pay-delta");
+    if (payEl) {
+      if (career.lastPay) {
+        payEl.hidden = false;
+        payEl.textContent = (copy.payDeltaPrefix || "+") + career.lastPay;
+      } else {
+        payEl.hidden = true;
+        payEl.textContent = "";
+      }
+    }
+    ui.$("hq-fans").textContent = (copy.fameLabel || "声望") + " " + career.fame;
+    ui.$("hq-scale").textContent = co
+      ? (sim.worldLabel(co, config) + (function () {
+        var studio = sim.careerStudio(career.companyId, career.studioId, config);
+        return studio ? (" / " + sim.worldLabel(studio, config)) : "";
+      })())
+      : (copy.waitRole || "待命");
+    ui.$("hq-cap").textContent = (copy.roleChipLabel || "岗位") + " " + (role ? sim.worldLabel(role, config) : "");
+    ui.$("hq-plats-chip").textContent = view.idle
+      ? (view.idleLabel || copy.idleHint || "待命")
+      : ((copy.phasePrefix || "阶段") + " " + (view.phase ? sim.worldLabel(view.phase, config) : ""));
+    roleEl = ui.$("hq-player-role");
+    if (roleEl) roleEl.textContent = role ? sim.worldLabel(role, config) : "";
+    head = ui.$("hq-player-head");
+    if (head) head.textContent = copy.playerHead || "自身";
+    function showNum(id, val) {
+      var el = ui.$(id);
+      if (el) el.textContent = val != null ? String(Math.round(val)) : "—";
+    }
+    showNum("hq-self-p", stats.program);
+    showNum("hq-self-d", stats.design);
+    showNum("hq-self-a", stats.art);
+    showNum("hq-self-m", stats.music);
+    (function paintSkills() {
+      var skillEl = ui.$("hq-player-skills");
+      var bits;
+      if (!skillEl || !sim.careerSkillLines) return;
+      bits = sim.careerSkillLines(state, config);
+      if (!bits.length) {
+        skillEl.textContent = copy.skillEmpty || "";
+        return;
+      }
+      skillEl.textContent = (copy.skillLabel || "熟练度") + " · " + bits.map(function (row) {
+        return row.label + " " + (row.tier || "");
+      }).join(" · ");
+    })();
+    head = ui.$("hq-project-head");
+    if (head) head.textContent = copy.projectHead || "在研作品";
+    nameEl = ui.$("hq-project-name");
+    metaEl = ui.$("hq-project-meta");
+    xpEl = ui.$("hq-project-xp");
+    if (view.idle) {
+      if (nameEl) nameEl.textContent = view.idleLabel || copy.idleHint || "待命";
+      if (metaEl) metaEl.textContent = "";
+      if (xpEl) xpEl.textContent = "";
+    } else {
+      if (nameEl) {
+        nameEl.textContent = sim.worldLabel(view.title, config) +
+          (view.phase ? (" · " + sim.worldLabel(view.phase, config)) : "") +
+          " · " + Math.round((view.progress || 0) * 100) + "%";
+      }
+      if (metaEl) {
+        metaEl.textContent = (copy.genreLabel || "题材") + " " +
+          sim.contentName(config.content.genres, view.genreId) +
+          " · " + (copy.gameplayLabel || "玩法") + " " +
+          sim.contentName(config.content.gameplay, view.gameplayId) +
+          (view.title && sim.releaseTypeLabel
+            ? (" · " + sim.releaseTypeLabel(view.title.releaseType, config))
+            : "");
+      }
+      if (xpEl) {
+        xpEl.textContent = (copy.xpLabel || "工作室经验") + " · " +
+          sim.contentName(config.content.genres, view.genreId) + " " + (view.genreTier || "") +
+          " · " + sim.contentName(config.content.gameplay, view.gameplayId) + " " + (view.gameplayTier || "");
+      }
+    }
+    job = ui.$("hq-career-job");
+    if (job) job.textContent = "";
+    (function paintSiblings() {
+      var sib = ui.$("hq-sib-studios");
+      var views, lines, i, row, label, titleLabel;
+      if (!sib || !sim.listCompanyStudioViews) {
+        if (sib) sib.textContent = "";
+        return;
+      }
+      views = sim.listCompanyStudioViews(state, config).filter(function (v) { return !v.mine; });
+      if (!views.length) {
+        sib.textContent = "";
+        return;
+      }
+      lines = [];
+      for (i = 0; i < views.length; i++) {
+        row = views[i];
+        label = sim.worldLabel(row.studio, config);
+        if (row.inDevTitle) {
+          titleLabel = sim.worldLabel(row.inDevTitle, config);
+          lines.push(label + " · " + (copy.inDevLabel || "在研") + "《" + titleLabel + "》");
+        } else if (row.selling) {
+          titleLabel = sim.worldLabel(row.selling, config);
+          lines.push(label + " · " +
+            ((sim.isLiveOpsTitle && sim.isLiveOpsTitle(row.selling)
+              ? (copy.liveopsActiveLabel || config.copy.liveopsActiveLabel)
+              : (copy.onSaleLabel || config.copy.onSaleLabel)) || "在售") +
+            "《" + titleLabel + "》");
+        } else {
+          lines.push(label + " · " + (copy.idleHint || "待命"));
+        }
+      }
+      sib.textContent = (copy.siblingStudios || "本公司其他工作室") + "：" + lines.join("；");
+    })();
+    showNum("hq-live-p", live && live.program);
+    showNum("hq-live-d", live && live.design);
+    showNum("hq-live-a", live && live.art);
+    showNum("hq-live-m", live && live.music);
+    hopMonth = ((config.careerWorld && config.careerWorld.mobility) || {}).hopMonth || 12;
+    hopCard = ui.$("hq-hop-card");
+    hopList = ui.$("hq-hop-list");
+    if (hopCard && hopList) {
+      var hopSpec = (config.careerWorld && config.careerWorld.mobility) || {};
+      var showHop = (career.yearEndOffers || []).length &&
+        (state.month === hopMonth || hopSpec.allowMidProject);
+      var hopApply = ui.$("hq-hop-apply");
+      var hopResult = ui.$("hq-hop-result");
+      if (showHop) {
+        hopCard.hidden = false;
+        ui.$("hq-hop-head").textContent = copy.hopTitle || "全球 offer";
+        ui.$("hq-hop-hint").textContent = sim.canCareerHop(state, config)
+          ? (copy.hopBody || "")
+          : (copy.hopLocked || "");
+        if (hopResult) hopResult.textContent = career.hopNotice || "";
+        hopList.textContent = "";
+        (career.yearEndOffers || []).forEach(function (o) {
+          var card = doc.createElement("div");
+          var cco = sim.careerCompany(o.companyId, config);
+          var studio = sim.careerStudio(o.companyId, o.studioId, config);
+          var pct = o.successPct != null ? o.successPct : Math.round((o.successChance || 0) * 100);
+          card.className = "offer-card";
+          if (ui.session.pickedHopOffer === o.id) card.className += " picked";
+          card.setAttribute("data-hop-pick", o.id);
+          card.appendChild(doc.createTextNode(
+            (o.internal ? ((copy.hopInternal || "内部调动") + " · ") : "") +
+            (cco ? sim.worldLabel(cco, config) : o.companyId) +
+            (studio ? (" / " + sim.worldLabel(studio, config)) : "") +
+            " · " + (copy.hopChance || "通过率") + " " + pct + "%" +
+            " · " + o.currentSalary + "→" + o.salary +
+            (o.titleName ? (" · " + o.titleName) : "")
+          ));
+          hopList.appendChild(card);
+        });
+        if (hopApply) {
+          hopApply.hidden = !ui.session.pickedHopOffer;
+          hopApply.textContent = copy.hopAccept || "申请";
+          hopApply.setAttribute("data-hop-apply", "1");
+          hopApply.disabled = !sim.canCareerHop(state, config);
+        }
+      } else {
+        hopCard.hidden = true;
+        hopList.textContent = "";
+        if (hopApply) hopApply.hidden = true;
+        if (hopResult) hopResult.textContent = career.hopNotice || "";
+      }
+    }
+    head = ui.$("hq-team-head");
+    if (head) head.textContent = copy.colleagueTitle || "制作组";
+    box = ui.$("hq-staff");
+    if (box) {
+      box.textContent = "";
+      self = doc.createElement("span");
+      self.className = "staff-chip";
+      self.textContent = career.characterName + (role ? (" · " + sim.worldLabel(role, config)) : "");
+      box.appendChild(self);
+      (career.colleagues || []).forEach(function (s) {
+        var chip = doc.createElement("span");
+        var rr = sim.careerRole(s.roleId, config);
+        chip.className = "staff-chip";
+        chip.textContent = s.n + (rr ? (" · " + sim.worldLabel(rr, config)) : "");
+        box.appendChild(chip);
+      });
+    }
+    tickBtn = ui.$("btn-tick");
+    if (tickBtn && !ui.$("dlg-mask").classList.contains("on")) {
+      tickBtn.disabled = state.phase !== "PLAYING";
+    }
+    ui.paintEnds();
+  };
+
   ui.paintEnds = function () {
     var state = st();
     var config = cfg();
+    var copy, career, role, co;
     if (!state) return;
+    if (sim.isCareerMode && sim.isCareerMode(state) && state.career) {
+      copy = sim.careerCopy(config);
+      career = state.career;
+      role = sim.careerRole(career.roleId, config);
+      co = sim.careerCompany(career.companyId, config);
+      ui.$("end-name").textContent = career.characterName;
+      ui.$("end-scale").textContent = role ? sim.worldLabel(role, config) : "—";
+      ui.$("end-fans").textContent = String(career.fame || 0);
+      ui.$("end-games").textContent = String((career.credits || []).length);
+      ui.$("end-series").textContent = co ? sim.worldLabel(co, config) : "—";
+      ui.$("end-avg").textContent = String(career.honor || 0);
+      ui.$("end-sales").textContent = String(career.savings || 0);
+      ui.$("end-live").textContent = copy.waitRole || "职员";
+      ui.$("end-console").textContent = career.growthStage || "employee";
+      return;
+    }
     ui.$("end-scale").textContent = sim.scaleLabel(state.company.scale, config);
     ui.$("end-fans").textContent = String(state.company.fans);
     ui.$("end-games").textContent = String(state.released.length);
@@ -214,6 +569,10 @@
     var state = st();
     var config = cfg();
     if (!state) return;
+    if (sim.isCareerMode && sim.isCareerMode(state)) {
+      ui.paintCareerHq();
+      return;
+    }
     sim.ensureRivals(state, config);
     ui.$("hq-name").textContent = state.company.name;
     ui.$("end-name").textContent = state.company.name;
@@ -237,7 +596,8 @@
     state.staff.forEach(function (s) {
       var chip = doc.createElement("span");
       chip.className = "staff-chip";
-      chip.textContent = s.n + " · Lv" + s.level;
+      chip.textContent = s.n + " · Lv" + s.level +
+        ((s.traits || []).length ? " · " + (s.traits || []).map(function (id) { return sim.traitName(id, config); }).join("/") : "");
       box.appendChild(chip);
     });
     var lives = state.released.filter(function (g) { return g.liveOps && g.liveOps.active; });
@@ -314,7 +674,40 @@
     ui.$("ad-copy").textContent = "花 " + ad.cost + "：立刻加粉丝，并加持下一款真正发售的那一部销量。发售后这次加持就没了。";
     var cal = config.calendar;
     var span = ui.$("boot-span");
-    if (span) span.textContent = cal.startYear + " — " + cal.endYear + " · 点月经营";
+    var copyC = sim.careerCopy ? sim.careerCopy(config) : {};
+    var world = config.careerWorld || {};
+    var tl = world.timeline || cal;
+    if (span) span.textContent = copyC.bootPill || (tl.startYear + " — " + tl.endYear);
+    var bootLead = ui.$("boot-lead");
+    if (bootLead && copyC.bootLead) bootLead.textContent = copyC.bootLead;
+    var nameLab = ui.$("boot-name-label");
+    if (nameLab && copyC.nameLabel) nameLab.textContent = copyC.nameLabel;
+    var startBtn = ui.$("btn-start");
+    if (startBtn && copyC.startButton) startBtn.textContent = copyC.startButton;
+    var intelBtn = ui.$("btn-sheet-intel");
+    if (intelBtn && copyC.intel) intelBtn.textContent = copyC.intel;
+    var tickBtnCopy = ui.$("btn-tick");
+    if (tickBtnCopy && copyC.nextMonth) tickBtnCopy.textContent = copyC.nextMonth;
+    var tgaBtn = ui.$("dock-tga");
+    if (tgaBtn && copyC.tgaEntry) tgaBtn.textContent = copyC.tgaEntry;
+    var calDock = ui.$("dock-cal");
+    if (calDock && copyC.calendarEntry) calDock.textContent = copyC.calendarEntry;
+    var dimP = ui.$("hq-dim-p");
+    var dimD = ui.$("hq-dim-d");
+    var dimA = ui.$("hq-dim-a");
+    var dimM = ui.$("hq-dim-m");
+    if (dimP && copyC.dimProgram) dimP.textContent = copyC.dimProgram;
+    if (dimD && copyC.dimDesign) dimD.textContent = copyC.dimDesign;
+    if (dimA && copyC.dimArt) dimA.textContent = copyC.dimArt;
+    if (dimM && copyC.dimMusic) dimM.textContent = copyC.dimMusic;
+    var selfP = ui.$("hq-self-dim-p");
+    var selfD = ui.$("hq-self-dim-d");
+    var selfA = ui.$("hq-self-dim-a");
+    var selfM = ui.$("hq-self-dim-m");
+    if (selfP && copyC.dimProgram) selfP.textContent = copyC.dimProgram;
+    if (selfD && copyC.dimDesign) selfD.textContent = copyC.dimDesign;
+    if (selfA && copyC.dimArt) selfA.textContent = copyC.dimArt;
+    if (selfM && copyC.dimMusic) selfM.textContent = copyC.dimMusic;
     var shareHint = ui.$("share-hint");
     if (shareHint) shareHint.textContent = (config.copy && config.copy.shareHint) || shareHint.textContent;
     var chartHead = ui.$("chart-head");
@@ -328,13 +721,14 @@
     var sh = ui.$("media-sales-hint");
     if (sh && config.copy && config.copy.mediaSalesHint) sh.textContent = config.copy.mediaSalesHint;
     var calBtn = doc.querySelector('[data-go="calendar"]');
-    if (calBtn) calBtn.textContent = (config.copy && config.copy.calendarEntry) || "日历";
+    if (calBtn) calBtn.textContent = copyC.calendarEntry || (config.copy && config.copy.calendarEntry) || "日历";
     var calHint = ui.$("calendar-hint");
     if (calHint && config.copy && config.copy.calendarHint) calHint.textContent = config.copy.calendarHint;
     var nameInput = ui.$("name-input");
     if (nameInput) {
-      nameInput.setAttribute("placeholder", config.company.defaultName);
-      if (!nameInput.value) nameInput.value = config.company.defaultName;
+      var defName = copyC.defaultName || config.company.defaultName;
+      nameInput.setAttribute("placeholder", defName);
+      if (!nameInput.value) nameInput.value = defName;
     }
   };
 
@@ -363,7 +757,11 @@
             ? (" · " + ((config.copy && config.copy.offSaleLabel) || "已停售"))
             : (" · " + ((config.copy && config.copy.onSaleLabel) || "在售"));
         }
-        left.textContent = g.title + " · " + sim.releaseTypeLabel(g.releaseType, config) +
+        var shownTitle = g.title;
+        if (g.releaseType === "liveops" && sim.liveOpsUsesVersions && sim.liveOpsUsesVersions(g, config) && sim.liveOpsVersionLabel) {
+          shownTitle = sim.liveOpsVersionLabel(g.title, sim.liveOpsCurrentVersion(g, config), config);
+        }
+        left.textContent = shownTitle + " · " + sim.releaseTypeLabel(g.releaseType, config) +
           (g.releaseType === "outsource"
             ? (" · 外包费 " + (g.outsourceFee || 0))
             : (g.releaseType === "boxed"
@@ -371,7 +769,14 @@
                 " · " + ((config.copy && config.copy.baselineSalesLabel) || "基准") + " " + (g.baselineSales != null ? g.baselineSales : (g.launchSales || 0)) +
                 " · " + ((config.copy && config.copy.monthActualSalesLabel) || "本月实销") + " " + (g.monthSales || 0) +
                 saleTag)
-              : (" · 均分 " + g.avg + " · 首发 " + (g.launchSales || g.sales || 0) + saleTag)));
+              : (g.releaseType === "liveops"
+                ? (" · 均分 " + g.avg +
+                  " · " + ((config.copy && config.copy.liveopsPeakLabel) || "最高月收") + " " + ((g.liveOps && g.liveOps.peak) || 0) +
+                  " · " + ((config.copy && config.copy.liveopsMonthsLabel) || "已运营") + " " + ((g.liveOps && g.liveOps.monthsLive) || 0) +
+                  " · " + (g.liveOps && g.liveOps.active
+                    ? ((config.copy && config.copy.liveopsActiveLabel) || "运营中")
+                    : ((config.copy && config.copy.liveopsClosedLabel) || "已关服")))
+                : (" · 均分 " + g.avg + " · 首发 " + (g.launchSales || g.sales || 0) + saleTag))));
         it.appendChild(left);
         box.appendChild(it);
       });
@@ -499,12 +904,24 @@
     }
     rec.media.rows.forEach(function (r) {
       var row = doc.createElement("div");
-      row.className = "row item";
-      var l = doc.createElement("span"); l.textContent = r.n;
-      var b = doc.createElement("b"); b.className = "stars"; b.textContent = String(r.score);
-      row.appendChild(l); row.appendChild(b); box.appendChild(row);
+      var l = doc.createElement("span");
+      var b = doc.createElement("b");
+      var q;
+      row.className = "media-outlet";
+      l.textContent = r.n;
+      b.className = "stars";
+      b.textContent = String(r.score);
+      row.appendChild(l);
+      row.appendChild(b);
+      if (r.quote) {
+        q = doc.createElement("p");
+        q.className = "quote";
+        q.textContent = r.quote;
+        row.appendChild(q);
+      }
+      box.appendChild(row);
     });
-    ui.$("media-quote").textContent = rec.media.quote || "";
+    ui.$("media-quote").textContent = "";
     ui.$("media-avg").textContent = String(rec.avg);
     var mb = ui.$("media-baseline");
     if (mb) mb.textContent = rec.baselineSales != null ? String(rec.baselineSales) : "—";
@@ -513,35 +930,63 @@
 
   ui.paintTga = function () {
     var box = ui.$("tga-rows");
+    var copy = (cfg() && cfg().copy) || {};
     box.textContent = "";
     var list = (st() && st().lastAwards) || [];
     if (!list.length) {
       var p = doc.createElement("p");
       p.className = "hint";
-      p.textContent = "每年 11 月过月时评选。窗口是去年 12 月到今年 11 月发售的游戏，对手大厂同期作品也参赛。";
+      p.textContent = copy.awardsHint || "每年 11 月过月时评选。窗口是去年 12 月到今年 11 月发售的游戏，对手大厂同期作品也参赛。";
       box.appendChild(p);
       return;
     }
     list.forEach(function (a) {
+      var wrap = doc.createElement("div");
       var row = doc.createElement("div");
+      var l = doc.createElement("span");
+      var b = doc.createElement("b");
+      wrap.className = "media-outlet";
       row.className = "row item";
-      var l = doc.createElement("span"); l.textContent = a.n;
-      var b = doc.createElement("b"); b.textContent = a.w;
-      row.appendChild(l); row.appendChild(b); box.appendChild(row);
+      l.textContent = a.n;
+      b.textContent = a.w;
+      row.appendChild(l);
+      row.appendChild(b);
+      wrap.appendChild(row);
+      (a.nominees || []).forEach(function (n) {
+        var nom = doc.createElement("p");
+        nom.className = "hint";
+        nom.textContent = (n.label || "") + (n.player ? " · 你" : "");
+        wrap.appendChild(nom);
+      });
+      box.appendChild(wrap);
     });
   };
 
   ui.mediaNodes = function (rec) {
     var nodes = [];
-    rec.media.rows.forEach(function (r) {
+    var media = rec.media || rec;
+    (media.rows || []).forEach(function (r) {
       var row = doc.createElement("div");
-      row.className = "row item";
-      var l = doc.createElement("span"); l.textContent = r.n;
-      var b = doc.createElement("b"); b.className = "stars"; b.textContent = String(r.score);
-      row.appendChild(l); row.appendChild(b); nodes.push(row);
+      var head = doc.createElement("div");
+      var l = doc.createElement("span");
+      var b = doc.createElement("b");
+      var q;
+      row.className = "media-outlet";
+      head.className = "row item";
+      l.textContent = r.n;
+      b.className = "stars";
+      b.textContent = String(r.score);
+      head.appendChild(l);
+      head.appendChild(b);
+      row.appendChild(head);
+      if (r.quote) {
+        q = doc.createElement("p");
+        q.className = "quote";
+        q.textContent = r.quote;
+        row.appendChild(q);
+      }
+      nodes.push(row);
     });
-    var q = doc.createElement("p"); q.className = "quote"; q.textContent = rec.media.quote;
-    nodes.push(q);
     var copy = (cfg() && cfg().copy) || {};
     if (rec.baselineSales != null) {
       var br = doc.createElement("div");
@@ -550,22 +995,36 @@
       var bb = doc.createElement("b"); bb.textContent = String(rec.baselineSales);
       br.appendChild(bl); br.appendChild(bb); nodes.push(br);
     }
-    var sr = doc.createElement("div");
-    sr.className = "row item";
-    var sl = doc.createElement("span"); sl.textContent = copy.monthActualSalesLabel || "本月实销";
-    var sb = doc.createElement("b"); sb.textContent = String(rec.monthSales != null ? rec.monthSales : rec.launchSales);
-    sr.appendChild(sl); sr.appendChild(sb); nodes.push(sr);
+    if (rec.monthSales != null || rec.launchSales != null) {
+      var sr = doc.createElement("div");
+      sr.className = "row item";
+      var sl = doc.createElement("span"); sl.textContent = copy.monthActualSalesLabel || "本月实销";
+      var sb = doc.createElement("b"); sb.textContent = String(rec.monthSales != null ? rec.monthSales : rec.launchSales);
+      sr.appendChild(sl); sr.appendChild(sb); nodes.push(sr);
+    }
     return nodes;
   };
 
   ui.awardNodes = function (list) {
     return list.map(function (a) {
+      var wrap = doc.createElement("div");
       var row = doc.createElement("div");
+      var l = doc.createElement("span");
+      var b = doc.createElement("b");
+      wrap.className = "media-outlet";
       row.className = "row item";
-      var l = doc.createElement("span"); l.textContent = a.n;
-      var b = doc.createElement("b"); b.textContent = a.w;
-      row.appendChild(l); row.appendChild(b);
-      return row;
+      l.textContent = a.n;
+      b.textContent = a.w;
+      row.appendChild(l);
+      row.appendChild(b);
+      wrap.appendChild(row);
+      (a.nominees || []).forEach(function (n) {
+        var nom = doc.createElement("p");
+        nom.className = "hint";
+        nom.textContent = (n.label || "") + (n.player ? " · 你" : "");
+        wrap.appendChild(nom);
+      });
+      return wrap;
     });
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);

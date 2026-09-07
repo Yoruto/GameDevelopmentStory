@@ -24,17 +24,38 @@
   <link rel="stylesheet" href="css/app.css">
 </head>
 <body>
-  <div id="app">
+  <div id="app" class="mode-career">
     <section class="scene on" id="sc-boot">
       <div class="hero">
-        <div class="pill" id="boot-span">点月经营</div>
+        <div class="pill" id="boot-span">1995 刚毕业</div>
         <h1>游戏开发物语</h1>
-        <p>从一间小工作室做起。招人、立项、发售，打到 2025。时间不会自己走，要点「下一月」。</p>
-        <label>公司名</label>
+        <p id="boot-lead">刚毕业入行。先写名字、选一个擅长，再从三份 offer 里挑一家入职。时间不会自己走，要点「下一月」。</p>
+        <label id="boot-name-label">角色名</label>
         <input id="name-input" type="text" maxlength="16" value="">
-        <button class="btn wide" id="btn-start">开张</button>
+        <button class="btn wide" id="btn-start">下一步</button>
         <p class="hint">浏览器直接打开就能玩。虎扑 App 里会走正式存档和内容检查；这边是预览，进度记在这一次打开里。</p>
         <div class="preview-flag" id="preview-flag-boot">预览模式</div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-role">
+      <div class="scene-body">
+        <div class="card grow">
+          <h2 id="role-title">擅长</h2>
+          <p class="hint" id="role-hint">锁定主职。本版不当制作人，也不开公司。</p>
+          <div class="pills" id="role-box"></div>
+          <button class="btn wide mt-12" id="btn-role">看 offer</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="scene" id="sc-offer">
+      <div class="scene-body">
+        <div class="card grow">
+          <h2 id="offer-title">三份 offer</h2>
+          <p class="hint" id="offer-hint">小作坊、稳定大厂、野牌各一家。岗位已按你的擅长锁定。</p>
+          <div id="offer-list"></div>
+        </div>
       </div>
     </section>
 
@@ -43,30 +64,65 @@
         <div class="preview-flag badge" id="preview-flag-hq">预览</div>
         <div class="top-main">
           <span class="date" id="hq-date">—</span>
-          <span class="funds" id="hq-funds">资金 —</span>
-          <span class="fans" id="hq-fans">粉丝 —</span>
+          <span class="funds-wrap">
+            <span class="funds" id="hq-funds">积蓄 —</span>
+            <span class="pay-delta career-only" id="hq-pay-delta" hidden></span>
+          </span>
+          <span class="fans" id="hq-fans">声望 —</span>
         </div>
         <div class="top-sub">
           <span class="top-chip" id="hq-scale">—</span>
-          <span class="top-chip" id="hq-cap">编制 —</span>
-          <span class="top-chip" id="hq-plats-chip">平台 —</span>
+          <span class="top-chip" id="hq-cap">岗位 —</span>
+          <span class="top-chip" id="hq-plats-chip">阶段 —</span>
         </div>
       </div>
       <div class="scene-body">
         <div class="card">
-          <div class="name" id="hq-name">喵扑studio</div>
-          <p class="hint" id="hq-ad">本月没有广告加持</p>
-          <p class="hint" id="hq-trend">当月潮流：—</p>
-          <p class="hint" id="hq-ready">待发售：无</p>
-          <p class="hint" id="hq-chart"></p>
-          <p class="hint" id="hq-mau" hidden></p>
+          <div class="name" id="hq-name">阿喵</div>
+          <p class="hint career-only" id="hq-player-role"></p>
+          <p class="hint career-only" id="hq-career-job" hidden></p>
+          <p class="hint studio-only" id="hq-ad">本月没有广告加持</p>
+          <p class="hint studio-only" id="hq-trend">当月潮流：—</p>
+          <p class="hint studio-only" id="hq-ready">待发售：无</p>
+          <p class="hint studio-only" id="hq-chart"></p>
+          <p class="hint studio-only" id="hq-mau" hidden></p>
+        </div>
+        <div class="card career-only" id="hq-player-card">
+          <h2 id="hq-player-head">自身</h2>
+          <div class="grid2" id="hq-player-grid">
+            <div class="stat"><b id="hq-self-p">—</b><span id="hq-self-dim-p">程序</span></div>
+            <div class="stat"><b id="hq-self-d">—</b><span id="hq-self-dim-d">策划</span></div>
+            <div class="stat"><b id="hq-self-a">—</b><span id="hq-self-dim-a">美术</span></div>
+            <div class="stat"><b id="hq-self-m">—</b><span id="hq-self-dim-m">音乐</span></div>
+          </div>
+          <p class="hint" id="hq-player-skills"></p>
+        </div>
+        <div class="card career-only" id="hq-project-card">
+          <h2 id="hq-project-head">在研作品</h2>
+          <p class="hint" id="hq-project-name"></p>
+          <p class="hint" id="hq-project-meta"></p>
+          <p class="hint" id="hq-project-xp"></p>
+          <p class="hint career-only" id="hq-sib-studios"></p>
+          <div class="grid2" id="hq-live-grid">
+            <div class="stat"><b id="hq-live-p">—</b><span id="hq-dim-p">程序</span></div>
+            <div class="stat"><b id="hq-live-d">—</b><span id="hq-dim-d">策划</span></div>
+            <div class="stat"><b id="hq-live-a">—</b><span id="hq-dim-a">美术</span></div>
+            <div class="stat"><b id="hq-live-m">—</b><span id="hq-dim-m">音乐</span></div>
+          </div>
+        </div>
+        <div class="card career-only" id="hq-hop-card" hidden>
+          <h2 id="hq-hop-head">年底跳槽</h2>
+          <p class="hint" id="hq-hop-hint"></p>
+          <p class="hint" id="hq-hop-result"></p>
+          <div id="hq-hop-list"></div>
+          <button type="button" class="btn wide mt-8" id="hq-hop-apply" hidden>申请</button>
         </div>
         <div class="card grow">
-          <h2>员工</h2>
+          <h2 id="hq-team-head">制作组</h2>
           <div class="staff-chips" id="hq-staff"></div>
-          <p class="hint warn" id="hq-staff-warn" hidden>还没有员工，先去招人</p>
+          <p class="hint warn studio-only" id="hq-staff-warn" hidden>还没有员工，先去招人</p>
         </div>
-        <div class="hq-sums">
+        <div class="hq-sums studio-only">
           <button class="hq-sum empty" data-go="project" id="hq-sum-dev"><span>在研</span><b id="hq-dev-n">0</b><em id="hq-dev-one">还没有立项</em></button>
           <button class="hq-sum" data-go="liveops"><span>长线</span><b id="hq-live-n">0</b><em id="hq-live-one">暂无</em></button>
           <button class="hq-sum" data-go="released"><span>已发售</span><b id="hq-ship-n">0</b><em id="hq-ship-one">暂无</em></button>
@@ -195,10 +251,10 @@
       <div class="scene-body">
         <div class="card" id="media-card">
           <h2 id="media-title">媒体评分</h2>
-          <p class="hint">五家各打 1–10 分，按各自对四维的权重折分。</p>
+          <p class="hint" id="media-hint">五家各打 1–10 分，并各写一句点评。</p>
           <div id="media-rows"></div>
-          <p class="quote" id="media-quote"></p>
-          <div class="row item"><span>均分</span><b id="media-avg">—</b></div>
+          <p class="quote" id="media-quote" hidden></p>
+          <div class="row item studio-only"><span>均分</span><b id="media-avg">—</b></div>
           <div class="row item"><span id="media-baseline-label">基准（首月参照）</span><b id="media-baseline">—</b></div>
           <div class="row item"><span id="media-sales-label">本月实销</span><b id="media-sales">—</b></div>
           <p class="hint" id="media-sales-hint">基准是发售公式算出的首月参照，不是账上实销。</p>
@@ -299,29 +355,29 @@
 
     <div class="dock-shell off" id="dock-shell">
       <div class="dock-l2" id="dock-ops">
-        <button data-go="relocate">换场地</button>
-        <button data-go="ad">广告</button>
-        <button data-go="project">在研</button>
-        <button data-go="liveops">长线</button>
-        <button data-go="studio">工作室</button>
+        <button class="studio-only" data-go="relocate">换场地</button>
+        <button class="studio-only" data-go="ad">广告</button>
+        <button class="studio-only" data-go="project">在研</button>
+        <button class="studio-only" data-go="liveops">长线</button>
+        <button class="studio-only" data-go="studio">工作室</button>
       </div>
       <div class="dock-l2" id="dock-intel">
-        <button data-go="share">市场</button>
-        <button data-go="calendar">日历</button>
-        <button data-go="media">媒体评分</button>
-        <button data-go="tga">年度奖</button>
-        <button data-go="released">作品系列</button>
-        <button data-go="settled">生涯结算</button>
-        <button data-go="bankrupt">破产示意</button>
+        <button class="studio-only" data-go="share">市场</button>
+        <button data-go="calendar" id="dock-cal">发售情报</button>
+        <button class="studio-only" data-go="media">媒体评分</button>
+        <button data-go="tga" id="dock-tga">年度奖</button>
+        <button class="studio-only" data-go="released">作品系列</button>
+        <button data-go="settled" id="dock-settled">生涯结算</button>
+        <button class="studio-only" data-go="bankrupt">破产示意</button>
         <button id="btn-restart">再开一局</button>
       </div>
       <div class="dock-bar">
         <button class="dock-back off" id="btn-dock-back" type="button">返回</button>
         <div class="dock-slot off" id="dock-sub-slot"></div>
         <div class="dock-l1" id="dock-l1">
-          <button data-go="market">招人</button>
-          <button data-go="pitch">立项</button>
-          <button data-sheet="ops" id="btn-sheet-ops">经营</button>
+          <button class="studio-only" data-go="market">招人</button>
+          <button class="studio-only" data-go="pitch">立项</button>
+          <button class="studio-only" data-sheet="ops" id="btn-sheet-ops">经营</button>
           <button data-sheet="intel" id="btn-sheet-intel">情报</button>
         </div>
         <button class="dock-tick" id="btn-tick">下一月</button>
@@ -357,6 +413,7 @@
   <script src="js/sim/lifecycle.js"></script>
   <script src="js/sim/media.js"></script>
   <script src="js/sim/awards.js"></script>
+  <script src="js/sim/career.js"></script>
   <script src="js/sim/tick.js"></script>
   <script src="js/sim/actions.js"></script>
   <script src="js/bridge/colorbox.js"></script>

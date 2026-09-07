@@ -45,7 +45,14 @@
       sales = Math.round(sales * (ad.nextReleaseSalesMultiplier || 1));
       if (consumeAd) st.company.adOn = false;
     }
-    if (sim.matchesTrend(p, st.trend)) sales = Math.round(sales * (rel.trendSalesMultiplier || 1));
+    if (sim.matchesTrend(p, st.trend)) {
+      sales = Math.round(sales * (rel.trendSalesMultiplier || 1));
+      var trendExtra = sim.bestTraitValue(
+        st, p.memberIds, p.producerId, "trendRider",
+        "producerTrendSalesExtra", "memberTrendSalesExtra", config
+      );
+      if (trendExtra) sales = Math.round(sales * (1 + trendExtra));
+    }
     if (p.seriesId && config.series) {
       sales = Math.round(sales * (1 + (config.series.guaranteedSalesInheritRate || 0)));
     }
@@ -123,15 +130,9 @@
       g.baselineSales = g.launchSales != null ? g.launchSales : (g.sales || 0);
     }
     if (g.onSale != null) return g;
-    var score = sim.lifecycleScoreOf(g);
     var m = sim.lifecycleMonth(st, g);
     var base = sim.boxedBaselineOf(g);
-    if (score == null || !(score > 0) || !base) {
-      g.onSale = m === 1 && !!base;
-      return g;
-    }
-    var y = sim.salesFactor(m, score, config);
-    g.onSale = !sim.lifecycleDropsOff(m, y, config) && !!base;
+    g.onSale = !!base && m >= 1;
     return g;
   };
 
@@ -141,10 +142,9 @@
     if (g.onSale === false) return 0;
     var score = sim.lifecycleScoreOf(g);
     if (score == null || !(score > 0)) return 0;
+    if (sim.monthSalesStampMatches(g, st) && g.monthSales != null) return g.monthSales;
     var m = sim.lifecycleMonth(st, g);
     var y = sim.salesFactor(m, score, config);
-    if (sim.lifecycleDropsOff(m, y, config)) return 0;
-    if (sim.monthSalesStampMatches(g, st) && g.monthSales != null) return g.monthSales;
     return sim.boxedActualFromY(g, y);
   };
 
@@ -158,6 +158,7 @@
   function settleBoxedMonth(st, g, config, asRival) {
     sim.migrateBoxedLifecycle(st, g, config);
     if (!sim.usesBoxedLifecycle(g)) return 0;
+    if (g.onSale === false) return 0;
     if (!sim.boxedBaselineOf(g)) {
       sim.endBoxedSales(g);
       return 0;
@@ -175,10 +176,6 @@
       return 0;
     }
     var y = sim.salesFactor(m, score, config);
-    if (sim.lifecycleDropsOff(m, y, config)) {
-      sim.endBoxedSales(g);
-      return 0;
-    }
     var amt = sim.boxedActualFromY(g, y);
     g.onSale = true;
     if (m <= 1) {
@@ -252,8 +249,22 @@
     });
   };
 
+  sim.chartEntryKey = function (source, g) {
+    if (!g) return source + "\0\0";
+    return source + "\0" + (g.id || "") + "\0" + (g.title || g.series || "");
+  };
+
+  sim.chartMonthUnits = function (g, st, config) {
+    if (!g) return 0;
+    if (g.liveOps && g.liveOps.active) {
+      if (sim.monthSalesStampMatches(g, st) && g.monthSales != null) return g.monthSales;
+      return sim.liveOpsRevenue ? sim.liveOpsRevenue(g, config, st) : 0;
+    }
+    return sim.boxedMonthUnits(g, st, config);
+  };
+
   function chartRow(g, st, config, source) {
-    var units = sim.boxedMonthUnits(g, st, config);
+    var units = sim.chartMonthUnits(g, st, config);
     if (!units) return null;
     return {
       source: source,
@@ -266,12 +277,43 @@
     };
   }
 
+  sim.chartFillerUnits = function (g, config) {
+    if (!g) return 0;
+    if (g.monthSales != null && g.monthSales !== "") return Math.max(0, Math.round(Number(g.monthSales)));
+    var score = sim.lifecycleScoreOf(g);
+    var y = score != null && score > 0 ? sim.salesFactor(1, score, config) : 1;
+    return sim.boxedActualFromY(g, y);
+  };
+
+  sim.chartFillerEntries = function (config) {
+    var lc = sim.lifecycleCfg(config);
+    var list = lc.chartFillers || [];
+    var rows = [];
+    var i, g, units;
+    for (i = 0; i < list.length; i++) {
+      g = list[i];
+      if (!g) continue;
+      units = sim.chartFillerUnits(g, config);
+      if (!units) continue;
+      rows.push({
+        source: "filler",
+        id: g.id || "",
+        title: g.title || "",
+        pub: g.pub || "",
+        platformId: g.platformId || "",
+        avg: g.avg != null ? g.avg : null,
+        monthSales: units
+      });
+    }
+    return rows;
+  };
+
   sim.chartEntries = function (st, config) {
     var rows = [];
     var seen = {};
     function add(g, source) {
       if (!g) return;
-      var key = source + "\0" + (g.id || "") + "\0" + (g.title || g.series || "");
+      var key = sim.chartEntryKey(source, g);
       if (seen[key]) return;
       seen[key] = true;
       var row = chartRow(g, st, config, source);
@@ -281,6 +323,9 @@
     (st.rivalReleased || []).forEach(function (g) { add(g, "rival"); });
     (st.rivalMonth || []).forEach(function (g) { add(g, "rival"); });
     (st.rivalWindow || []).forEach(function (g) { add(g, "rival"); });
+    if (!(st && st.mode === "career")) {
+      sim.chartFillerEntries(config).forEach(function (row) { rows.push(row); });
+    }
     return rows;
   };
 
@@ -292,6 +337,41 @@
     return ranked.map(function (row, i) {
       row.rank = i + 1;
       return row;
+    });
+  };
+
+  sim.applyChartDropOff = function (st, config, notes) {
+    if (!st || st.mode === "career") return;
+    var chart = sim.monthlyChart(st, config);
+    st.monthChart = chart;
+    var onChart = {};
+    (chart || []).forEach(function (row) {
+      if (!row || row.source === "filler") return;
+      onChart[sim.chartEntryKey(row.source, row)] = true;
+    });
+    var copy = (config && config.copy) || {};
+    var boxedNote = copy.chartDropBoxedNote || "掉出畅销榜，停止发售";
+    var liveNote = copy.chartDropLiveopsNote || "掉出畅销榜，停止运营";
+
+    function dropBoxed(list, source) {
+      (list || []).forEach(function (g) {
+        if (!sim.usesBoxedLifecycle(g) || g.onSale === false) return;
+        if (onChart[sim.chartEntryKey(source, g)]) return;
+        sim.endBoxedSales(g);
+        if (source === "player" && notes) notes.push((g.title || "") + boxedNote);
+      });
+    }
+
+    dropBoxed(st.released, "player");
+    dropBoxed(st.rivalReleased, "rival");
+    dropBoxed(st.rivalMonth, "rival");
+    dropBoxed(st.rivalWindow, "rival");
+
+    (st.released || []).forEach(function (g) {
+      if (!g || !g.liveOps || !g.liveOps.active) return;
+      if (onChart[sim.chartEntryKey("player", g)]) return;
+      sim.shutdownLive(st, g, config, notes || []);
+      if (notes) notes.push((g.title || "") + liveNote);
     });
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);

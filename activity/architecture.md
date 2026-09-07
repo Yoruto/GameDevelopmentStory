@@ -1,8 +1,8 @@
 # 游戏开发物语 · 架构（对齐现行实现）
 
-玩法以 `activity/design.md` 为准；数字以 `activity/config.json` 为准。本文写目录、公开接口、存档字段和改数流程。
+玩法以 `activity/design.md` 为准；经营数字以 `activity/config.json` 为准，生涯表以 `activity/career-world.json` 为准。本文写目录、公开接口、存档字段和改数流程。
 
-关联：`activity/requirements.md` · `activity/design.md` · `activity/config.json` · `activity/README.md`
+关联：`activity/requirements.md` · `activity/design.md` · `activity/config.json` · `activity/career-world.json` · `activity/README.md`
 
 ---
 
@@ -13,10 +13,10 @@
 | 载体 | 单页活动 H5（`h5/index.html`），虎扑 App WebView / 移动浏览器；`file://` 可预览 |
 | 时间 | 玩家点「下一月」才推进；**禁止**定时器自动过月 |
 | 模拟 | 全部在客户端 `h5/js/sim/` 算，不依赖虎扑赛事/帖子接口 |
-| 配置 | `activity/config.json` → sync 到 `h5/config.json` 与 `h5/js/config.generated.js` |
+| 配置 | `activity/config.json` + `career-world.json` → sync 到 `h5/config.json` 与 `h5/js/config.generated.js` |
 | 存档 | 已拍板云端：一用户一局 `game_saves`。本机 `ColorboxAI.storage` 只作缓存，禁止 `localStorage`。云环境开通后 `GET …/my/save`、`POST …/save/upsert` |
 | 登录 | 写云档、起名过审需要登录。未登录 / 预览不把进度写进云 |
-| 公司名 | 玩家自己写；开局默认「喵扑studio」，可改 |
+| 开局名 | 生涯档角色名默认「阿喵」；经营局公司名默认「喵扑studio」，可改 |
 | 分享 | 生涯结算不分享 |
 
 ---
@@ -27,24 +27,21 @@
 
 ```
 启动
- └─ 开局（公司名默认「喵扑studio」）或 读档进总览
-      └─ 【主场景】公司总览
-            ├─ 人才市场（招人 / 辞退）
-            ├─ 换场地 / 广告营销
-            ├─ 立项向导（题材+玩法 → 三端 / 普通·长线·外包 / 周期 → 组队）
-            ├─ 在研详情：待发售列表与「发布」
-            ├─ 长线维护 / 关服
-            ├─ 成立内部工作室（仅大公司）
-            ├─ 情报：三端份额、畅销榜、发售日历（含长线版本）、对手月活
+ └─ 生涯档：角色名（过审）→ 选擅长 → 三份 offer → 入职总览
+      或 读档：PLAYING 进总览 / OFFER 回选 offer
+      └─ 【主场景】职员总览（积蓄、声望、主职、在研、同事、年底 offer）
+            ├─ 情报：发售日历（目录作 + 移动端长线版本）、年度奖
             ├─ 点「下一月」→ 结算中（锁操作）
-            │     ├─ 事件（notice 确认 / choice 必须选）
-            │     ├─ 外包交付 / 制作完成尚未发布
+            │     ├─ 开发/热修事件（notice / choice）
+            │     ├─ 年中挖人（接 / 还价 / 留下）
+            │     ├─ 12 月跳槽申请（先选再申请，失败本年不能再投）
             │     ├─ 11 月：年度奖
             │     └─ 回到总览
-            └─ 终局：生涯结算或破产
+            └─ 终局：2025 生涯结算
+经营局 sim 仍保留招人/立项/待发售/破产，本版 H5 不入口。
 ```
 
-点月前可做、不插进自动结算：招人/辞退、换场地、广告、立项、**发布待发售**、长线排人/关服、开工作室。推进在研 ≠ 自动发售。
+生涯档点月前可做：申请年底 offer、处理挖人、过月抉择。经营局点月前可做：招人/辞退、换场地、广告、立项、**发布待发售**、长线排人/关服、开工作室。推进在研 ≠ 自动发售。
 
 ---
 
@@ -53,26 +50,27 @@
 ### 2.1 局状态
 
 ```
-BOOT ──► NEW_GAME ──► PLAYING ──► MONTH_TICK（锁 UI）──► PLAYING
-              │                      │
-              │                      ├─ 弹出 EVENT / 外包 / 待发售提示 / TGA
-              │                      ├─ funds < 0 ──► BANKRUPT
-              │                      └─ 已过结束年月 ──► SETTLED
+BOOT ──► 生涯：ROLE → OFFER → PLAYING ──► MONTH_TICK ──► PLAYING
+              │                              │
+              │                              ├─ 开发/热修 / 挖人 / 跳槽 / TGA
+              │                              └─ 已过 timeline 结束年月 ──► SETTLED
+（经营局 sim：NEW_GAME 直接 PLAYING；funds<0 → BANKRUPT）
 ```
 
-媒体评分面板在玩家点 `releaseGame` 成功后弹出。移动端长线**大版本**发售也会在点月 queue 里带媒体分。
+媒体评分面板在经营局玩家点 `releaseGame` 成功后弹出。移动端长线**大版本**发售也会在点月 queue 里带媒体分。生涯档发售走目录月，媒体/奖项进 queue。
 
 | phase | 含义 | 允许的操作 |
 |-------|------|------------|
-| `PLAYING` | 月内经营 | 点月前操作（含发布）+ 「下一月」 |
-| `MONTH_TICK` | 正在走第 9 节 | 禁止再点经营按钮；抉择必须选完 |
+| `OFFER` | 生涯开局选 offer | 只许 `acceptOpeningOffer` |
+| `PLAYING` | 月内 | 点月前操作 + 「下一月」 |
+| `MONTH_TICK` | 正在走点月 | 禁止再点经营按钮；抉择必须选完 |
 | `BANKRUPT` / `SETTLED` | 终局 | 看说明，可再开一局 |
 
-现行 `createNewGame` 直接把 `phase` 写成 `PLAYING`。UI 启动页是开局，不算进存档 phase。
+`createCareerGame` 写 `phase=OFFER`；入职后 `PLAYING`。`createNewGame` 直接 `PLAYING`。UI 启动页不算进存档 phase。
 
 ### 2.2 点月管线
 
-函数：`tickMonth(state, config) → { state, queue }`。入参不改，返回新 state。顺序与 design 第 9 节一致：
+函数：`tickMonth(state, config) → { state, queue }`。入参不改，返回新 state。`mode=career` 时整段 `tickCareerMonth`（design 9.2）。经营局顺序与 design 第 9 节一致：
 
 1. 推进在研 + 长线维护产出  
 2. 潮流刷新 → 当月事件（historical + random；choice 只入队）  
@@ -104,6 +102,8 @@ BOOT ──► NEW_GAME ──► PLAYING ──► MONTH_TICK（锁 UI）──
 activity/config.json          # 数值唯一源
 activity/career-world.json    # 生涯公司/作品表；sync 时并入 careerWorld
 scripts/sync_config.py        # 同步生成物
+scripts/build_career_world.py # 生成生涯目录（改完再 sync）
+scripts/career_choice_events.py
 tests/run-sim-tests.js        # 不启动浏览器的数值测试
 h5/
   index.html                  # 结构 + 外链 css/js
@@ -121,7 +121,7 @@ h5/
 
 | 层 | 职责 | 禁止 |
 |----|------|------|
-| **config** | 金额、月数、编制、倍率、名单、lifecycle、对手日历区间 | 在 HTML / UI / sim 里再写一套平衡数字 |
+| **config** | 经营数字在 `activity/config.json`；生涯公司/作品/薪资/跳槽在 `activity/career-world.json` | 在 HTML / UI / sim 里再写一套平衡数字 |
 | **sim/** | 下节公开函数 | `document`、`window.ColorboxAI`、存档 IO、`fetch` |
 | **ui/** | 场景、按钮、弹层 | 在 click handler 里改资金 / 员工 / 项目 / 质量 |
 | **save/ + bridge/** | 云档、storage 缓存、审核 | `localStorage` / `sessionStorage`；假后端 |
@@ -148,7 +148,7 @@ Windows 可用 `python`；若失败再试 `python3`。
 
 ### 4.2 要持久化的
 
-第 7 节 `GameState`：公司、员工、工作室、在研、待发售、已发售、系列、广告开关、潮流、对手日历与在售、人才市场、`rngSeed`、`phase`。
+第 7 节 `GameState`：经营局公司/员工/在研/待发售；生涯档另有 `career`、`worldReleased`、`companyXp` / `studioXp`。`rngSeed`、`phase`、`mode`。
 
 ### 4.3 本机缓存
 
@@ -175,7 +175,7 @@ Windows 可用 `python`；若失败再试 `python3`。
 |------|------|
 | 活动页存储 读/写 | 要（缓存 / 预览） |
 | 云鉴权 + 云请求 | 桥已接；env 空时不真正打云 |
-| 文本安全审核 | 开局公司名、游戏名、工作室名走 `security.checkAudit`；预览无 SDK 视为通过 |
+| 文本安全审核 | 生涯角色名、经营局公司名/游戏名/工作室名走 `security.checkAudit`；预览无 SDK 视为通过 |
 | 分享 / 海报 / 排行榜 / 抽卡 / PK | 不做 |
 | 篮球/足球/帖子接口 | 不做 |
 
@@ -191,16 +191,20 @@ Windows 可用 `python`；若失败再试 `python3`。
 
 ## 7. 关键数据模型（与 sim 字段对齐）
 
-四维键名：`program` / `script` / `art` / `music`。`id` 均为局内字符串。现行 `createNewGame` 写入 `saveVersion: 4`。
+四维键名：`program` / `script` / `art` / `music`。生涯 live 四维也用 `program`/`design`/`art`/`music`（策划对员工 `script`）。`id` 均为局内字符串。`createNewGame` 写 `saveVersion: 4`；`createCareerGame` 写 `careerWorld.save.version`（现行 8）。
 
 ### 7.1 GameState
 
 | 字段 | 说明 |
 |------|------|
-| `saveVersion` | 现行 4 |
-| `phase` | `PLAYING` / `BANKRUPT` / `SETTLED` |
+| `saveVersion` | 经营局 4；生涯档读 `careerWorld.save.version` |
+| `mode` | `"career"` 为生涯档；缺省/其他为经营局 |
+| `phase` | 经营局：`PLAYING` / `BANKRUPT` / `SETTLED`。生涯档另有开局 `OFFER` |
 | `rngSeed` `rngCount` | 局种子与已取随机次数 |
-| `year` `month` | 起止见 `config.calendar` |
+| `year` `month` | 经营局见 `config.calendar`；生涯档见 `careerWorld.timeline` |
+| `career` | 仅生涯档，见 7.1b |
+| `worldReleased` | 生涯档世界已发售（含长线版本字段） |
+| `companyXp` `studioXp` | 生涯档公司/工作室题材·玩法经验桶 |
 | `company` | 见下 |
 | `staff` | 在职 |
 | `studios` | 无则为 `[]` |
@@ -222,11 +226,30 @@ Windows 可用 `python`；若失败再试 `python3`。
 
 **已废存档形状（不要再写进新档）：** `adBuff` 对象、`unlockedPlatformIds`、`ownConsoleUnlocked`（改用 `company.adOn` / `company.ownConsole`）、`tailLeft` 作为规则、用 `launchSales` 当后续乘数。
 
+### 7.1b Career（仅 `mode=career`）
+
+| 字段 | 说明 |
+|------|------|
+| `characterName` `roleId` | 角色名与锁定岗（`programmer` / `design` / `art` / `music`） |
+| `companyId` `studioId` | 当前东家与工作室 |
+| `savings` `salary` `lastPay` | 积蓄、当月档位薪、本月入账（镜像到 `company.funds`） |
+| `fame` `honor` `growthStage` | 声望、荣誉、阶段（本版 `employee`） |
+| `titleId` `liveStats` `stats` | 当前在研/后续支持作与 live 四维 |
+| `postLaunch` | `{ titleId, monthsLeft }`；发售后热修 |
+| `credits` | 署名履历 |
+| `openingOffers` `yearEndOffers` `invites` | 开局三份 / 年底 5 格 / 年中挖人 |
+| `colleagues` `colleaguePool` | 当前 5 人组与公司同事池 |
+| `virtualProjects` `virtualDetails` | 空窗虚拟作 |
+| `genreXp` `gameplayXp` | 玩家个人熟练度 |
+| `idleMonths` `hopFailedYear` `hopNotice` | 空窗计数、本年跳槽失败、提示 |
+
+生涯档 `company.name` 存角色名，`company.funds` 存积蓄，只为复用总览 UI，不表示开了一家公司。
+
 ### 7.2 Company
 
 | 字段 | 说明 |
 |------|------|
-| `name` | 开局默认 `config.company.defaultName` |
+| `name` | 经营局默认 `config.company.defaultName`；生涯档为角色名 |
 | `funds` | 整数；`< 0` 破产 |
 | `scale` | `"small"` \| `"medium"` \| `"large"` |
 | `fans` | 声望/保底销量 |
@@ -271,36 +294,50 @@ listLiveOpsVersionDrops(state, year, config) → [{ month, label, isVersion, ...
 liveOpsVersionLabel(title, ver, config) → string
 isLiveOpsTitle(g) → boolean
 liveOpsAwardEligible(g, year, config) → boolean
+isCareerMode(state) → boolean
+careerYearReleases(year, config, state) → { year, months }
+careerProjectView(state, config) → { title, phase, idle, postLaunch, ... }
+careerSkillLines(state, config) → [{ label, xp, tier }]
+careerPlayableRoles(config) / careerCopy(config)
 ```
 
 ### 7.7 逻辑接口（UI 只调这些改 state）
 
 ```
 createNewGame(companyName, config) → GameState
+createCareerGame(characterName, roleId, config) → GameState   # phase=OFFER，已掷 openingOffers
+acceptOpeningOffer(state, offerId, config)
 hire / fire / relocate / buyAd
 foundStudio(state, name, leadId, config)
 pitchProject / pitchOutsource
 assignLiveOps / shutdownLiveOps
 releaseGame(state, gameId, config) → { ok, state, rec?, error? }
 resolveEventChoice(state, eventId, optionId, config) → { ok, state, bits?, error? }
+  # 生涯档内部转到 resolveCareerEventChoice
 tickMonth(state, config) → { state, queue }
+  # mode=career 时整段 tickCareerMonth
+applyYearEndOffer / acceptYearEndOffer(state, offerId, config) → { ok, state, hopped?, notice? }
+declineYearEndOffers(state, config)
+acceptCareerInvite / counterCareerInvite / declineCareerInvite(state, inviteId, config)
 startNewRun(companyName, config) → GameState   # 等同 createNewGame
 errorMessage(error) → string
 ```
 
 `applyLongTail` 是 `tickLifecycle` 的兼容别名，不是指数长尾，UI 不要调用。
 
+生涯档 UI **不要**调 `hire` / `pitchProject` / `releaseGame` / `relocate` 等经营接口；点月仍只调 `tickMonth`。
+
 `PitchInput`：`title, genreId, gameplayId, platformId, releaseType, cycle, producerId, memberIds, seriesId?, studioId?`。
 
-`queue` 项：`notes` / `event`（`presentation: notice|choice`）/ `rivals` / `ready` / `outsource` / `awards` / `media`（长线大版本）。自制首发媒体分仍在 `releaseGame` 成功后由 UI 弹出。
+`queue` 项：`notes` / `event`（`presentation: notice|choice`）/ `rivals` / `ready` / `outsource` / `awards` / `media`（长线大版本）/ 生涯跳槽与挖人页。自制首发媒体分仍在 `releaseGame` 成功后由 UI 弹出。
 
 ---
 
 ## 8. 实现进度与非目标
 
-已接到点月循环，并拆成 view / sim / config。云表与读写骨架已有，环境未开通。浏览器直接打开是预览模式。
+已接到点月循环，并拆成 view / sim / config。现行页面默认生涯档（1995 入职）。云表与读写骨架已有，环境未开通。浏览器直接打开是预览模式。
 
-第一版仍不做：开通云环境（等部署阶段）、联机、付费抽奖、真排行、海报发帖、2005/1985 更长档、自动过月、岗位编制、培训界面、虎扑赛事接口、精细立绘。
+第一版仍不做：开通云环境（等部署阶段）、联机、付费抽奖、真排行、海报发帖、经营局 2005/1985 更长档、生涯档当制作人/自己开公司、自动过月、岗位编制、培训界面、虎扑赛事接口、精细立绘。
 
 **已废规则不要复活：** 自动发售、指数长尾、`launchSales` 当后续乘数、PS4/Xbox 玩家选项、N/S 社仅两家简表、12 月 TGA、制作人 2:1 三项合计。
 
@@ -310,5 +347,6 @@ errorMessage(error) → string
 
 1. 关掉再打开自动记录进度。  
 2. 生涯结算不分享。  
-3. 公司名默认「喵扑studio」，玩家可改。  
+3. 经营局公司名默认「喵扑studio」，玩家可改。生涯档角色名默认「阿喵」，不要用公司名。  
 4. 存储方式：云端。云环境开通与回写地址：部署阶段再做。全站排行第一版不做。
+5. 现行 H5 入口是生涯档；经营局逻辑保留在 sim。

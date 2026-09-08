@@ -42,6 +42,7 @@
       monthChart: [],
       lastMedia: null,
       lastAwards: null,
+      awardsHistory: [],
       talentStamp: cal.startYear + "-" + cal.startMonth
     };
     sim.refreshMarket(st, config, true);

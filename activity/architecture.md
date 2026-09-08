@@ -29,19 +29,21 @@
 启动
  └─ 生涯档：角色名（过审）→ 选擅长 → 三份 offer → 入职总览
       或 读档：PLAYING 进总览 / OFFER 回选 offer
-      └─ 【主场景】职员总览（积蓄、声望、主职、在研、同事、年底 offer）
-            ├─ 情报：发售日历（目录作 + 移动端长线版本）、年度奖
+      └─ 【主场景】职员总览（积蓄、声望、职称/职级代号、在研、同事、前辈）
+            ├─ 情报：发售日历（目录作 + 移动端长线版本）、年度奖（点年份只看该届）、履历（署名作品）
             ├─ 点「下一月」→ 结算中（锁操作）
-            │     ├─ 开发/热修事件（notice / choice）
+            │     ├─ 开发/热修事件（notice / choice）；制作人岗走 producerEvents
+            │     ├─ 事件线拍子（careerLine / careerLineFork）；制作人虚拟作立项（producerPitch）
+            │     ├─ 晋升（低职级当场升；4→5 / 5→6 开线）
             │     ├─ 年中挖人（接 / 还价 / 留下）
-            │     ├─ 12 月跳槽申请（先选再申请，失败本年不能再投）
+            │     ├─ 12 月跳槽申请（过月弹窗，先选再申请，失败本年不能再投）
             │     ├─ 11 月：年度奖
             │     └─ 回到总览
             └─ 终局：2025 生涯结算
 经营局 sim 仍保留招人/立项/待发售/破产，本版 H5 不入口。
 ```
 
-生涯档点月前可做：申请年底 offer、处理挖人、过月抉择。经营局点月前可做：招人/辞退、换场地、广告、立项、**发布待发售**、长线排人/关服、开工作室。推进在研 ≠ 自动发售。
+生涯档点月前可做：处理挖人、过月/事件线抉择。年底 offer 在 12 月过月弹窗里申请。达标后可点晋升或「成为制作人」（二者互斥，走 `requestCareerPromotion` / `startCareerLine`）。经营局点月前可做：招人/辞退、换场地、广告、立项、**发布待发售**、长线排人/关服、开工作室。推进在研 ≠ 自动发售。
 
 ---
 
@@ -52,7 +54,7 @@
 ```
 BOOT ──► 生涯：ROLE → OFFER → PLAYING ──► MONTH_TICK ──► PLAYING
               │                              │
-              │                              ├─ 开发/热修 / 挖人 / 跳槽 / TGA
+              │                              ├─ 开发/热修 / 事件线 / 挖人 / 跳槽 / TGA
               │                              └─ 已过 timeline 结束年月 ──► SETTLED
 （经营局 sim：NEW_GAME 直接 PLAYING；funds<0 → BANKRUPT）
 ```
@@ -100,7 +102,7 @@ BOOT ──► 生涯：ROLE → OFFER → PLAYING ──► MONTH_TICK ──�
 
 ```
 activity/config.json          # 数值唯一源
-activity/career-world.json    # 生涯公司/作品表；sync 时并入 careerWorld
+activity/career-world.json    # 生涯公司/作品/职级/前辈/事件线；sync 时并入 careerWorld
 scripts/sync_config.py        # 同步生成物
 scripts/build_career_world.py # 生成生涯目录（改完再 sync）
 scripts/career_choice_events.py
@@ -112,16 +114,18 @@ h5/
   js/
     config.generated.js       # file:// 可读的 GDS.CONFIG
     sim/                      # 纯逻辑
-    ui/                       # 只画和点
+    ui/                       # 只画和点（含 reveal.js 揭晓动效）
     save/port.js              # persist / restoreOrNull
     bridge/colorbox.js        # ColorboxAI 封装
 ```
 
-`sim/` 文件：`ns.js` `rng.js` `util.js` `company.js` `staff.js` `project.js` `liveops.js` `series.js` `rivals.js` `events.js` `lifecycle.js` `media.js` `awards.js` `career.js` `tick.js` `actions.js`。
+`ui/`：`dom.js` `reveal.js` `paint.js` `panels.js` `app.js`。媒体评分与颁奖夜揭晓只在 UI，不改 sim。
+
+`sim/` 文件：`ns.js` `rng.js` `util.js` `company.js` `staff.js` `project.js` `liveops.js` `series.js` `rivals.js` `events.js` `lifecycle.js` `media.js` `awards.js` `career.js` `careerLines.js` `tick.js` `actions.js`。
 
 | 层 | 职责 | 禁止 |
 |----|------|------|
-| **config** | 经营数字在 `activity/config.json`；生涯公司/作品/薪资/跳槽在 `activity/career-world.json` | 在 HTML / UI / sim 里再写一套平衡数字 |
+| **config** | 经营数字在 `activity/config.json`；生涯公司/作品/薪资/跳槽/前辈/职级代号/事件线/制作人规则在 `activity/career-world.json` | 在 HTML / UI / sim 里再写一套平衡数字 |
 | **sim/** | 下节公开函数 | `document`、`window.ColorboxAI`、存档 IO、`fetch` |
 | **ui/** | 场景、按钮、弹层 | 在 click handler 里改资金 / 员工 / 项目 / 质量 |
 | **save/ + bridge/** | 云档、storage 缓存、审核 | `localStorage` / `sessionStorage`；假后端 |
@@ -130,7 +134,7 @@ h5/
 
 ### 改数值
 
-1. 只改 `activity/config.json`（生涯作品改 `activity/career-world.json`）。  
+1. 只改 `activity/config.json`（生涯作品、职级、事件线改 `activity/career-world.json`）。  
 2. `python scripts/sync_config.py`  
 3. `node tests/run-sim-tests.js`（必须绿）
 
@@ -191,7 +195,7 @@ Windows 可用 `python`；若失败再试 `python3`。
 
 ## 7. 关键数据模型（与 sim 字段对齐）
 
-四维键名：`program` / `script` / `art` / `music`。生涯 live 四维也用 `program`/`design`/`art`/`music`（策划对员工 `script`）。`id` 均为局内字符串。`createNewGame` 写 `saveVersion: 4`；`createCareerGame` 写 `careerWorld.save.version`（现行 8）。
+四维键名：`program` / `script` / `art` / `music`。生涯 live 四维也用 `program`/`design`/`art`/`music`（策划对员工 `script`）。`id` 均为局内字符串。`createNewGame` 写 `saveVersion: 4`；`createCareerGame` 写 `careerWorld.save.version`（现行 10：职级/履历为 9，事件线/制作人为 10）。
 
 ### 7.1 GameState
 
@@ -203,7 +207,7 @@ Windows 可用 `python`；若失败再试 `python3`。
 | `rngSeed` `rngCount` | 局种子与已取随机次数 |
 | `year` `month` | 经营局见 `config.calendar`；生涯档见 `careerWorld.timeline` |
 | `career` | 仅生涯档，见 7.1b |
-| `worldReleased` | 生涯档世界已发售（含长线版本字段） |
+| `worldReleased` | 生涯档世界已发售；目录作四维进局时按 `quality.statJitterMinPct`～`MaxPct` 整数百分比浮动后向上取整 |
 | `companyXp` `studioXp` | 生涯档公司/工作室题材·玩法经验桶 |
 | `company` | 见下 |
 | `staff` | 在职 |
@@ -221,7 +225,7 @@ Windows 可用 `python`；若失败再试 `python3`。
 | `rivalLifetimeByPlatform` | `{ console, pc, mobile }` 累计出货 |
 | `rivalPlan` `rivalWait` `rivalSequel` `rivalForceSeries` | 管线辅助 |
 | `monthSales` `monthChart` | 最近一次点月的本公司销量与榜快照 |
-| `lastMedia` `lastAwards` | 最近一次发布/颁奖展示 |
+| `lastMedia` `lastAwards` `awardsHistory` | 最近一次发布/颁奖展示；`awardsHistory` 为 `{ year, awards }[]`，年度奖页按年回看 |
 | `settlement` | 终局才有（UI 可从当前快照拼） |
 
 **已废存档形状（不要再写进新档）：** `adBuff` 对象、`unlockedPlatformIds`、`ownConsoleUnlocked`（改用 `company.adOn` / `company.ownConsole`）、`tailLeft` 作为规则、用 `launchSales` 当后续乘数。
@@ -233,12 +237,20 @@ Windows 可用 `python`；若失败再试 `python3`。
 | `characterName` `roleId` | 角色名与锁定岗（`programmer` / `design` / `art` / `music`） |
 | `companyId` `studioId` | 当前东家与工作室 |
 | `savings` `salary` `lastPay` | 积蓄、当月档位薪、本月入账（镜像到 `company.funds`） |
-| `fame` `honor` `growthStage` | 声望、荣誉、阶段（本版 `employee`） |
-| `titleId` `liveStats` `stats` | 当前在研/后续支持作与 live 四维 |
+| `fame` `honor` `growthStage` | 声望、荣誉、阶段（`employee` / `producer`；`founder` 本版锁定） |
+| `jobRank` `jobTitleId` `jobXp` | 专精职级 1–6、当前职称 id、职级经验；转制作人后仍保留 `jobRank` |
+| `lines` | 事件线进度：`{ [lineId]: { beat, flags, startedAt, status, waitUntil?, waitingFor?, pending?, abortedYear?, remotePending?, waitUntilYear? } }`。多条可同时 `active` |
+| `bonds` | 持久人物：`mentor` / `peer` / `junior`（跳槽保留）。junior 可有 `aliasThen` / `aliasNow` |
+| `lineStartRolls` | 可选线开线掷骰年份戳 |
+| `producerPitchOptions` | 制作人虚拟作立项选项；选完清空 |
+| `pendingStoryPromos` | 故事晋升推迟到次年 1 月的队列 |
+| `tenures` | 任职记录：公司/工作室/`roleId`/`jobRank`/职称 id/起止年月/起止薪/`source`（opening / hop / invite / promotion / producer） |
+| `monthsInRank` `promotionsThisYear` `lastPromotionYear` | 任现职月数、本年已晋升次数、上次晋升年份 |
+| `titleId` `liveStats` `stats` | 当前在研/后续支持作与 live 四维；`stats` 是角色四维（主职维会涨） |
 | `postLaunch` | `{ titleId, monthsLeft }`；发售后热修 |
-| `credits` | 署名履历 |
-| `openingOffers` `yearEndOffers` `invites` | 开局三份 / 年底 5 格 / 年中挖人 |
-| `colleagues` `colleaguePool` | 当前 5 人组与公司同事池 |
+| `credits` | 作品履历：`titleId` / 公司工作室 / `roleId` / 当时 `jobRank` / 加入离开年月 / `shipped` 署名发售 / `supported` 后续支持 / `virtual` / 口碑 `score` / `mainStatDelta` / `awards`。中途跳槽保留条目但 `shipped=false` |
+| `openingOffers` `yearEndOffers` `invites` | 开局三份 / 年底 4 格 / 年中挖人；挖人与跳槽 `roleId` 按 `mobility.*RoleWeights` 抽，制作人岗需 `become-producer` 线 done |
+| `colleagues` `colleaguePool` | 当前 5 人组与公司同事池。同事条目：`id` `n` `roleId` `stats` `jobRank`。池按东家 `power` 从 `colleagues.byPower` 抽，不读当前 `title.stats` |
 | `virtualProjects` `virtualDetails` | 空窗虚拟作 |
 | `genreXp` `gameplayXp` | 玩家个人熟练度 |
 | `idleMonths` `hopFailedYear` `hopNotice` | 空窗计数、本年跳槽失败、提示 |
@@ -276,7 +288,7 @@ Windows 可用 `python`；若失败再试 `python3`。
 | `lifetimeSales` `monthSales` `onSale` | 累计、本月实销、是否在售 |
 | `monthSalesForYear` `monthSalesForMonth` | 本月实销已入账的戳，避免发售当月点月再加一遍 |
 | `outsourceFee` | 仅外包 |
-| `liveOps` | `{ active, maintainerIds, monthsLive, peak, versionMajor, versionMinor, closedYear, closedMonth }`；月开支与版本间隔读配置不存档 |
+| `liveOps` | `{ active, maintainerIds, monthsLive, peak, versionMajor, versionMinor, closedYear, closedMonth }`；月开支、版本间隔与每年每作版本上限读配置不存档 |
 | `versionMajor` `versionMinor` | 长线当前版本；1.0 是首发。移动端长线才推进 |
 | `lastVersionYear` `lastVersionMonth` | 最近一次版本发售年月；同月不重复发 |
 
@@ -290,15 +302,28 @@ monthlyChart(state, config) → [{ rank, source, title, pub, monthSales, avg, pl
 salesFactor(m, score, config) → number   # Y(m)；掉榜看它
 boxedBaselineFormula(st, project, config, consumeAd?) → number
 getRivalCalendar(state, year) → { year, months }
-listLiveOpsVersionDrops(state, year, config) → [{ month, label, isVersion, ... }]
+listLiveOpsVersionDrops(state, year, config) → [{ month, label, isVersion, ... }]  # 已按 maxVersionsPerYear 截过，每作每年最多那么多条
 liveOpsVersionLabel(title, ver, config) → string
 isLiveOpsTitle(g) → boolean
 liveOpsAwardEligible(g, year, config) → boolean
 isCareerMode(state) → boolean
 careerYearReleases(year, config, state) → { year, months }
 careerProjectView(state, config) → { title, phase, idle, postLaunch, ... }
-careerSkillLines(state, config) → [{ label, xp, tier }]
+careerSkillLines(state, config) → [{ label, xp, tier }]   # 总览摘要
+careerSkillSheet(state, config) → { genres, gameplay }   # 详情页全表，档位无经验值
+careerHireChance(company, state, config, studio?, title?) → number  # 含题材/玩法熟练度加成
 careerPlayableRoles(config) / careerCopy(config)
+careerJobTitle(state, config) / careerJobTitleLabel(state, config)
+formatCareerRankLabel(roleId, rank, config) / careerRankCode(roleId, rank, config) / careerJobTitleDisplay(state, config)
+liveToPublicScore / careerMonthlyContribution / careerCraftPublicScore / scoreMediaFromPublic
+careerLaunchSales(title, publicScore, config, liveStats) → { baselineSales, launchSales }  # 生涯首月实销：口碑系数×Y(1)
+careerSeniors(company, config) / careerSeniorLine(company, config)
+careerPromotionView(state, config) → { can, rank, gaps, currentLabel, nextLabel }
+careerResumeView(state, config) → { tenures, credits, jobLabel, rank }
+careerSettlementView(state, config) → { characterName, jobLabel, fame, honor, creditedCount, savings, employer }
+canPromoteCareer(state, config) → boolean
+promotionUsesEventLine(state, config) / canStartBecomeProducerLine(state, config) / isCareerProducer(state)
+listAwardsHistory(state, config) → [{ year, awards }]   # 新在前；无历史时用 lastAwards 兜底。年度奖页点年份只渲染该届
 ```
 
 ### 7.7 逻辑接口（UI 只调这些改 state）
@@ -313,12 +338,19 @@ pitchProject / pitchOutsource
 assignLiveOps / shutdownLiveOps
 releaseGame(state, gameId, config) → { ok, state, rec?, error? }
 resolveEventChoice(state, eventId, optionId, config) → { ok, state, bits?, error? }
-  # 生涯档内部转到 resolveCareerEventChoice
+  # 生涯档内部转到 resolveCareerEventChoice；事件线/制作人立项也会走这里
+resolveCareerLineChoice(state, lineId, beatId, optionId, config)
+resolveCareerPathFork(state, optionId, config)
+resolveProducerPitch(state, optionId, config)
+startCareerLine(state, lineId, config)
+requestCareerPromotion(state, config) → 低职级当场升；4→5/5→6 开晋升事件线
+kickOutOfCareerCompany(state, config) → 清当前 tenure，进求职；由线效果 `kickOut` 触发
 tickMonth(state, config) → { state, queue }
-  # mode=career 时整段 tickCareerMonth
+  # mode=career 时整段 tickCareerMonth；合并/远程打断走 careerLine，仍由 resolveCareerLineChoice 结算
 applyYearEndOffer / acceptYearEndOffer(state, offerId, config) → { ok, state, hopped?, notice? }
 declineYearEndOffers(state, config)
 acceptCareerInvite / counterCareerInvite / declineCareerInvite(state, inviteId, config)
+promoteCareer(state, config) → { ok, state }   # 低职级点一次才升；高级及以上请用 requestCareerPromotion / 事件线
 startNewRun(companyName, config) → GameState   # 等同 createNewGame
 errorMessage(error) → string
 ```
@@ -329,7 +361,21 @@ errorMessage(error) → string
 
 `PitchInput`：`title, genreId, gameplayId, platformId, releaseType, cycle, producerId, memberIds, seriesId?, studioId?`。
 
-`queue` 项：`notes` / `event`（`presentation: notice|choice`）/ `rivals` / `ready` / `outsource` / `awards` / `media`（长线大版本）/ 生涯跳槽与挖人页。自制首发媒体分仍在 `releaseGame` 成功后由 UI 弹出。
+`queue` 项：`notes` / `event`（`presentation: notice|choice`）/ `rivals` / `ready` / `outsource` / `awards` / `media`（长线大版本）/ 生涯 `hop` / `invite` / `promotion` / `careerLine` / `careerLineFork` / `producerPitch`。自制首发媒体分仍在 `releaseGame` 成功后由 UI 弹出。
+
+### 7.8 生涯事件线（`career-world.eventLines`）
+
+表驱动，实现在 `h5/js/sim/careerLines.js`。进度只写 `career.lines`，拍子入现有点月 queue。
+
+| 项 | 说明 |
+|----|------|
+| `maxBeatsPerMonth` | 默认每月最多 1 拍；`beat.wait.type=sameMonthChain` 可同月连拍 |
+| `exclusiveGroup: careerPath` | 仅职业轨互斥：晋升 4→5 / 5→6 与 `become-producer`。人物/史诗/回国线不要进该组 |
+| `lines[]` | `{ id, kind, fromRank/toRank 或 minRank, exclusiveGroup?, priority, reopen?, startWhen, beats[] }` |
+| `beats[].wait.type` | `immediate` / `months` / `onShip` / `yearEnd` / `sameMonthChain` |
+| 效果 | 升职、改岗、kickOut、钉 bond、storyPromo、开制作人立项等；踢出走 `kickOutOfCareerCompany` |
+
+可选五条（前辈 / 同事 / 后辈 / 史诗作 / 回国）用 `startWhen` 权重，一局可走完 0～5 条。东家 `hireUntilYear` + `successorId` 的合并抉择是当月打断，不算第六条可选线。
 
 ---
 
@@ -337,7 +383,7 @@ errorMessage(error) → string
 
 已接到点月循环，并拆成 view / sim / config。现行页面默认生涯档（1995 入职）。云表与读写骨架已有，环境未开通。浏览器直接打开是预览模式。
 
-第一版仍不做：开通云环境（等部署阶段）、联机、付费抽奖、真排行、海报发帖、经营局 2005/1985 更长档、生涯档当制作人/自己开公司、自动过月、岗位编制、培训界面、虎扑赛事接口、精细立绘。
+第一版仍不做：开通云环境（等部署阶段）、联机、付费抽奖、真排行、海报发帖、经营局 2005/1985 更长档、生涯档自己开公司、自动过月、岗位编制、培训界面、虎扑赛事接口、精细立绘。
 
 **已废规则不要复活：** 自动发售、指数长尾、`launchSales` 当后续乘数、PS4/Xbox 玩家选项、N/S 社仅两家简表、12 月 TGA、制作人 2:1 三项合计。
 

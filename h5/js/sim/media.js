@@ -41,8 +41,15 @@
     var pools = copy.mediaQuotePools || {};
     var dim = peakWeightDim(outlet.weights);
     var band = quoteBand(score, media);
+    var outletPool = pools.outlets && outlet && pools.outlets[outlet.id];
     var dimPool = pools[dim] || pools.overall || {};
-    var list = dimPool[band] || dimPool.mid || dimPool.high || dimPool.low;
+    var list;
+    if (outletPool) {
+      list = outletPool[band] || outletPool.mid || outletPool.high || outletPool.low;
+    }
+    if (!list || !list.length) {
+      list = dimPool[band] || dimPool.mid || dimPool.high || dimPool.low;
+    }
     if (!list || !list.length) {
       list = (pools.overall && (pools.overall[band] || pools.overall.mid)) || copy.mediaQuotes || [""];
     }
@@ -71,6 +78,38 @@
         w.music * mediaStat(stats, "music");
       var sc = wsum / media.scoreDivisor;
       sc = Math.max(media.minScore, Math.min(media.maxScore, sc + floor));
+      sc = Math.round(sc * 10) / 10;
+      return {
+        id: o.id,
+        n: o.displayName,
+        score: sc,
+        quote: pickOutletQuote(st, o, sc, config)
+      };
+    });
+    var avg = 0;
+    rows.forEach(function (r) { avg += r.score; });
+    avg = Math.round((avg / rows.length) * 10) / 10;
+    return { rows: rows, avg: avg, quote: (rows[0] && rows[0].quote) || sim.pick(st, quotes) };
+  };
+
+  sim.scoreMediaFromPublic = function (st, publicScore, config, scatter) {
+    var media = config.release.media;
+    var quotes = (config.copy && config.copy.mediaQuotes) || [""];
+    var jMin, jMax, tmp;
+    scatter = scatter || {};
+    jMin = num(scatter.min, 0);
+    jMax = num(scatter.max, 0);
+    if (jMin > jMax) {
+      tmp = jMin;
+      jMin = jMax;
+      jMax = tmp;
+    }
+    publicScore = num(publicScore, media.minScore);
+    var rows = media.outlets.map(function (o) {
+      var mag = jMin + sim.rand(st) * (jMax - jMin);
+      var sign = sim.rand(st) < 0.5 ? -1 : 1;
+      var sc = publicScore + sign * mag;
+      sc = Math.max(media.minScore, Math.min(media.maxScore, sc));
       sc = Math.round(sc * 10) / 10;
       return {
         id: o.id,

@@ -91,9 +91,52 @@
     return true;
   };
 
+  sim.liveOpsMaxVersionsPerYear = function (config) {
+    var spec = sim.liveOpsVersionSpec(config);
+    var n = spec.maxVersionsPerYear;
+    if (n == null || n === "") return 0;
+    n = Math.floor(Number(n));
+    return n > 0 ? n : 0;
+  };
+
   sim.liveOpsVersionInterval = function (g, config) {
     var spec = sim.liveOpsVersionSpec(config);
-    return spec.mobileIntervalMonths || spec.intervalMonths || 2;
+    var base = spec.mobileIntervalMonths || spec.intervalMonths || 2;
+    var maxPer = sim.liveOpsMaxVersionsPerYear(config);
+    var minGap;
+    if (maxPer > 0) {
+      minGap = Math.ceil(12 / maxPer);
+      if (minGap > base) base = minGap;
+    }
+    if (!base || base < 1) base = 1;
+    return base;
+  };
+
+  function capYearVersionSlots(slots, maxN) {
+    var picked, used, i, idx;
+    if (!maxN || maxN < 1 || slots.length <= maxN) return slots;
+    picked = [];
+    used = {};
+    for (i = 0; i < maxN; i++) {
+      idx = Math.floor(i * slots.length / maxN);
+      while (used[idx] && idx < slots.length - 1) idx += 1;
+      if (used[idx]) continue;
+      used[idx] = true;
+      picked.push(slots[idx]);
+    }
+    return picked;
+  }
+
+  sim.liveOpsYearVersionSlots = function (g, year, config) {
+    var slots = [];
+    var m, idx;
+    if (!sim.liveOpsUsesVersions(g, config)) return [];
+    for (m = 1; m <= 12; m++) {
+      idx = sim.liveOpsVersionIndexAt(g, year, m, config);
+      if (idx < 1) continue;
+      slots.push({ month: m, index: idx });
+    }
+    return capYearVersionSlots(slots, sim.liveOpsMaxVersionsPerYear(config));
   };
 
   sim.liveOpsVersionFromIndex = function (index, config) {
@@ -145,11 +188,13 @@
   };
 
   sim.liveOpsVersionDueAt = function (g, year, month, config) {
-    var idx;
+    var slots, i;
     if (!sim.liveOpsUsesVersions(g, config)) return null;
-    idx = sim.liveOpsVersionIndexAt(g, year, month, config);
-    if (idx < 1) return null;
-    return sim.liveOpsVersionFromIndex(idx, config);
+    slots = sim.liveOpsYearVersionSlots(g, year, config);
+    for (i = 0; i < slots.length; i++) {
+      if (slots[i].month === month) return sim.liveOpsVersionFromIndex(slots[i].index, config);
+    }
+    return null;
   };
 
   function bumpLiveOpsStat(g, st, amt) {
@@ -199,16 +244,24 @@
     if (notes) notes.push(label + (copy.liveopsVersionNote ? (" " + copy.liveopsVersionNote) : ""));
     stats = g.stats;
     if (ver.minor === 0 && spec.mediaOnMajor && stats && mediaOut && sim.scoreMedia) {
-      media = sim.scoreMedia(st, stats, [], config, g.producerId || null);
-      g.media = media;
-      g.avg = media.avg;
-      g.score = media.avg;
+      if (sim.isCareerMode && sim.isCareerMode(st) && sim.scoreMediaFromPublic) {
+        media = sim.scoreMediaFromPublic(st, g.score != null ? g.score : g.avg, config, (function () {
+          var m = (sim.careerWorld && sim.careerWorld(config).scoreFromLive) || {};
+          return { min: m.mediaJitterMin, max: m.mediaJitterMax };
+        })());
+        g.media = media;
+      } else {
+        media = sim.scoreMedia(st, stats, [], config, g.producerId || null);
+        g.media = media;
+        g.avg = media.avg;
+        g.score = media.avg;
+      }
       rec = {
         title: label,
         avg: media.avg,
         media: media,
         monthSales: currentRev != null ? currentRev : g.monthSales,
-        launchSales: g.launchSales || 0,
+        launchSales: g.launchSales != null ? g.launchSales : null,
         baselineSales: 0
       };
       mediaOut.push(rec);

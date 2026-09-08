@@ -6,6 +6,12 @@
     return fallback;
   }
 
+  sim.fillAwardYear = function (tpl, year, fallback) {
+    var s = tpl || fallback || "";
+    if (year == null || year === "") return s;
+    return String(s).replace(/\{year\}/g, String(year));
+  };
+
   sim.inAwardWindow = function (g, year, config) {
     var startMonth = config.awards.windowStartMonth || 12;
     var endMonth = config.awards.month || 11;
@@ -252,8 +258,10 @@
       return {
         id: awardDef.id,
         n: awardDef.displayName,
+        year: st.year,
         w: hit ? hit.label : "—",
         titleId: hit && hit.titleId,
+        playerWon: !!(hit && hit.player),
         nominees: noms.map(function (c) {
           return { label: c.label, titleId: c.titleId, player: !!c.player };
         })
@@ -290,7 +298,38 @@
       });
       notes.push("年度盛典：奖杯多在 " + (houses.slice(0, 3).join("、") || "大厂") + " 手里");
     }
-    st.lastAwards = awardPack;
+    sim.recordAwardsHistory(st, awardPack);
     return awardPack;
+  };
+
+  sim.recordAwardsHistory = function (st, pack) {
+    var y = st.year;
+    var i;
+    if (!st.awardsHistory) st.awardsHistory = [];
+    for (i = 0; i < st.awardsHistory.length; i++) {
+      if (st.awardsHistory[i].year === y) {
+        st.awardsHistory[i] = { year: y, awards: pack };
+        st.lastAwards = pack;
+        return pack;
+      }
+    }
+    st.awardsHistory.push({ year: y, awards: pack });
+    st.lastAwards = pack;
+    return pack;
+  };
+
+  sim.listAwardsHistory = function (st, config) {
+    var hist = ((st && st.awardsHistory) || []).slice();
+    var month, y;
+    if (hist.length) {
+      hist.sort(function (a, b) { return b.year - a.year; });
+      return hist;
+    }
+    if (st && st.lastAwards && st.lastAwards.length) {
+      month = (config && config.awards && config.awards.month) || 11;
+      y = st.month <= month ? st.year - 1 : st.year;
+      return [{ year: y, awards: st.lastAwards }];
+    }
+    return [];
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);

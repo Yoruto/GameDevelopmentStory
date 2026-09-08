@@ -34,6 +34,9 @@
   MSG[sim.ERR.CAREER_HOP_NO_PICK] = "先选一家再申请";
   MSG[sim.ERR.CAREER_INVITE_NOT_FOUND] = "这份邀请已经不在了";
   MSG[sim.ERR.CAREER_NOT_JOINABLE] = "这家现在不招人";
+  MSG[sim.ERR.CAREER_PROMOTE_LOCKED] = "现在还不能晋升";
+  MSG[sim.ERR.CAREER_LINE_LOCKED] = "这条事件线现在不能开";
+  MSG[sim.ERR.CAREER_FOUNDER_LOCKED] = "本版不能自己开公司";
 
   sim.errorMessage = function (error) {
     return MSG[error] || error;

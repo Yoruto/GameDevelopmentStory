@@ -193,9 +193,9 @@ COMPANIES = [
     C("acclaim", "Acclaim", "Acclaim", "us", "格伦科夫", 1987, 1, worldOnly=True, until=2004, tags=["publisher"]),
     C("thq", "THQ", "THQ", "us", "阿古拉山", 1989, 1, worldOnly=True, until=2013, tags=["publisher"]),
     C("midway", "Midway", "Midway", "us", "芝加哥", 1988, 1, worldOnly=True, until=2009, tags=["arcade"]),
-    C("hudson", "Hudson Soft", "Hudson", "jp", "札幌", 1973, 1, worldOnly=True, until=2012, tags=["publisher"]),
-    C("treasure", "Treasure", "Treasure", "jp", "东京", 1992, 1, worldOnly=True, tags=["action"]),
-    C("triAce", "tri-Ace", "tri-Ace", "jp", "东京", 1995, 1, worldOnly=True, tags=["rpg"]),
+    C("hudson", "Hudson Soft", "Hudson", "jp", "札幌", 1973, 1, until=2012, tags=["publisher"]),
+    C("treasure", "Treasure", "Treasure", "jp", "东京", 1992, 1, tags=["action"]),
+    C("triAce", "tri-Ace", "tri-Ace", "jp", "东京", 1995, 1, tags=["rpg"]),
     C("asciiEnt", "ASCII", "ASCII", "jp", "东京", 1977, 1, worldOnly=True, until=2002, tags=["publisher"]),
     C("infogrames", "Infogrames", "Infogrames", "eu", "里昂", 1983, 1, worldOnly=True, until=2009, tags=["publisher"]),
     C("gtInteractive", "GT Interactive", "GT", "us", "纽约", 1993, 1, worldOnly=True, until=1999, tags=["publisher"]),
@@ -203,7 +203,7 @@ COMPANIES = [
     C("ourpalm", "掌趣科技", "掌趣", "cn", "北京", 2004, 1, worldOnly=True, tags=["mobile"]),
     C("igame", "中青宝", "中青宝", "cn", "深圳", 2003, 1, worldOnly=True, tags=["cnStudio"]),
     C("yoozoo", "游族网络", "游族", "cn", "上海", 2009, 1, worldOnly=True, tags=["cnStudio"]),
-    C("paperGames", "叠纸游戏", "叠纸", "cn", "上海", 2013, 1, worldOnly=True, tags=["mobile"]),
+    C("paperGames", "叠纸游戏", "叠纸", "cn", "上海", 2013, 1, tags=["mobile"]),
     C("arcSys", "Arc System Works", "弧社", "jp", "横滨", 1988, 1, worldOnly=True, tags=["fighting"]),
     C("compileHeart", "Compile Heart", "Compile", "jp", "东京", 2006, 1, worldOnly=True, hireFrom=2006, tags=["rpg"]),
 ]
@@ -618,6 +618,70 @@ TITLES.extend([
     T("sf6", "capcom", "capcom", "街头霸王6", "SF6", "Street Fighter 6", 2023, 6, 8.7, "console+pc", "urban", "fighting", land=True, pres=4, series="sf"),
     T("sf4", "capcom", "capcom", "街头霸王IV", "SF4", "Street Fighter IV", 2008, 7, 8.8, "console+pc", "urban", "fighting", land=True, pres=4, series="sf"),
     T("sf5", "capcom", "capcom", "街头霸王V", "SF5", "Street Fighter V", 2016, 2, 7.8, "console+pc", "urban", "fighting", pres=2, series="sf"),
+    # --- 以下为补齐空目录可入职公司的作品 ---
+    # paperGames (叠纸)
+    T("nikkiWorld", "paperGames", "paperGames", "暖暖环游世界", "暖暖环游", "Nikki UP2U", 2013, 12, 7.5, "mobile", "cartoon", "sim", pres=2, rtype="liveops", series="nikki"),
+    T("miracleNikki", "paperGames", "paperGames", "奇迹暖暖", "奇暖", "Miracle Nikki", 2015, 3, 8.2, "mobile", "cartoon", "sim", land=True, pres=3, rtype="liveops", series="nikki"),
+    T("mrLove", "paperGames", "paperGames", "恋与制作人", "恋制", "Mr Love", 2017, 12, 8.0, "mobile", "romance", "visualNovel", land=True, pres=3, rtype="liveops", series="mrLove"),
+    T("shiningNikki", "paperGames", "paperGames", "闪耀暖暖", "闪暖", "Shining Nikki", 2019, 8, 8.1, "mobile", "cartoon", "sim", pres=3, rtype="liveops", series="nikki"),
+    T("nimo", "paperGames", "paperGames", "以闪亮之名", "闪亮之名", "Shiny Zone", 2021, 8, 7.8, "mobile", "cartoon", "rpg", pres=2, rtype="liveops", series="nimo"),
+    T("loveAndDeepspace", "paperGames", "paperGames", "恋与深空", "恋深", "Love and Deepspace", 2024, 1, 8.5, "mobile", "romance", "arpg", land=True, pres=4, rtype="liveops", series="mrLove"),
+    T("infinityNikki", "paperGames", "paperGames", "无限暖暖", "无限暖", "Infinity Nikki", 2024, 12, 8.3, "mobile+console+pc", "cartoon", "openWorld", land=True, pres=4, rtype="liveops", series="nikki"),
+    # enix
+    T("dq6", "enix", "enix", "勇者斗恶龙VI", "DQ6", "Dragon Quest VI", 1995, 12, 8.7, "console", "fantasy", "rpg", land=True, pres=4, series="dq"),
+    T("dq7", "enix", "enix", "勇者斗恶龙VII", "DQ7", "Dragon Quest VII", 2001, 8, 8.5, "console", "fantasy", "rpg", land=True, pres=3, series="dq"),
+    # bandaiNamco
+    T("tekken6", "bandaiNamco", "bandaiNamco", "铁拳6", "铁拳6", "Tekken 6", 2007, 11, 8.2, "console", "urban", "fighting", pres=3, series="tekken"),
+    T("talesOfVesperia", "bandaiNamco", "bandaiNamco", "宵星传说", "宵星", "Tales of Vesperia", 2008, 8, 8.4, "console", "fantasy", "rpg", pres=3, series="tales"),
+    # activision
+    T("cod4", "activision", "activision", "使命召唤4：现代战争", "COD4", "CoD4", 2007, 11, 9.0, "console+pc", "war", "shooter", land=True, pres=4, series="cod", studio="activision-cod"),
+    T("codmw2", "activision", "activision", "使命召唤：现代战争2", "MW2", "MW2", 2009, 11, 8.8, "console+pc", "war", "shooter", land=True, pres=4, series="cod", studio="activision-cod"),
+    # xbox
+    T("forza3", "xbox", "xbox", "极限竞速3", "Forza3", "Forza 3", 2009, 10, 8.9, "console", "sports", "racing", pres=3, series="forza", studio="xbox-first"),
+    T("fable2", "xbox", "xbox", "神鬼寓言2", "Fable2", "Fable II", 2008, 10, 8.6, "console", "fantasy", "rpg", pres=3, series="fable", studio="xbox-first"),
+    # origin
+    T("ultima9", "origin", "origin", "创世纪IX", "U9", "Ultima IX", 1999, 11, 7.5, "pc", "fantasy", "rpg", land=True, pres=3, series="ultima"),
+    T("wingCmdProphecy", "origin", "origin", "银河飞将：预言", "WC预言", "WC Prophecy", 1997, 12, 8.0, "pc", "scifi", "action", pres=3, series="wc"),
+    # sierra
+    T("kq7", "sierra", "sierra", "国王密使VII", "KQ7", "KQ VII", 1995, 1, 7.8, "pc", "fantasy", "puzzle", pres=3, series="kq"),
+    T("phantasmagoria", "sierra", "sierra", "幻象杀手", "幻象", "Phantasmagoria", 1995, 1, 7.2, "pc", "horror", "puzzle", pres=2, series="phant"),
+    # lucasarts
+    T("curseOfMonkeyIsland", "lucasarts", "lucasarts", "猴岛小英雄3", "猴岛3", "Curse of MI", 1997, 10, 8.7, "pc", "comedy", "puzzle", land=True, pres=3, series="monkey"),
+    T("grimFandango", "lucasarts", "lucasarts", "冥界狂想曲", "冥界", "Grim Fandango", 1998, 10, 9.0, "pc", "adventure", "puzzle", land=True, pres=4, series="grim"),
+    # eidos
+    T("deusEx", "eidos", "eidos", "杀出重围", "杀出重围", "Deus Ex", 2000, 6, 9.0, "pc", "scifi", "shooter", land=True, pres=4, series="deusEx"),
+    T("thiefDarkProject", "eidos", "eidos", "神偷：暗黑计划", "神偷", "Thief", 1998, 12, 8.7, "pc", "historical", "action", land=True, pres=3, series="thief"),
+    # supercell
+    T("clashOfClans", "supercell", "supercell", "部落冲突", "COC", "Clash of Clans", 2012, 8, 8.5, "mobile", "fantasy", "strategy", land=True, pres=4, rtype="liveops", series="coc"),
+    T("clashRoyale", "supercell", "supercell", "皇室战争", "CR", "Clash Royale", 2016, 3, 8.6, "mobile", "fantasy", "cards", land=True, pres=3, rtype="liveops", series="cr"),
+    # paradox
+    T("eu4", "paradox", "paradox", "欧陆风云4", "EU4", "EU IV", 2013, 8, 8.7, "pc", "historical", "strategy", land=True, pres=3, rtype="liveops", series="eu"),
+    T("stellaris", "paradox", "paradox", "群星", "群星", "Stellaris", 2016, 5, 8.5, "pc", "scifi", "strategy", land=True, pres=3, rtype="liveops", series="stellaris"),
+    # ca
+    T("romeTotalWar", "ca", "ca", "罗马：全面战争", "罗马全战", "Rome: TW", 2004, 9, 8.9, "pc", "historical", "strategy", land=True, pres=4, series="tw"),
+    T("shogun2", "ca", "ca", "全面战争：幕府将军2", "幕府2", "Shogun 2", 2011, 3, 8.8, "pc", "historical", "strategy", land=True, pres=3, series="tw"),
+    # shanda
+    T("legendOfMir", "shanda", "shanda", "热血传奇", "传奇", "Legend of Mir", 2001, 9, 7.8, "pc", "fantasy", "mmo", land=True, pres=3, rtype="liveops", series="mir"),
+    # the9
+    T("wowCn", "the9", "the9", "魔兽世界(国服)", "WOW国服", "WoW CN", 2005, 6, 8.5, "pc", "fantasy", "mmo", land=True, pres=3, rtype="liveops", series="wowCn"),
+    # perfectWorld
+    T("perfectWorldOl", "perfectWorld", "perfectWorld", "完美世界OL", "完美OL", "Perfect World", 2005, 10, 7.8, "pc", "wuxia", "mmo", land=True, pres=3, rtype="liveops", series="pw"),
+    T("zhuXian", "perfectWorld", "perfectWorld", "诛仙OL", "诛仙", "Zhu Xian", 2007, 4, 7.9, "pc", "wuxia", "mmo", land=True, pres=3, rtype="liveops", series="zx"),
+    # lilith
+    T("afkArena", "lilith", "lilith", "剑与远征", "剑与远征", "AFK Arena", 2018, 4, 8.0, "mobile", "fantasy", "cards", land=True, pres=3, rtype="liveops", series="afk"),
+    T("afkJourney", "lilith", "lilith", "剑与远征：启程", "AFK2", "AFK Journey", 2024, 3, 8.2, "mobile", "fantasy", "rpg", land=True, pres=3, rtype="liveops", series="afk"),
+    # hudson
+    T("bomberman93", "hudson", "hudson", "炸弹人93", "炸弹人93", "Bomberman 93", 1995, 12, 7.8, "console", "cartoon", "action", pres=2, series="bomber"),
+    T("starSoldier", "hudson", "hudson", "星际战士", "星际战士", "Star Soldier", 1996, 6, 7.5, "console", "scifi", "shooter", pres=2, series="ss"),
+    # treasure
+    T("ikaruga", "treasure", "treasure", "斑鸠", "斑鸠", "Ikaruga", 2001, 9, 8.8, "console", "scifi", "shooter", land=True, pres=3, series="ikaruga"),
+    T("radiantSilvergun", "treasure", "treasure", "闪光银枪", "银枪", "Radiant Silvergun", 1998, 9, 8.6, "console", "scifi", "shooter", land=True, pres=3, series="rsg"),
+    # triAce
+    T("starOcean3", "triAce", "triAce", "星之海洋3", "SO3", "Star Ocean 3", 2003, 2, 8.5, "console", "scifi", "rpg", land=True, pres=3, series="so"),
+    T("valkyrieProfile", "triAce", "triAce", "女神侧身像", "VP", "Valkyrie Profile", 1999, 12, 8.7, "console", "fantasy", "rpg", land=True, pres=3, series="vp"),
+    # 2kFallback
+    T("nba2k11", "2kFallback", "2kFallback", "NBA 2K11", "NBA2K11", "NBA 2K11", 2010, 10, 8.9, "console", "sports", "sportsGame", land=True, pres=3, series="nba2k"),
+    T("mafia2", "2kFallback", "2kFallback", "黑手党2", "黑手党2", "Mafia II", 2010, 8, 8.4, "console+pc", "urban", "action", pres=3, series="mafia"),
 ])
 
 # 生涯四维：配置基准 0–100。局内 live 分允许超过 100，这里不要写成运行时硬夹满。
@@ -1284,10 +1348,10 @@ VIRTUAL_POOL = {
 }
 
 MOBILITY = {
-    "comment": "年底 5 格 offer：内部工作室最多 2、排在前面。主动申请掷骰，失败记 hopFailedYear，本年不能再投。挖人必成。允许开发中途跳槽。",
+    "comment": "年底 4 格 offer：内部工作室最多 2、排在前面；可晋升时内部晋升占用其中一格。主动申请掷骰，失败记 hopFailedYear，本年不能再投。挖人必成。允许开发中途跳槽。",
     "hopMonth": 12,
     "allowMidProject": True,
-    "offerCount": 5,
+    "offerCount": 4,
     "internalOfferMax": 2,
     "fameOnAccept": 2,
     "inviteMaxPerYear": 1,

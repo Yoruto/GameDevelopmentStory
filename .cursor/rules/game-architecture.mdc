@@ -1,6 +1,6 @@
 ---
 description: 游戏开发物语必须保持 view / sim / config 三层，改数值先跑测试。
-globs: h5/**,activity/config.json,tests/**,scripts/sync_config.py,activity/architecture.md
+globs: h5/**,activity/config.json,activity/career-world.json,tests/**,scripts/sync_config.py,activity/architecture.md
 alwaysApply: true
 ---
 
@@ -8,8 +8,8 @@ alwaysApply: true
 
 后续改本仓库游戏时必须遵守。不要把逻辑塞回 `h5/index.html`。
 
-1. **数字只来自 config。** 经营数字只改 `activity/config.json`，生涯公司/作品/薪资/跳槽只改 `activity/career-world.json`，然后跑 `python scripts/sync_config.py`。禁止在 HTML / UI / sim 里写死开局资金、积蓄、换场地、广告、编制、对手出货、基准销量、盒装 lifecycle（`tMin` / `tSpan` / `x0Min` / `x0Span` / `k` / `dropOffY` / `maxMonths` / `chartSize`）、生涯薪资档/跳槽概率等平衡数字。禁止再维护一份 `CFG` 缩写表。
-2. **规则只放 sim。** 状态转移只写在 `h5/js/sim/`。禁止在 click handler 里改资金、员工、项目、质量、积蓄、跳槽。UI 只调用 sim 公开函数：经营局 `createNewGame` / `hire` / `fire` / `relocate` / `buyAd` / `foundStudio` / `pitchProject` / `pitchOutsource` / `assignLiveOps` / `shutdownLiveOps` / `releaseGame`；生涯档 `createCareerGame` / `acceptOpeningOffer` / `applyYearEndOffer` / `acceptCareerInvite` / `counterCareerInvite` / `declineCareerInvite`；两边共用 `resolveEventChoice` / `tickMonth`。只读展示还可调 `marketShares` / `monthlyChart` / `salesFactor` / `getRivalCalendar` / `listLiveOpsVersionDrops` / `liveOpsVersionLabel` / `isLiveOpsTitle` / `careerYearReleases` / `careerProjectView`。
+1. **数字只来自 config。** 经营数字只改 `activity/config.json`，生涯公司/作品/薪资/跳槽/职级/前辈/事件线只改 `activity/career-world.json`，然后跑 `python scripts/sync_config.py`。禁止在 HTML / UI / sim 里写死开局资金、积蓄、换场地、广告、编制、对手出货、基准销量、盒装 lifecycle（`tMin` / `tSpan` / `x0Min` / `x0Span` / `k` / `dropOffY` / `maxMonths` / `chartSize`）、生涯薪资档/跳槽概率等平衡数字。禁止再维护一份 `CFG` 缩写表。
+2. **规则只放 sim。** 状态转移只写在 `h5/js/sim/`。禁止在 click handler 里改资金、员工、项目、质量、积蓄、跳槽。UI 只调用 sim 公开函数：经营局 `createNewGame` / `hire` / `fire` / `relocate` / `buyAd` / `foundStudio` / `pitchProject` / `pitchOutsource` / `assignLiveOps` / `shutdownLiveOps` / `releaseGame`；生涯档 `createCareerGame` / `acceptOpeningOffer` / `applyYearEndOffer` / `acceptCareerInvite` / `counterCareerInvite` / `declineCareerInvite`；两边共用 `resolveEventChoice` / `tickMonth`。生涯事件线另有 `resolveCareerLineChoice` / `startCareerLine` / `requestCareerPromotion` / `resolveCareerPathFork` / `resolveProducerPitch`。踢出当前公司由线效果走 `kickOutOfCareerCompany`。只读展示还可调 `marketShares` / `monthlyChart` / `salesFactor` / `getRivalCalendar` / `listLiveOpsVersionDrops` / `liveOpsVersionLabel` / `isLiveOpsTitle` / `careerYearReleases` / `careerProjectView` / `careerSkillLines` / `careerSkillSheet` / `listAwardsHistory`。
 3. **sim 保持纯。** `h5/js/sim/` 禁止 `document`、`window.ColorboxAI`、存档 IO。入参带 `config`，不要闭包偷读全局 DOM。
 4. **改完必测。** 改 `activity/config.json`、`activity/career-world.json` 或 `h5/js/sim/` 之后必须跑 `node tests/run-sim-tests.js`，修到绿再结束。
 5. **已定案不要推翻：** 云端存档、自动记进度、不分享、经营局公司名默认「喵扑studio」、生涯角色名不要用公司名、点月手动、禁止 `localStorage`。现行 H5 入口是生涯档。

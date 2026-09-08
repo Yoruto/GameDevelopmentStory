@@ -40,28 +40,88 @@
     if (!page) return;
     var last = ui.session.tickStep >= ui.session.tickPages.length - 1;
     var nodes = [];
-    if (page.rec && page.rec.media) nodes = ui.mediaNodes(page.rec);
-    if (page.awards) nodes = ui.awardNodes(page.awards);
+    var isChoice = page.presentation === "choice" && page.options && page.options.length;
+    var copyC = (cfg() && cfg().copy) || {};
+    var okText = last ? "好的" : "继续";
     if (page.bits) {
       var bits = doc.createElement("p");
       bits.className = "hint";
       bits.textContent = page.bits;
       nodes.push(bits);
     }
-    var isChoice = page.presentation === "choice" && page.options && page.options.length;
     if (isChoice) {
       var box = doc.createElement("div");
       box.className = "dlg-choices";
       page.options.forEach(function (opt) {
         var btn = doc.createElement("button");
+        var main, title, meta, pct;
         btn.type = "button";
         btn.className = "btn ghost";
-        btn.textContent = opt.label;
         btn.setAttribute("data-event-opt", opt.id);
+        if (opt.hopView) {
+          btn.className += " hop-opt";
+          main = doc.createElement("span");
+          main.className = "hop-opt-main";
+          title = doc.createElement("span");
+          title.className = "hop-opt-title";
+          title.textContent = opt.hopView.title || "";
+          main.appendChild(title);
+          if (opt.hopView.meta) {
+            meta = doc.createElement("span");
+            meta.className = "hop-opt-meta";
+            meta.textContent = opt.hopView.meta;
+            main.appendChild(meta);
+          }
+          pct = doc.createElement("span");
+          pct.className = "hop-opt-pct";
+          pct.textContent = opt.hopView.pct || "";
+          btn.appendChild(main);
+          btn.appendChild(pct);
+        } else {
+          btn.textContent = opt.label;
+        }
         box.appendChild(btn);
       });
       nodes.push(box);
     }
+    if (page.rec && page.rec.media && ui.startMediaReveal) {
+      ui.openDlg({
+        mode: "tick",
+        kind: page.kind || "info",
+        kicker: page.kicker || "过月",
+        title: page.title,
+        body: copyC.mediaRevealHint || page.body || "",
+        nodes: nodes,
+        hideOk: true,
+        hideActions: true,
+        okText: okText
+      });
+      ui.startMediaReveal(page.rec, {
+        hint: copyC.mediaRevealHint || "",
+        onDone: function () { ui.unlockDlgOk(okText); }
+      });
+      return;
+    }
+    if (page.awards && ui.startAwardReveal) {
+      ui.openDlg({
+        mode: "tick",
+        kind: page.kind || "event",
+        kicker: page.kicker || "年度盛典",
+        title: page.title,
+        body: copyC.awardRevealHint || page.body || "",
+        nodes: nodes,
+        hideOk: true,
+        hideActions: true,
+        okText: okText
+      });
+      ui.startAwardReveal(page.awards, {
+        hint: copyC.awardRevealHint || page.body || "",
+        onDone: function () { ui.unlockDlgOk(okText); }
+      });
+      return;
+    }
+    if (page.rec && page.rec.media) nodes = ui.mediaNodes(page.rec).concat(nodes);
+    if (page.awards) nodes = ui.awardNodes(page.awards).concat(nodes);
     ui.openDlg({
       mode: isChoice ? "tick-choice" : "tick",
       kind: page.kind || "info",
@@ -71,7 +131,7 @@
       nodes: nodes,
       hideOk: isChoice,
       hideActions: isChoice,
-      okText: last ? "好的" : "继续"
+      okText: okText
     });
   };
 
@@ -103,11 +163,14 @@
         kind: "info",
         kicker: "发售",
         title: "媒体评分 · " + rec.title,
-        body: "均分 " + rec.avg + "，" +
-          (copy.baselineSalesLabel || "基准") + " " + (rec.baselineSales || 0) + "，" +
-          (copy.monthActualSalesLabel || "本月实销") + " " + (rec.monthSales || rec.launchSales),
-        nodes: ui.mediaNodes(rec),
+        body: copy.mediaRevealHint || "",
+        hideOk: true,
+        hideActions: true,
         okText: "好的"
+      });
+      ui.startMediaReveal(rec, {
+        hint: copy.mediaRevealHint || "",
+        onDone: function () { ui.unlockDlgOk("好的"); }
       });
     } else {
       ui.toast("发布了《" + ((rec && rec.title) || "") + "》");
@@ -192,6 +255,8 @@
         if (go === "released") ui.paintReleased();
         if (go === "share") ui.paintShare();
         if (go === "calendar") ui.paintCalendar();
+        if (go === "resume") ui.paintResume && ui.paintResume();
+        if (go === "player") ui.paintPlayer && ui.paintPlayer();
         if (go === "settled") ui.paintEnds();
         if (go === "bankrupt") ui.paintEnds();
         if (go === "relocate" || go === "ad") ui.paintStaticCopy();
@@ -343,6 +408,13 @@
         ui.releaseReadyGame(releaseId);
         return;
       }
+      var yearChip = t.closest ? t.closest("[data-tga-year]") : null;
+      var tgaYear = yearChip ? yearChip.getAttribute("data-tga-year") : t.getAttribute("data-tga-year");
+      if (tgaYear) {
+        ui.session.tgaYear = Number(tgaYear);
+        ui.paintTga();
+        return;
+      }
       var hopPick = t.getAttribute("data-hop-pick");
       if (hopPick) {
         ui.session.pickedHopOffer = hopPick;
@@ -374,6 +446,32 @@
         });
         return;
       }
+      var promoteBtn = t.getAttribute("data-promote");
+      if (promoteBtn) {
+        var promoRes = sim.requestCareerPromotion
+          ? sim.requestCareerPromotion(ui.session.state, config)
+          : sim.promoteCareer(ui.session.state, config);
+        var promoNotice = (sim.careerCopy(config).promoteOk) || "晋升成功。";
+        if (promoRes && promoRes.queue && promoRes.queue.length) {
+          ui.applySim(promoRes, (sim.careerCopy(config).lineStarted) || promoNotice, function () {
+            ui.session.tickPages = (ui.session.tickPages || []).concat(promoRes.queue);
+            if (!ui.session.tickPages.length) {
+              ui.paintHq();
+              ui.show("sc-hq");
+              return;
+            }
+            ui.session.tickStep = ui.session.tickPages.length - promoRes.queue.length;
+            if (ui.session.tickStep < 0) ui.session.tickStep = 0;
+            ui.showTickPage();
+          });
+          return;
+        }
+        ui.applySim(promoRes, promoNotice, function () {
+          ui.paintHq();
+          ui.show("sc-hq");
+        });
+        return;
+      }
       var optId = t.getAttribute("data-event-opt");
       if (optId && ui.session.dlgHook.mode === "tick-choice") {
         var page = ui.session.tickPages[ui.session.tickStep];
@@ -382,10 +480,22 @@
         if (page.type === "hop") {
           if (optId === "stay") picked = sim.declineYearEndOffers(ui.session.state, config);
           else picked = sim.applyYearEndOffer(ui.session.state, optId, config);
+        } else if (page.type === "promotion") {
+          if (optId === "promote") {
+            picked = sim.requestCareerPromotion
+              ? sim.requestCareerPromotion(ui.session.state, config)
+              : sim.promoteCareer(ui.session.state, config);
+          } else picked = { ok: true, state: ui.session.state };
         } else if (page.type === "invite") {
           if (optId === "accept") picked = sim.acceptCareerInvite(ui.session.state, page.inviteId, config);
           else if (optId === "counter") picked = sim.counterCareerInvite(ui.session.state, page.inviteId, config);
           else picked = sim.declineCareerInvite(ui.session.state, page.inviteId, config);
+        } else if (page.type === "careerLineFork") {
+          picked = sim.resolveCareerPathFork(ui.session.state, optId, config);
+        } else if (page.type === "careerLine") {
+          picked = sim.resolveCareerLineChoice(ui.session.state, page.lineId, page.beatId, optId, config);
+        } else if (page.type === "producerPitch") {
+          picked = sim.resolveProducerPitch(ui.session.state, optId, config);
         } else {
           if (!page.eventId) return;
           picked = sim.resolveEventChoice(ui.session.state, page.eventId, optId, config);
@@ -396,6 +506,9 @@
         }
         ui.session.state = picked.state;
         if (picked.notice) ui.toast(picked.notice);
+        if (picked.queue && picked.queue.length) {
+          ui.session.tickPages = ui.session.tickPages.slice(0, ui.session.tickStep + 1).concat(picked.queue).concat(ui.session.tickPages.slice(ui.session.tickStep + 1));
+        }
         ui.advanceTickQueue();
       }
     });

@@ -188,12 +188,16 @@
       });
     });
     mediaPacks.forEach(function (rec) {
+      var copyM = config.copy || {};
       queue.push({
         type: "media",
         kind: "info",
         kicker: "发售",
         title: "媒体评分 · " + rec.title,
-        body: "均分 " + rec.avg + "，基准 " + (rec.baselineSales || 0) + "，本月实销 " + (rec.monthSales || rec.launchSales),
+        body: "均分 " + rec.avg +
+          (rec.launchSales != null
+            ? ("，" + (copyM.launchSalesReveal || "首月销量") + " " + rec.launchSales)
+            : ""),
         rec: rec
       });
     });
@@ -201,8 +205,13 @@
       queue.push({
         type: "awards",
         kind: "event",
-        kicker: "年度盛典",
-        title: "颁奖夜",
+        year: st.year,
+        kicker: sim.fillAwardYear
+          ? sim.fillAwardYear((config.copy && config.copy.awardNightKicker), st.year, st.year + "年度盛典")
+          : "年度盛典",
+        title: sim.fillAwardYear
+          ? sim.fillAwardYear((config.copy && config.copy.awardNightTitle), st.year, st.year + "颁奖夜")
+          : "颁奖夜",
         body: "参选窗口：去年 12 月～今年 11 月。奖杯抬粉丝和荣誉，不发真奖品。",
         awards: awardPack
       });

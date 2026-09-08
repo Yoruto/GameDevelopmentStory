@@ -22,6 +22,7 @@
     uiPage: { fire: 0, released: 0, series: 0, live: 0, genre: 0, play: 0, rival: 0, project: 0, chart: 0 },
     tickPages: [],
     tickStep: 0,
+    tgaYear: null,
     dlgHook: { mode: null, onOk: null, onCancel: null }
   };
 
@@ -76,6 +77,7 @@
   };
 
   ui.closeDlg = function () {
+    if (ui.stopReveal) ui.stopReveal();
     ui.$("dlg-mask").classList.remove("on");
     ui.session.dlgHook.mode = null;
     ui.session.dlgHook.onOk = null;

@@ -1825,13 +1825,13 @@ function main() {
 
   (function careerRankCodeFormatting() {
     assert(sim.careerRankCode("programmer", 1, config) === "T-0", "T-0");
-    assert(sim.formatCareerRankLabel("programmer", 4, config) === "高级程序员 (T-4)", "T-4");
-    assert(sim.formatCareerRankLabel("programmer", 6, config) === "技术总监 (T-6)", "T-6");
-    assert(sim.formatCareerRankLabel("design", 5, config) === "主策划 (D-5)", "D-5");
+    assert(sim.formatCareerRankLabel("programmer", 4, config) === "高级程序员 (T-3)", "T-3");
+    assert(sim.formatCareerRankLabel("programmer", 6, config) === "技术总监 (T-5)", "T-5");
+    assert(sim.formatCareerRankLabel("design", 5, config) === "主策划 (D-4)", "D-4");
     assert(sim.formatCareerRankLabel("art", 2, config) === "初级美术 (A-1)", "A-1");
-    assert(sim.formatCareerRankLabel("art", 5, config) === "主美 (A-5)", "A-5");
+    assert(sim.formatCareerRankLabel("art", 5, config) === "主美 (A-4)", "A-4");
     assert(sim.formatCareerRankLabel("music", 1, config) === "音频实习生 (M-0)", "M-0");
-    assert(sim.formatCareerRankLabel("music", 6, config) === "音频总监 (M-6)", "M-6");
+    assert(sim.formatCareerRankLabel("music", 6, config) === "音频总监 (M-5)", "M-5");
     const promo = sim.careerPromotionView(sim.createCareerGame("测", "design", config), config);
     assert(promo.currentLabel === "策划实习生 (D-0)", "promo view uses rank code");
     const line = sim.careerSeniorLine("nintendo", config);
@@ -3440,9 +3440,13 @@ function main() {
 
     function makePromotable(st, rank) {
       const reqs = ((ranks.promotion || {}).requirements || [])[rank] || {};
+      const role = sim.careerRole(st.career.roleId, config);
+      const statKey = (role && role.stat) || "program";
       st.career.jobRank = rank;
       st.career.monthsInRank = (reqs.monthsInRank || 0) + 1;
       st.career.jobXp = (reqs.mainStatOrJobXp || 0) + 1;
+      st.career.stats = st.career.stats || {};
+      st.career.stats[statKey] = (reqs.mainStat != null ? reqs.mainStat : (reqs.mainStatOrJobXp || 0)) + 1;
       st.career.fame = (reqs.fameOrHonor || 0) + 1;
       st.career.honor = 0;
       st.career.promotionsThisYear = 0;
@@ -3467,6 +3471,14 @@ function main() {
     let st = sim.clone(g);
     st = makePromotable(st, 1);
     assert(sim.canPromoteCareer(st, config), "eligible after meeting gates");
+    const lowStat = sim.clone(st);
+    const designKey = (sim.careerRole(lowStat.career.roleId, config) || {}).stat || "design";
+    lowStat.career.stats[designKey] = 20;
+    assert(!sim.canPromoteCareer(lowStat, config), "low mainStat blocks even with jobXp");
+    const blocked = sim.promoteCareer(lowStat, config);
+    assert(!blocked.ok && blocked.error === sim.ERR.CAREER_PROMOTE_LOCKED, "click promo blocked by mainStat");
+    sim.applyCareerPromotion(lowStat, config, { story: true });
+    assert(lowStat.career.jobRank === 2, "story promo skips mainStat gate");
     const before = st.career.jobRank;
     const silent = sim.clone(st);
     const ticked = sim.tickMonth(silent, config).state;
@@ -3555,9 +3567,13 @@ function main() {
     }
     function makePromotable(st, rank) {
       const reqs = ((world.jobRanks.promotion || {}).requirements || [])[rank] || {};
+      const role = sim.careerRole(st.career.roleId, config);
+      const statKey = (role && role.stat) || "program";
       st.career.jobRank = rank;
       st.career.monthsInRank = (reqs.monthsInRank || 0) + 1;
       st.career.jobXp = (reqs.mainStatOrJobXp || 0) + 1;
+      st.career.stats = st.career.stats || {};
+      st.career.stats[statKey] = (reqs.mainStat != null ? reqs.mainStat : (reqs.mainStatOrJobXp || 0)) + 1;
       st.career.fame = (reqs.fameOrHonor || 0) + 1;
       st.career.honor = 0;
       st.career.promotionsThisYear = 0;
@@ -4336,8 +4352,12 @@ function main() {
     st.career.jobRank = 1;
     st.career.promotionsThisYear = 0;
     const reqs = ((world.jobRanks.promotion || {}).requirements || [])[1] || {};
+    const progRole = sim.careerRole(st.career.roleId, config);
+    const progKey = (progRole && progRole.stat) || "program";
     st.career.monthsInRank = (reqs.monthsInRank || 0) + 1;
     st.career.jobXp = (reqs.mainStatOrJobXp || 0) + 1;
+    st.career.stats = st.career.stats || {};
+    st.career.stats[progKey] = (reqs.mainStat != null ? reqs.mainStat : (reqs.mainStatOrJobXp || 0)) + 1;
     st.career.fame = (reqs.fameOrHonor || 0) + 1;
     st.career.credits = [{ titleId: "c0", shipped: true, virtual: false, jobRank: 1 }];
     const first = sim.promoteCareer(st, config);

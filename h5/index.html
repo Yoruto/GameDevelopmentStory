@@ -315,18 +315,19 @@
     <section class="scene" id="sc-share">
       <div class="scene-body">
         <div class="card grow">
-          <h2>市场 · 三端份额</h2>
-          <div id="hq-share-rows"></div>
-          <div class="row item"><span>本月我方出货</span><b id="hq-mysales">0</b></div>
-          <p class="hint" id="share-hint">三端份额看本公司累计销量对上全市场（含对手出货）。点月后会变。</p>
-          <h2 class="sec-title mt-10" id="chart-head">本月畅销榜</h2>
-          <p class="hint" id="chart-hint">按本月销量排序。</p>
+          <h2 class="studio-only">市场 · 三端份额</h2>
+          <div class="studio-only" id="hq-share-rows"></div>
+          <div class="row item studio-only"><span>本月我方出货</span><b id="hq-mysales">0</b></div>
+          <p class="hint studio-only" id="share-hint">三端份额看本公司累计销量对上全市场（含对手出货）。点月后会变。</p>
+          <h2 class="sec-title mt-10" id="chart-head">月销量排行</h2>
+          <p class="hint" id="chart-hint">按本月销量排序，前 10。</p>
           <div class="list-fit" id="month-chart"></div>
-          <div class="list-fit" id="rival-month"></div>
-          <h2 class="sec-title mt-10">热门月活</h2>
+          <div class="list-fit studio-only" id="rival-month"></div>
+          <h2 class="sec-title mt-10">月活跃排行</h2>
+          <p class="hint" id="mau-hint">仅长线运营游戏，按月活排序，前 10。</p>
           <div class="list-fit" id="rival-mau"></div>
-          <p class="hint" id="hq-console">自研主机：大公司且粉丝够才开放。</p>
-          <div class="pills" id="hq-plats"></div>
+          <p class="hint studio-only" id="hq-console">自研主机：大公司且粉丝够才开放。</p>
+          <div class="pills studio-only" id="hq-plats"></div>
         </div>
       </div>
     </section>
@@ -424,6 +425,7 @@
           <button class="studio-only" data-sheet="ops" id="btn-sheet-ops">经营</button>
           <button class="career-only" data-go="resume" id="dock-resume-l1">履历</button>
           <button class="career-only" data-go="player" id="dock-player-l1">自身</button>
+          <button class="career-only" data-go="share" id="dock-rank-l1">排行榜</button>
           <button class="career-only" data-go="calendar" id="dock-cal-l1">发售</button>
           <button class="career-only" data-go="tga" id="dock-tga-l1">年度奖</button>
           <button data-sheet="intel" id="btn-sheet-intel">情报</button>

@@ -1,6 +1,11 @@
 (function (root) {
   var sim = root.GDS.sim;
 
+  function num(v, fallback) {
+    var n = Number(v);
+    return (n == null || isNaN(n)) ? (fallback != null ? fallback : 0) : n;
+  }
+
   sim.lifecycleCfg = function (config) {
     return (config && config.lifecycle) || {};
   };
@@ -266,11 +271,16 @@
   function chartRow(g, st, config, source) {
     var units = sim.chartMonthUnits(g, st, config);
     if (!units) return null;
+    var pub = g.pub || "";
+    if (!pub && source === "world" && g.companyId && sim.careerCompany) {
+      var co = sim.careerCompany(g.companyId, config);
+      if (co) pub = sim.worldLabel ? sim.worldLabel(co, config) : (co.name || co.alias || "");
+    }
     return {
       source: source,
       id: g.id || "",
-      title: g.title || g.series || "",
-      pub: g.pub || "",
+      title: g.title || g.series || g.name || "",
+      pub: pub,
       platformId: g.platformId || "",
       avg: sim.lifecycleScoreOf(g),
       monthSales: units
@@ -323,6 +333,9 @@
     (st.rivalReleased || []).forEach(function (g) { add(g, "rival"); });
     (st.rivalMonth || []).forEach(function (g) { add(g, "rival"); });
     (st.rivalWindow || []).forEach(function (g) { add(g, "rival"); });
+    if (st && st.mode === "career") {
+      (st.worldReleased || []).forEach(function (g) { add(g, "world"); });
+    }
     if (!(st && st.mode === "career")) {
       sim.chartFillerEntries(config).forEach(function (row) { rows.push(row); });
     }
@@ -335,6 +348,81 @@
     var ranked = sim.sortChartEntries(sim.chartEntries(st, config));
     if (size != null && size >= 0) ranked = ranked.slice(0, size);
     return ranked.map(function (row, i) {
+      row.rank = i + 1;
+      return row;
+    });
+  };
+
+  sim.rankingCfg = function (config) {
+    return (config && config.ranking) || {};
+  };
+
+  // 月销量排行：复用 monthlyChart 的排序，按 ranking.size 截前 N（默认 10）。
+  sim.monthlySalesRanking = function (st, config) {
+    var size = num(sim.rankingCfg(config).size, 10);
+    var ranked = sim.sortChartEntries(sim.chartEntries(st, config));
+    if (size > 0) ranked = ranked.slice(0, size);
+    return ranked.map(function (row, i) {
+      row.rank = i + 1;
+      return row;
+    });
+  };
+
+  // 一款游戏的当前月活。显式 mau 优先；rival 长线按 livePeak 推算；玩家长线按当月 liveOpsRevenue 推算。
+  sim.gameMau = function (g, st, config) {
+    if (!g) return 0;
+    if (g.mau && g.mau > 0) return g.mau;
+    var live = (g.liveOps && g.liveOps.active) || g.live;
+    if (!live) return 0;
+    var spec = sim.rankingCfg(config);
+    var base = 0;
+    if (g.liveOps && g.liveOps.active && sim.liveOpsRevenue) {
+      base = sim.liveOpsRevenue(g, config, st) * num(spec.mauPerRevenue, 1500);
+    } else {
+      var peak = num(g.livePeak, 0);
+      if (!peak) peak = num(g.sales, 0) * 0.12;
+      base = peak * num(spec.mauPerLivePeak, 300);
+    }
+    return Math.round(base);
+  };
+
+  // 月活跃排行：只收长线运营游戏，按 MAU 排序，前 N（默认 10）。
+  sim.monthlyActiveChart = function (st, config) {
+    var size = num(sim.rankingCfg(config).size, 10);
+    var rows = [];
+    var seen = {};
+    function add(g, source) {
+      if (!g) return;
+      var live = (g.liveOps && g.liveOps.active) || g.live;
+      if (!live) return;
+      var mau = sim.gameMau(g, st, config);
+      if (!mau) return;
+      var key = source + "\0" + (g.id || "") + "\0" + (g.title || g.series || g.name || "");
+      if (seen[key]) return;
+      seen[key] = true;
+      var pub = g.pub || "";
+      if (!pub && source === "world" && g.companyId && sim.careerCompany) {
+        var co = sim.careerCompany(g.companyId, config);
+        if (co) pub = sim.worldLabel ? sim.worldLabel(co, config) : (co.name || co.alias || "");
+      }
+      rows.push({
+        source: source,
+        id: g.id || "",
+        title: g.title || g.series || g.name || "",
+        pub: pub,
+        platformId: g.platformId || "",
+        avg: sim.lifecycleScoreOf(g),
+        mau: mau
+      });
+    }
+    (st.released || []).forEach(function (g) { add(g, "player"); });
+    (st.rivalReleased || []).forEach(function (g) { add(g, "rival"); });
+    if (st && st.mode === "career") {
+      (st.worldReleased || []).forEach(function (g) { add(g, "world"); });
+    }
+    rows.sort(function (a, b) { return (b.mau || 0) - (a.mau || 0); });
+    if (size > 0) rows = rows.slice(0, size);
+    return rows.map(function (row, i) {
       row.rank = i + 1;
       return row;
     });

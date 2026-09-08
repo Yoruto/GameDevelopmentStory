@@ -769,6 +769,7 @@
       "producerPitchBody": "虚拟项目由你定调。目录 landmark 不会改写历史题材玩法。",
       "gapReady": "可以申请晋升",
       "gapMax": "已经是本岗最高职级",
+      "gapStat": "主职能力还差",
       "gapMain": "主职维/职级经验还差",
       "gapCredits": "署名作品还差",
       "gapFame": "声望或荣誉还差",
@@ -1856,7 +1857,7 @@
       ]
     },
     "mobility": {
-      "comment": "年底 4 格 offer：内部工作室最多 2、排在前面；可晋升时内部晋升占用其中一格。主动申请掷骰，失败记 hopFailedYear，本年不能再投。挖人必成，选项只有加入或留下，不再对原公司讨价还价。允许开发中途跳槽。挖人/跳槽岗不跟当前 roleId 绑死：职员四岗可按权重抽；制作人岗仅在 become-producer 事件线 status=done 后才可出现在挖人/跳槽 offer 里。接非制作人 offer 时 roleId/growthStage 切回职员岗。通过率与抽公司看玩家题材/玩法熟练度（skillHire）。",
+      "comment": "年底 4 格 offer：内部工作室最多 2、排在前面；可晋升时内部晋升占用其中一格。主动申请掷骰，失败记 hopFailedYear，本年不能再投。挖人必成，选项只有加入或留下，不再对原公司讨价还价。允许开发中途跳槽。挖人/跳槽岗不跟当前 roleId 绑死：职员四岗可按权重抽；制作人岗仅在 become-producer 事件线 status=done 后才可出现在挖人/跳槽 offer 里。接非制作人 offer 时 roleId/growthStage 切回职员岗。通过率与抽公司看玩家题材/玩法熟练度（skillHire）。当前岗位优先：currentRoleWeightMul/otherRoleWeightMul 在 buildMobilityRolePool 里按玩家当前 roleId 放大当前岗权重、压缩其它岗权重，所以「现在是程序」时跳槽/挖人主要给程序岗，仍有概率出现其它岗位，职级仍按玩家属性。",
       "hopMonth": 12,
       "allowMidProject": true,
       "offerCount": 4,
@@ -1882,6 +1883,15 @@
         "art": 1,
         "music": 1,
         "producer": 0.35
+      },
+      "currentRoleWeightMul": 5,
+      "otherRoleWeightMul": 0.35,
+      "domesticBoost": {
+        "comment": "中期跳槽/挖人去国内厂商（region=cn，如腾讯/网易/米哈游）概率提升：仅在 startYear~endYear 年份窗口内，对 region=cn 的公司在抽公司权重上乘 weightMul。窗口外或非 cn 公司不受影响。",
+        "region": "cn",
+        "startYear": 2003,
+        "endYear": 2018,
+        "weightMul": 3
       },
       "hireChanceByPower": {
         "1": 0.72,
@@ -3402,7 +3412,7 @@
       ]
     },
     "jobRanks": {
-      "comment": "专精职级 1–6，和 growthStage 职员/制作人/开公司分开。founder 本版锁定。Lv.4（高级，展示 *-4）起晋升走事件线；1→2/2→3/3→4 仍可简单晋升。转制作人后保留 jobRank，展示改为制作人。展示用职级代号：实习生=0、初级=1、中级=2、高级=4、主职/专家=5、总监=6（空出 3）。系列字母：程序 T、策划 D、美术 A、音乐 M。一年最多升 1 级，不降级。",
+      "comment": "专精职级 1–6，和 growthStage 职员/制作人/开公司分开。founder 本版锁定。Lv.4（高级，展示 *-3）起晋升走事件线；1→2/2→3/3→4 仍可简单晋升。转制作人后保留 jobRank，展示改为制作人。展示用职级代号：实习生=0、初级=1、中级=2、高级=3、主职/专家=4、总监=5。系列字母：程序 T、策划 D、美术 A、音乐 M。一年最多升 1 级，不降级。",
       "min": 1,
       "max": 6,
       "start": 1,
@@ -3443,21 +3453,21 @@
             "id": "prog-senior",
             "name": "高级程序员",
             "alias": "高级程序员",
-            "code": 4
+            "code": 3
           },
           {
             "rank": 5,
             "id": "prog-expert",
             "name": "技术专家",
             "alias": "技术专家",
-            "code": 5
+            "code": 4
           },
           {
             "rank": 6,
             "id": "prog-director",
             "name": "技术总监",
             "alias": "技术总监",
-            "code": 6
+            "code": 5
           }
         ],
         "design": [
@@ -3487,21 +3497,21 @@
             "id": "des-senior",
             "name": "高级策划",
             "alias": "高级策划",
-            "code": 4
+            "code": 3
           },
           {
             "rank": 5,
             "id": "des-lead",
             "name": "主策划",
             "alias": "主策划",
-            "code": 5
+            "code": 4
           },
           {
             "rank": 6,
             "id": "des-director",
             "name": "策划总监",
             "alias": "策划总监",
-            "code": 6
+            "code": 5
           }
         ],
         "art": [
@@ -3531,21 +3541,21 @@
             "id": "art-senior",
             "name": "高级美术",
             "alias": "高级美术",
-            "code": 4
+            "code": 3
           },
           {
             "rank": 5,
             "id": "art-lead",
             "name": "主美",
             "alias": "主美",
-            "code": 5
+            "code": 4
           },
           {
             "rank": 6,
             "id": "art-director",
             "name": "美术总监",
             "alias": "美术总监",
-            "code": 6
+            "code": 5
           }
         ],
         "music": [
@@ -3575,21 +3585,21 @@
             "id": "mus-senior",
             "name": "高级音频设计师",
             "alias": "高级音频设计师",
-            "code": 4
+            "code": 3
           },
           {
             "rank": 5,
             "id": "mus-lead",
             "name": "音频主管",
             "alias": "音频主管",
-            "code": 5
+            "code": 4
           },
           {
             "rank": 6,
             "id": "mus-director",
             "name": "音频总监",
             "alias": "音频总监",
-            "code": 6
+            "code": 5
           }
         ]
       },
@@ -3657,36 +3667,42 @@
         0.3
       ],
       "promotion": {
+        "comment": "普通晋升必须够 mainStat；mainStatOrJobXp 仍是主职维或职级经验二选一。故事/事件线 effects.promote 走 applyCareerPromotion(story) 可跳过门槛。",
         "maxPerYear": 1,
         "onShip": true,
         "yearEndSlot": true,
         "requirements": [
           null,
           {
+            "mainStat": 30,
             "mainStatOrJobXp": 50,
             "creditedTitles": 1,
             "fameOrHonor": 2,
             "monthsInRank": 10
           },
           {
+            "mainStat": 40,
             "mainStatOrJobXp": 58,
             "creditedTitles": 2,
             "fameOrHonor": 6,
             "monthsInRank": 14
           },
           {
+            "mainStat": 50,
             "mainStatOrJobXp": 68,
             "creditedTitles": 4,
             "fameOrHonor": 12,
             "monthsInRank": 18
           },
           {
+            "mainStat": 65,
             "mainStatOrJobXp": 80,
             "creditedTitles": 7,
             "fameOrHonor": 22,
             "monthsInRank": 24
           },
           {
+            "mainStat": 80,
             "mainStatOrJobXp": 92,
             "creditedTitles": 10,
             "fameOrHonor": 36,
@@ -13284,6 +13300,102 @@
       }
     ],
     "titles": [
+      {
+        "id": "ultimaOnline",
+        "companyId": "ea",
+        "publisherId": "ea",
+        "name": "网络创世纪",
+        "alias": "UO",
+        "nameEn": "Ultima Online",
+        "releaseYear": 1997,
+        "releaseMonth": 9,
+        "score": 8.2,
+        "platforms": [
+          "pc"
+        ],
+        "genreId": "fantasy",
+        "gameplayId": "mmo",
+        "releaseType": "liveops",
+        "landmark": true,
+        "prestige": 3,
+        "seriesId": "ultima",
+        "studioId": "ea-west",
+        "mau": 2500000,
+        "stats": {
+          "program": 78,
+          "design": 80,
+          "art": 70,
+          "music": 68
+        },
+        "peakDims": [
+          "design"
+        ],
+        "shipQuote": "长线运营第一次被摆到台前，月活数字开始有人盯。"
+      },
+      {
+        "id": "lineage",
+        "companyId": "ncsoft",
+        "publisherId": "ncsoft",
+        "name": "天堂",
+        "alias": "天堂",
+        "nameEn": "Lineage",
+        "releaseYear": 1998,
+        "releaseMonth": 9,
+        "score": 7.9,
+        "platforms": [
+          "pc"
+        ],
+        "genreId": "fantasy",
+        "gameplayId": "mmo",
+        "releaseType": "liveops",
+        "landmark": true,
+        "prestige": 3,
+        "seriesId": "lineage",
+        "studioId": "ncsoft-main",
+        "mau": 1500000,
+        "stats": {
+          "program": 74,
+          "design": 76,
+          "art": 68,
+          "music": 64
+        },
+        "peakDims": [
+          "design"
+        ],
+        "shipQuote": "韩国长线 MMO 的路子第一次被跑通，月活悄悄爬。"
+      },
+      {
+        "id": "mir2",
+        "companyId": "shanda",
+        "publisherId": "shanda",
+        "name": "热血传奇",
+        "alias": "传奇",
+        "nameEn": "Legend of Mir 2",
+        "releaseYear": 2001,
+        "releaseMonth": 7,
+        "score": 7.6,
+        "platforms": [
+          "pc"
+        ],
+        "genreId": "wuxia",
+        "gameplayId": "mmo",
+        "releaseType": "liveops",
+        "landmark": true,
+        "prestige": 4,
+        "seriesId": "mir",
+        "studioId": "shanda-main",
+        "mau": 4000000,
+        "stats": {
+          "program": 70,
+          "design": 74,
+          "art": 66,
+          "music": 62
+        },
+        "peakDims": [
+          "design"
+        ],
+        "shipQuote": "长线运营在国内第一次炸开，月活成了网吧老板的口头禅。"
+      },
       {
         "id": "chronoTrigger",
         "companyId": "square",
@@ -27164,6 +27276,87 @@
     ],
     "titleDetails": [
       {
+        "id": "ultimaOnline",
+        "blurb": "1997年由 EA/Origin 发行，媒体分8.2。长线 MMO 的开山作之一。",
+        "careerNote": "进组能蹭到长线运营的第一波经验。",
+        "devStartYear": 1995,
+        "devStartMonth": 9,
+        "devMonths": 24,
+        "inviteWindow": {
+          "startYear": 1995,
+          "startMonth": 11,
+          "endYear": 1997,
+          "endMonth": 8
+        },
+        "inviteRoles": [
+          "programmer",
+          "art",
+          "design",
+          "music"
+        ],
+        "inviteMinFame": 0,
+        "inviteEligible": true,
+        "teamSize": 5,
+        "crunch": "heavy",
+        "engine": null,
+        "awards": [],
+        "liveAfterRelease": true
+      },
+      {
+        "id": "lineage",
+        "blurb": "1998年由 NCSOFT 发行，媒体分7.9。韩国长线 MMO 跑通商业模式。",
+        "careerNote": "韩国厂商的内容与数值岗早期跳板。",
+        "devStartYear": 1996,
+        "devStartMonth": 9,
+        "devMonths": 24,
+        "inviteWindow": {
+          "startYear": 1996,
+          "startMonth": 11,
+          "endYear": 1998,
+          "endMonth": 8
+        },
+        "inviteRoles": [
+          "programmer",
+          "art",
+          "design",
+          "music"
+        ],
+        "inviteMinFame": 0,
+        "inviteEligible": true,
+        "teamSize": 5,
+        "crunch": "medium",
+        "engine": null,
+        "awards": [],
+        "liveAfterRelease": true
+      },
+      {
+        "id": "mir2",
+        "blurb": "2001年由盛大网络运营，媒体分7.6。国内长线网游的引爆点。",
+        "careerNote": "国内大厂长线运营岗的早期履历。",
+        "devStartYear": 1999,
+        "devStartMonth": 7,
+        "devMonths": 24,
+        "inviteWindow": {
+          "startYear": 1999,
+          "startMonth": 9,
+          "endYear": 2001,
+          "endMonth": 6
+        },
+        "inviteRoles": [
+          "programmer",
+          "art",
+          "design",
+          "music"
+        ],
+        "inviteMinFame": 0,
+        "inviteEligible": true,
+        "teamSize": 5,
+        "crunch": "medium",
+        "engine": null,
+        "awards": [],
+        "liveAfterRelease": true
+      },
+      {
         "id": "chronoTrigger",
         "blurb": "史克威尔集结鸟山明、堀井雄二与坂口博信的梦幻班底，回合制RPG的高水分水岭。",
         "careerNote": "90年代能进此组，履历可以直接写进行业传说。",
@@ -39724,6 +39917,12 @@
       "mediaOnMajor": true,
       "labelPattern": "{title}.{major}.{minor}"
     }
+  },
+  "ranking": {
+    "comment": "游戏排行榜（每月更新，UI 实时计算）。size=显示前 N。月销量排行按本月 monthSales 排序（含在售盒装与玩家长线月收）；月活跃排行只收长线运营游戏（rival g.live 或玩家 g.liveOps.active），按 MAU 排序。rival 长线若没有显式 mau，按 livePeak × mauPerLivePeak 推算；玩家长线按当月 liveOpsRevenue × mauPerRevenue 推算。显式 mau（如吃鸡/原神 setRivalMau）优先。",
+    "size": 10,
+    "mauPerLivePeak": 300,
+    "mauPerRevenue": 1500
   },
   "series": {
     "comment": "媒体五家均分达到门槛可开系列；新作按比例继承系列粉丝与保底销量。",

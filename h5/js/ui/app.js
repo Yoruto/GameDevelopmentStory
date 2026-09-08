@@ -250,7 +250,7 @@
         var go = el.getAttribute("data-go");
         var blocked = {
           market: 1, pitch: 1, relocate: 1, ad: 1, studio: 1, liveops: 1,
-          share: 1, released: 1, project: 1, bankrupt: 1
+          released: 1, project: 1, bankrupt: 1
         };
         if (sim.isCareerMode(ui.session.state) && blocked[go]) return;
         ui.closeDockSheets();

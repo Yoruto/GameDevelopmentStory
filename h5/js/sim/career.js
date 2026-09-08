@@ -312,6 +312,15 @@
     if (!req) return gaps;
     main = mainStatValue(st, config);
     jobXp = num(cr.jobXp, 0);
+    need = num(req.mainStat, 0);
+    if (need && main < need) {
+      gaps.push({
+        id: "stat",
+        label: "主职能力",
+        have: main,
+        need: need
+      });
+    }
     need = num(req.mainStatOrJobXp, 0);
     if (need && main < need && jobXp < need) {
       gaps.push({
@@ -367,6 +376,7 @@
       for (i = 0; i < gaps.length; i++) {
         g = gaps[i];
         if (g.id === "year") lines.push(copy.gapYear || g.label);
+        else if (g.id === "stat") lines.push((copy.gapStat || "主职能力还差") + " " + Math.ceil(g.need - g.have));
         else if (g.id === "main") lines.push((copy.gapMain || "主职维/职级经验还差") + " " + Math.ceil(g.need - g.have));
         else if (g.id === "credits") lines.push((copy.gapCredits || "署名作品还差") + " " + (Math.round((g.need - g.have) * 10) / 10));
         else if (g.id === "fame") lines.push((copy.gapFame || "声望或荣誉还差") + " " + Math.ceil(g.need - g.have));
@@ -2232,9 +2242,16 @@
       versionMajor: sim.isLiveOpsTitle(title) ? ((config.liveOps && config.liveOps.versions && config.liveOps.versions.startMajor) || 1) : 0,
       versionMinor: 0,
       player: !!player,
-      virtual: !!title.virtual
+      virtual: !!title.virtual,
+      mau: num(title.mau, 0)
     };
     rec.livePeak = sim.careerLivePeak(rec, config);
+    if (!sim.isLiveOpsTitle(title) && !sim.isLiveOpsTitle(rec)) {
+      // 给盒装世界作盖 baselineSales/launchSales，月销量排行才能按生命周期算当月销量。
+      var packed = sim.careerLaunchSales(title, rec.avg != null ? rec.avg : rec.score, config, rec.stats);
+      rec.baselineSales = packed.baselineSales;
+      rec.launchSales = packed.launchSales;
+    }
     st.worldReleased.push(rec);
     grantReleaseXp(st, rec, config, player);
     return rec;
@@ -3730,6 +3747,20 @@
     return Math.max(0.1, 1 + bonus * per);
   }
 
+  // 中期跳槽/挖人去国内厂商（region=cn）的概率提升：仅在年份窗口内对匹配 region 的公司加权。
+  function domesticBoostMul(st, co, config) {
+    var spec = ((sim.careerWorld(config).mobility) || {}).domesticBoost;
+    if (!spec || !co) return 1;
+    var region = spec.region || "cn";
+    if (co.region !== region) return 1;
+    var year = st && st.year;
+    if (year == null) return 1;
+    if (spec.startYear != null && year < spec.startYear) return 1;
+    if (spec.endYear != null && year > spec.endYear) return 1;
+    var mul = num(spec.weightMul, 1);
+    return mul > 0 ? mul : 1;
+  }
+
   sim.careerHireChance = function (company, state, config, studio, title) {
     var spec = sim.careerWorld(config).mobility || {};
     var sal = salarySpec(config);
@@ -3792,19 +3823,29 @@
 
   function buildMobilityRolePool(st, config, kind, allowedStaff) {
     var weights = mobilityRoleWeightTable(config, kind);
+    var mob = (sim.careerWorld(config).mobility) || {};
+    var curRole = st && st.career && st.career.roleId;
+    // 当前岗位优先：当前 roleId 权重乘 currentRoleWeightMul，其它岗位乘 otherRoleWeightMul。
+    // 这样「现在是程序」时跳槽/挖人主要给程序岗，仍有概率出现其它岗位，职级仍按玩家属性。
+    var curMul = num(mob.currentRoleWeightMul, 1);
+    var otherMul = num(mob.otherRoleWeightMul, 1);
     var staff = allowedStaff && allowedStaff.length ? allowedStaff : PLAYABLE.slice();
     var pool = [];
-    var i, rid, w;
+    var i, rid, w, mul;
     for (i = 0; i < staff.length; i++) {
       rid = staff[i];
       if (rid === "producer") continue;
       w = weights[rid];
       if (w == null) w = 1;
+      mul = (rid === curRole) ? curMul : otherMul;
+      w = w * mul;
       if (w > 0) pool.push({ id: rid, weight: w });
     }
     if (producerOfferUnlocked(st, config)) {
       w = weights.producer;
       if (w == null) w = 0.35;
+      mul = ("producer" === curRole) ? curMul : otherMul;
+      w = w * mul;
       if (w > 0) pool.push({ id: "producer", weight: w });
     }
     return pool;
@@ -3904,7 +3945,7 @@
       if (!pool.length) break;
       (function pickExternal() {
         var weighted = pool.map(function (c) {
-          return { co: c, weight: skillHireWeight(state, config, c, null, null) };
+          return { co: c, weight: skillHireWeight(state, config, c, null, null) * domesticBoostMul(state, c, config) };
         });
         var hit = sim.pickWeighted(state, weighted) || weighted[0];
         co = hit.co;
@@ -4077,7 +4118,7 @@
         var title = sim.careerTitle(inv.titleId, config, st);
         var co = sim.careerCompany(inv.companyId, config);
         var studio = sim.careerStudio(inv.companyId, inv.studioId, config);
-        return { inv: inv, weight: skillHireWeight(st, config, co, studio, title) };
+        return { inv: inv, weight: skillHireWeight(st, config, co, studio, title) * domesticBoostMul(st, co, config) };
       });
       var hit = sim.pickWeighted(st, weighted) || weighted[0];
       picked = hit && hit.inv;

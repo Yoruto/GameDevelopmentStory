@@ -138,7 +138,7 @@
     var box = ui.$("month-chart");
     if (!box) return;
     box.textContent = "";
-    var list = sim.monthlyChart(state, config);
+    var list = sim.monthlySalesRanking(state, config);
     if (!list.length) {
       var empty = doc.createElement("p");
       empty.className = "hint";
@@ -146,11 +146,7 @@
       box.appendChild(empty);
       return;
     }
-    var per = 5;
-    var pages = Math.ceil(list.length / per);
-    if (ui.session.uiPage.chart >= pages) ui.session.uiPage.chart = pages - 1;
-    if (ui.session.uiPage.chart == null || ui.session.uiPage.chart < 0) ui.session.uiPage.chart = 0;
-    list.slice(ui.session.uiPage.chart * per, ui.session.uiPage.chart * per + per).forEach(function (row) {
+    list.forEach(function (row) {
       var it = doc.createElement("div");
       it.className = "item";
       var left = doc.createElement("span");
@@ -163,10 +159,6 @@
       it.appendChild(left);
       it.appendChild(b);
       box.appendChild(it);
-    });
-    ui.addPager(box, ui.session.uiPage.chart, pages, function (p) {
-      ui.session.uiPage.chart = p;
-      ui.paintChart();
     });
   };
 
@@ -224,20 +216,23 @@
     var mauBox = ui.$("rival-mau");
     if (mauBox) {
       mauBox.textContent = "";
-      var hits = (state.rivalReleased || []).filter(function (g) { return g.mau > 0; });
-      if (!hits.length) {
+      var mauList = sim.monthlyActiveChart(state, config);
+      if (!mauList.length) {
         var noHit = doc.createElement("p");
         noHit.className = "hint";
-        noHit.textContent = "还没有爆款月活可看。历史级大作会把月活写在这里。";
+        noHit.textContent = "还没有长线运营游戏在榜。历史级大作会把月活写在这里。";
         mauBox.appendChild(noHit);
       } else {
-        hits.forEach(function (g) {
+        mauList.forEach(function (row) {
           var it = doc.createElement("div");
           it.className = "item";
           var left = doc.createElement("span");
-          left.textContent = (g.pub ? g.pub + " · " : "") + "《" + (g.title || g.series) + "》";
+          var who = row.source === "player"
+            ? (copy.chartPlayerTag || "本公司")
+            : (row.pub || "");
+          left.textContent = row.rank + ". " + (who ? who + " · " : "") + "《" + row.title + "》";
           var b = doc.createElement("b");
-          b.textContent = ((config.copy && config.copy.mauLabel) || "月活") + " " + sim.formatMau(g.mau);
+          b.textContent = ((config.copy && config.copy.mauLabel) || "月活") + " " + sim.formatMau(row.mau);
           it.appendChild(left); it.appendChild(b); mauBox.appendChild(it);
         });
       }

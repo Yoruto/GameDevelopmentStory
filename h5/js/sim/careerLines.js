@@ -1203,6 +1203,7 @@
     if (!sim.isCareerMode(state)) return sim.fail(state, sim.ERR.CAREER_NOT_CAREER);
     if (sim.isCareerProducer(state)) return sim.fail(state, sim.ERR.CAREER_PROMOTE_LOCKED);
     if (sim.promotionUsesEventLine(state, config)) {
+      if (!sim.canPromoteCareer(state, config)) return sim.fail(state, sim.ERR.CAREER_PROMOTE_LOCKED);
       def = sim.promotionEventLineDef(state, config);
       if (!def) return sim.fail(state, sim.ERR.CAREER_PROMOTE_LOCKED);
       if (sim.hasActiveExclusiveGroup && sim.hasActiveExclusiveGroup(state, "careerPath", config)) {

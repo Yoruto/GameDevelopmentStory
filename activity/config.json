@@ -769,6 +769,7 @@
       "producerPitchBody": "虚拟项目由你定调。目录 landmark 不会改写历史题材玩法。",
       "gapReady": "可以申请晋升",
       "gapMax": "已经是本岗最高职级",
+      "gapStat": "主职能力还差",
       "gapMain": "主职维/职级经验还差",
       "gapCredits": "署名作品还差",
       "gapFame": "声望或荣誉还差",
@@ -1259,6 +1260,12 @@
       "mediaOnMajor": true,
       "labelPattern": "{title}.{major}.{minor}"
     }
+  },
+  "ranking": {
+    "comment": "游戏排行榜（每月更新，UI 实时计算）。size=显示前 N。月销量排行按本月 monthSales 排序（含在售盒装与玩家长线月收）；月活跃排行只收长线运营游戏（rival g.live 或玩家 g.liveOps.active），按 MAU 排序。rival 长线若没有显式 mau，按 livePeak × mauPerLivePeak 推算；玩家长线按当月 liveOpsRevenue × mauPerRevenue 推算。显式 mau（如吃鸡/原神 setRivalMau）优先。",
+    "size": 10,
+    "mauPerLivePeak": 300,
+    "mauPerRevenue": 1500
   },
   "series": {
     "comment": "媒体五家均分达到门槛可开系列；新作按比例继承系列粉丝与保底销量。",

@@ -1906,6 +1906,7 @@
     if (st.career.pendingMentorProducer == null) st.career.pendingMentorProducer = null;
     if (st.career.awaitingProducerPitch == null) st.career.awaitingProducerPitch = false;
     if (st.career.producerReleaseBias == null) st.career.producerReleaseBias = 0;
+    if (st.career.producerAskCount == null) st.career.producerAskCount = 0;
     if (st.career.priorRoleId == null) st.career.priorRoleId = null;
     if (!st.career.jobTitleId) {
       (function () {
@@ -2390,6 +2391,7 @@
         awaitingProducerPitch: false,
         producerPitchOptions: null,
         producerReleaseBias: 0,
+        producerAskCount: 0,
         priorRoleId: null
       }
     };
@@ -4065,9 +4067,9 @@
       st.career.inviteYearStamp = st.year;
       st.career.invitesRolledThisYear = 0;
     }
-    eligible = sim.listCareerInvites(st, config);
-    if (!eligible.length) return [];
     if (st.career.invitesRolledThisYear >= max) return st.career.invites || [];
+    eligible = sim.listCareerInvites(st, config);
+    if (!eligible.length) return st.career.invites || [];
     if (chance == null) chance = 1;
     if (sim.rand(st) >= chance) return st.career.invites || [];
     (function pickInvite() {
@@ -4142,8 +4144,8 @@
     detachFromProject(st, config);
     st.career.fame = (st.career.fame || 0) + num(spec.fameOnAccept, 0);
     st.career.hopFailedYear = null;
-    st.career.hopNotice = copy.hopOkNotice || "跳槽成功。";
     joinCompany(st, offer.companyId, offer.roleId, offer.salary, offer.titleId, config, offer.studioId, "hop", offer.jobRank);
+    st.career.hopNotice = copy.hopOkNotice || "跳槽成功。";
     return { ok: true, state: st, hopped: true, notice: st.career.hopNotice };
   };
 
@@ -4161,7 +4163,7 @@
 
   sim.acceptCareerInvite = function (state, inviteId, config) {
     var invite = null;
-    var st, spec;
+    var st, spec, copy;
     if (!sim.isCareerMode(state)) return sim.fail(state, sim.ERR.CAREER_NOT_CAREER);
     (state.career.invites || []).forEach(function (o) {
       if (o.id === inviteId) invite = o;
@@ -4173,19 +4175,22 @@
     st.career.fame = (st.career.fame || 0) + num(spec.fameOnAccept, 0);
     detachFromProject(st, config);
     joinCompany(st, invite.companyId, invite.roleId, invite.salary, invite.titleId, config, invite.studioId, "invite", invite.jobRank);
-    return sim.ok(st);
+    copy = sim.careerCopy(config);
+    st.career.hopNotice = copy.inviteOkNotice || copy.hopOkNotice || "跳槽成功。";
+    return { ok: true, state: st, notice: st.career.hopNotice };
   };
 
   sim.counterCareerInvite = function (state, inviteId, config) {
     var invite = null;
     var st, spec;
     if (!sim.isCareerMode(state)) return sim.fail(state, sim.ERR.CAREER_NOT_CAREER);
+    spec = sim.careerWorld(config).mobility || {};
+    if (spec.inviteCanCounter === false) return sim.fail(state, sim.ERR.CAREER_INVITE_NOT_FOUND);
     (state.career.invites || []).forEach(function (o) {
       if (o.id === inviteId) invite = o;
     });
     if (!invite) return sim.fail(state, sim.ERR.CAREER_INVITE_NOT_FOUND);
     st = sim.clone(state);
-    spec = sim.careerWorld(config).mobility || {};
     st.career.salary = sim.careerSalaryStepUp(st.career.salary || 0, config, spec.counterSteps);
     st.career.fame = (st.career.fame || 0) + num(spec.stayPromiseFame, 0);
     st.career.invites = [];
@@ -4281,6 +4286,14 @@
     var role = sim.careerRole(invite.roleId, config);
     var seniorLine = sim.careerSeniorLine(co, config);
     var rankLabel = invite.jobRank ? (sim.formatCareerRankLabel(invite.roleId, invite.jobRank, config) || ("职级 Lv." + invite.jobRank)) : "";
+    var spec = sim.careerWorld(config).mobility || {};
+    var options = [
+      { id: "accept", label: copy.inviteAccept || "跳槽加入" },
+      { id: "decline", label: copy.inviteDecline || "留下" }
+    ];
+    if (spec.inviteCanCounter === true) {
+      options.splice(1, 0, { id: "counter", label: copy.inviteCounter || "现公司还价" });
+    }
     return {
       type: "invite",
       kind: "event",
@@ -4294,11 +4307,7 @@
         (rankLabel ? ("，" + rankLabel) : "") +
         "。现薪 " + invite.currentSalary + " / 新薪 " + invite.salary +
         (seniorLine ? ("。" + seniorLine) : ""),
-      options: [
-        { id: "accept", label: copy.inviteAccept || "跳槽加入" },
-        { id: "counter", label: copy.inviteCounter || "现公司还价" },
-        { id: "decline", label: copy.inviteDecline || "留下" }
-      ]
+      options: options
     };
   }
 

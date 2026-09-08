@@ -1061,7 +1061,7 @@
     ]
   },
   "mobility": {
-    "comment": "年底 4 格 offer：内部工作室最多 2、排在前面；可晋升时内部晋升占用其中一格。主动申请掷骰，失败记 hopFailedYear，本年不能再投。挖人必成。允许开发中途跳槽。挖人/跳槽岗不跟当前 roleId 绑死：职员四岗可按权重抽；制作人岗仅在 become-producer 事件线 status=done 后才可出现在挖人/跳槽 offer 里。接非制作人 offer 时 roleId/growthStage 切回职员岗。通过率与抽公司看玩家题材/玩法熟练度（skillHire）。",
+    "comment": "年底 4 格 offer：内部工作室最多 2、排在前面；可晋升时内部晋升占用其中一格。主动申请掷骰，失败记 hopFailedYear，本年不能再投。挖人必成，选项只有加入或留下，不再对原公司讨价还价。允许开发中途跳槽。挖人/跳槽岗不跟当前 roleId 绑死：职员四岗可按权重抽；制作人岗仅在 become-producer 事件线 status=done 后才可出现在挖人/跳槽 offer 里。接非制作人 offer 时 roleId/growthStage 切回职员岗。通过率与抽公司看玩家题材/玩法熟练度（skillHire）。",
     "hopMonth": 12,
     "allowMidProject": true,
     "offerCount": 4,
@@ -1069,6 +1069,7 @@
     "fameOnAccept": 2,
     "inviteMaxPerYear": 1,
     "inviteChance": 0.4,
+    "inviteCanCounter": false,
     "counterSteps": 1,
     "stayPromiseFame": 1,
     "producerOfferRequiresLineDone": true,
@@ -1307,7 +1308,7 @@
     ]
   },
   "eventLines": {
-    "comment": "多拍个人事件线，与随机开发事件分开。进度在 career.lines[lineId]。拍子入队现有 month queue；线拍优先于随机月事件；默认每月最多 1 拍，除非 beat.wait.type=sameMonthChain。多条线可同时 active，按 priority 选拍。晋升 4→5 / 5→6 与转制作人互斥（exclusiveGroup: careerPath）；人物/时代/史诗线不要进该组，一局可走完 0～5 条。开线用 startWhen 权重/门闩，不要用互斥禁止五条。公司 hireUntilYear+successorId 的合并抉择是 interrupt，不算第六条可选线。跳槽后 colocated=false 插入 remoteBeat（还联系吗），不直接腰斩。故事晋升走 storyPromo，跳过点击门槛但计入当年晋升，已升过则推迟到次年 1 月。不做合伙人/开公司线。",
+    "comment": "多拍个人事件线，与随机开发事件分开。进度在 career.lines[lineId]。拍子入队现有 month queue；线拍优先于随机月事件；默认每月最多 1 拍，除非 beat.wait.type=sameMonthChain。多条线可同时 active，按 priority 选拍。晋升 4→5 / 5→6 与转制作人互斥（exclusiveGroup: careerPath）；人物/时代/史诗线不要进该组，一局可走完 0～5 条。开线用 startWhen 权重/门闩，不要用互斥禁止五条。公司 hireUntilYear+successorId 的合并抉择是 interrupt，不算第六条可选线。跳槽后 colocated=false 插入 remoteBeat（还联系吗），不直接腰斩。故事晋升走 storyPromo，跳过点击门槛但计入当年晋升，已升过则推迟到次年 1 月。不做合伙人/开公司线。成为制作人询问（职业分叉或 invite 拍）最多 maxAsks 次，满次后不再问。",
     "maxBeatsPerMonth": 1,
     "maxNewLinesPerMonth": 1,
     "exclusiveGroup": "careerPath",
@@ -1610,6 +1611,7 @@
         "exclusiveGroup": "careerPath",
         "priority": 20,
         "priorityWinsOverPromotion": true,
+        "maxAsks": 2,
         "reopen": {
           "nextCalendarYear": true
         },

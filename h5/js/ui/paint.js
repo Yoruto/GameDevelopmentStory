@@ -1108,6 +1108,18 @@
     host.appendChild(wrap);
   }
 
+  function scrollTgaYearChip(nav) {
+    var onChip = nav.querySelector(".tga-year-chip.on");
+    var scroller = nav.parentNode;
+    if (!onChip || !scroller) return;
+    function go() {
+      var left = onChip.offsetLeft - (scroller.clientWidth - onChip.offsetWidth) / 2;
+      scroller.scrollLeft = Math.max(0, left);
+    }
+    if (root.requestAnimationFrame) root.requestAnimationFrame(go);
+    else go();
+  }
+
   ui.paintTga = function () {
     var box = ui.$("tga-rows");
     var nav = ui.$("tga-years");
@@ -1131,7 +1143,7 @@
     if (years.indexOf(selected) < 0) selected = years[0];
     ui.session.tgaYear = selected;
     if (nav) {
-      hist.forEach(function (row) {
+      hist.slice().sort(function (a, b) { return Number(a.year) - Number(b.year); }).forEach(function (row) {
         chip = doc.createElement("button");
         chip.type = "button";
         chip.className = "tga-year-chip" + (Number(row.year) === selected ? " on" : "");
@@ -1139,6 +1151,7 @@
         chip.setAttribute("data-tga-year", String(row.year));
         nav.appendChild(chip);
       });
+      scrollTgaYearChip(nav);
     }
     for (i = 0; i < hist.length; i++) {
       if (Number(hist[i].year) === selected) { entry = hist[i]; break; }

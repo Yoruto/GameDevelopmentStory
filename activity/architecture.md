@@ -30,12 +30,12 @@
  └─ 生涯档：角色名（过审）→ 选擅长 → 三份 offer → 入职总览
       或 读档：PLAYING 进总览 / OFFER 回选 offer
       └─ 【主场景】职员总览（积蓄、声望、职称/职级代号、在研、同事、前辈）
-            ├─ 情报：发售日历（目录作 + 移动端长线版本）、年度奖（点年份只看该届）、履历（署名作品）
+            ├─ 情报：发售日历（目录作 + 移动端长线版本）、年度奖（年份条从早到晚横滑，点年份只看该届）、履历（署名作品）
             ├─ 点「下一月」→ 结算中（锁操作）
             │     ├─ 开发/热修事件（notice / choice）；制作人岗走 producerEvents
             │     ├─ 事件线拍子（careerLine / careerLineFork）；制作人虚拟作立项（producerPitch）
             │     ├─ 晋升（低职级当场升；4→5 / 5→6 开线）
-            │     ├─ 年中挖人（接 / 还价 / 留下）
+            │     ├─ 年中挖人（接 / 留下）
             │     ├─ 12 月跳槽申请（过月弹窗，先选再申请，失败本年不能再投）
             │     ├─ 11 月：年度奖
             │     └─ 回到总览
@@ -243,13 +243,14 @@ Windows 可用 `python`；若失败再试 `python3`。
 | `bonds` | 持久人物：`mentor` / `peer` / `junior`（跳槽保留）。junior 可有 `aliasThen` / `aliasNow` |
 | `lineStartRolls` | 可选线开线掷骰年份戳 |
 | `producerPitchOptions` | 制作人虚拟作立项选项；选完清空 |
+| `producerAskCount` | 成为制作人已询问次数；满 `maxAsks` 后不再问 |
 | `pendingStoryPromos` | 故事晋升推迟到次年 1 月的队列 |
 | `tenures` | 任职记录：公司/工作室/`roleId`/`jobRank`/职称 id/起止年月/起止薪/`source`（opening / hop / invite / promotion / producer） |
 | `monthsInRank` `promotionsThisYear` `lastPromotionYear` | 任现职月数、本年已晋升次数、上次晋升年份 |
 | `titleId` `liveStats` `stats` | 当前在研/后续支持作与 live 四维；`stats` 是角色四维（主职维会涨） |
 | `postLaunch` | `{ titleId, monthsLeft }`；发售后热修 |
 | `credits` | 作品履历：`titleId` / 公司工作室 / `roleId` / 当时 `jobRank` / 加入离开年月 / `shipped` 署名发售 / `supported` 后续支持 / `virtual` / 口碑 `score` / `mainStatDelta` / `awards`。中途跳槽保留条目但 `shipped=false` |
-| `openingOffers` `yearEndOffers` `invites` | 开局三份 / 年底 4 格 / 年中挖人；挖人与跳槽 `roleId` 按 `mobility.*RoleWeights` 抽，制作人岗需 `become-producer` 线 done |
+| `openingOffers` `yearEndOffers` `invites` | 开局三份 / 年底 4 格 / 年中挖人；挖人默认接或留下（`mobility.inviteCanCounter` 现为 false）；挖人与跳槽 `roleId` 按 `mobility.*RoleWeights` 抽，制作人岗需 `become-producer` 线 done |
 | `colleagues` `colleaguePool` | 当前 5 人组与公司同事池。同事条目：`id` `n` `roleId` `stats` `jobRank`。池按东家 `power` 从 `colleagues.byPower` 抽，不读当前 `title.stats` |
 | `virtualProjects` `virtualDetails` | 空窗虚拟作 |
 | `genreXp` `gameplayXp` | 玩家个人熟练度 |
@@ -323,7 +324,7 @@ careerResumeView(state, config) → { tenures, credits, jobLabel, rank }
 careerSettlementView(state, config) → { characterName, jobLabel, fame, honor, creditedCount, savings, employer }
 canPromoteCareer(state, config) → boolean
 promotionUsesEventLine(state, config) / canStartBecomeProducerLine(state, config) / isCareerProducer(state)
-listAwardsHistory(state, config) → [{ year, awards }]   # 新在前；无历史时用 lastAwards 兜底。年度奖页点年份只渲染该届
+listAwardsHistory(state, config) → [{ year, awards }]   # 数据新在前；无历史时用 lastAwards 兜底。年度奖页年份钮按升序横排可左右滑，点年份只渲染该届
 ```
 
 ### 7.7 逻辑接口（UI 只调这些改 state）
@@ -350,6 +351,7 @@ tickMonth(state, config) → { state, queue }
 applyYearEndOffer / acceptYearEndOffer(state, offerId, config) → { ok, state, hopped?, notice? }
 declineYearEndOffers(state, config)
 acceptCareerInvite / counterCareerInvite / declineCareerInvite(state, inviteId, config)
+  # 挖人默认只有接或留下；counterCareerInvite 仅当 mobility.inviteCanCounter=true
 promoteCareer(state, config) → { ok, state }   # 低职级点一次才升；高级及以上请用 requestCareerPromotion / 事件线
 startNewRun(companyName, config) → GameState   # 等同 createNewGame
 errorMessage(error) → string
@@ -361,7 +363,7 @@ errorMessage(error) → string
 
 `PitchInput`：`title, genreId, gameplayId, platformId, releaseType, cycle, producerId, memberIds, seriesId?, studioId?`。
 
-`queue` 项：`notes` / `event`（`presentation: notice|choice`）/ `rivals` / `ready` / `outsource` / `awards` / `media`（长线大版本）/ 生涯 `hop` / `invite` / `promotion` / `careerLine` / `careerLineFork` / `producerPitch`。自制首发媒体分仍在 `releaseGame` 成功后由 UI 弹出。
+`queue` 项：`notes` / `event`（`presentation: notice|choice`）/ `rivals` / `ready` / `outsource` / `awards` / `media`（长线大版本）/ 生涯 `hop` / `invite` / `promotion` / `careerLine` / `careerLineFork` / `producerPitch`。自制首发媒体分仍在 `releaseGame` 成功后由 UI 弹出。挖人接完后若 `yearEndOffers` 已空，UI 跳过随后的跳槽页。
 
 ### 7.8 生涯事件线（`career-world.eventLines`）
 
@@ -371,7 +373,7 @@ errorMessage(error) → string
 |----|------|
 | `maxBeatsPerMonth` | 默认每月最多 1 拍；`beat.wait.type=sameMonthChain` 可同月连拍 |
 | `exclusiveGroup: careerPath` | 仅职业轨互斥：晋升 4→5 / 5→6 与 `become-producer`。人物/史诗/回国线不要进该组 |
-| `lines[]` | `{ id, kind, fromRank/toRank 或 minRank, exclusiveGroup?, priority, reopen?, startWhen, beats[] }` |
+| `lines[]` | `{ id, kind, fromRank/toRank 或 minRank, exclusiveGroup?, priority, maxAsks?, reopen?, startWhen, beats[] }`；`become-producer.maxAsks` 限制询问次数 |
 | `beats[].wait.type` | `immediate` / `months` / `onShip` / `yearEnd` / `sameMonthChain` |
 | 效果 | 升职、改岗、kickOut、钉 bond、storyPromo、开制作人立项等；踢出走 `kickOutOfCareerCompany` |
 

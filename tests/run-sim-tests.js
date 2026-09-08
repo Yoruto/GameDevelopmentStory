@@ -3228,6 +3228,9 @@ function main() {
     nextYear.career.yearEndOffers[0].successChance = 1;
     const retry = sim.applyYearEndOffer(nextYear, nextYear.career.yearEndOffers[0].id, config);
     assert(retry.ok && retry.hopped === true, "next year can apply");
+    assert(retry.notice, "hop success notice survives join");
+    assert(retry.state.career.hopNotice, "hopNotice kept after joinCompany");
+    assert(!(retry.state.career.yearEndOffers || []).length, "hop clears leftover offers");
 
     let hopSt = sim.createCareerGame("测", "art", config);
     hopSt = sim.acceptOpeningOffer(hopSt, hopSt.career.openingOffers[0].id, config).state;
@@ -3254,17 +3257,40 @@ function main() {
     assert(mid.state.career.companyId === hopTarget.companyId, "joined new company");
     assert(mid.state.career.studioId, "join writes studioId");
 
+    hopSt.career.yearEndOffers = [{ id: "stale-hop" }];
     hopSt.career.invites = [{
       id: "inv-test",
       titleId: "chronoTrigger",
       companyId: "square",
       studioId: "square-rd3",
       roleId: "art",
-      salary: 4000
+      salary: 4000,
+      currentSalary: 2000
     }];
+    assert((config.careerWorld.mobility || {}).inviteCanCounter === false, "invite counter off");
+    assert(!sim.counterCareerInvite(hopSt, "inv-test", config).ok, "counter API disabled");
+    const invOptSt = sim.clone(hopSt);
+    invOptSt.year = 1995;
+    invOptSt.month = 2;
+    invOptSt.career.fame = 90;
+    invOptSt.career.titleId = null;
+    invOptSt.career.companyId = "nintendo";
+    const listedInv = sim.listCareerInvites(invOptSt, config);
+    assert(listedInv.length >= 1, "invite list for option test");
+    invOptSt.career.inviteYearStamp = invOptSt.year;
+    invOptSt.career.invitesRolledThisYear = 99;
+    invOptSt.career.invites = [listedInv[0]];
+    const inviteTick = sim.tickMonth(invOptSt, config);
+    const invPage = ((inviteTick && inviteTick.queue) || []).filter(function (p) { return p.type === "invite"; })[0];
+    assert(invPage, "invite page queued");
+    assert((invPage.options || []).every(function (o) { return o.id !== "counter"; }), "invite has no counter");
+    assert((invPage.options || []).some(function (o) { return o.id === "accept"; }), "invite accept remains");
+    assert((invPage.options || []).some(function (o) { return o.id === "decline"; }), "invite decline remains");
     const beforeCo = hopSt.career.companyId;
     const inv = sim.acceptCareerInvite(hopSt, "inv-test", config);
     assert(inv.ok, "invite accept ok");
+    assert(inv.notice, "invite success notice");
+    assert(!(inv.state.career.yearEndOffers || []).length, "invite clears stale hop list");
     assert(inv.state.career.companyId === "square", "invite hops without dice");
     assert(inv.state.career.companyId !== beforeCo || hopSt.career.companyId === "square", "invite company set");
     ok("year-end 4 offers, hop fail cooldown, invite sure, mid hop keeps unsigned credit");
@@ -3627,8 +3653,32 @@ function main() {
     assert(sim.isCareerProducer(step.state), "isCareerProducer");
     assert(!sim.canPromoteCareer(step.state, config), "producer cannot promote ladder");
 
-    const virt = sim.startVirtualProject(step.state, config, { genreId: "fantasy", gameplayId: "rpg" });
+    const virtSt = sim.clone(step.state);
+    virtSt.career.titleId = null;
+    virtSt.career.liveStats = null;
+    virtSt.career.idleMonths = 99;
+    virtSt.year = 2024;
+    virtSt.month = 1;
+    const virt = sim.startVirtualProject(virtSt, config, { genreId: "fantasy", gameplayId: "rpg" });
     assert(virt && virt.virtual && virt.genreId === "fantasy" && virt.gameplayId === "rpg", "producer virtual genre/gameplay choosable");
+
+    let capSt = makePromotable(hired("programmer"), 4);
+    capSt.career.lines = {};
+    started = sim.startCareerLine(capSt, "become-producer", config);
+    assert(started.ok && started.state.career.producerAskCount === 1, "first producer ask counted");
+    const no1 = sim.resolveCareerLineChoice(started.state, "become-producer", "invite", "no", config);
+    assert(no1.ok && no1.aborted, "first producer ask declined");
+    no1.state.year += 1;
+    no1.state.career.promotionsThisYear = 0;
+    assert(sim.canStartBecomeProducerLine(no1.state, config), "producer ask can reopen once");
+    started = sim.startCareerLine(no1.state, "become-producer", config);
+    assert(started.ok && started.state.career.producerAskCount === 2, "second producer ask counted");
+    const no2 = sim.resolveCareerLineChoice(started.state, "become-producer", "invite", "no", config);
+    no2.state.year += 1;
+    no2.state.career.promotionsThisYear = 0;
+    assert(!sim.canStartBecomeProducerLine(no2.state, config), "producer ask cap after 2");
+    const blocked = sim.startCareerLine(no2.state, "become-producer", config);
+    assert(!blocked.ok, "third producer start blocked");
 
     assert(sim.isGrowthStageLocked("founder", config), "founder still locked helper");
     const stages = world.growthStages || [];

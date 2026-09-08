@@ -167,15 +167,48 @@
     return true;
   }
 
+  function producerLineDef(config) {
+    return findLineDef(config, "become-producer") ||
+      lineDefs(config).filter(function (l) { return l.kind === "becomeProducer"; })[0];
+  }
+
+  function producerAskCap(config) {
+    var def = producerLineDef(config);
+    if (def && def.maxAsks != null) return num(def.maxAsks, 2);
+    if (def && def.reopen && def.reopen.maxAsks != null) return num(def.reopen.maxAsks, 2);
+    return num(eventLinesSpec(config).becomeProducerMaxAsks, 2);
+  }
+
+  function producerAsksUsed(st) {
+    return num(st && st.career && st.career.producerAskCount, 0);
+  }
+
+  function producerAsksExhausted(st, config) {
+    return producerAsksUsed(st) >= producerAskCap(config);
+  }
+
+  function noteProducerAsk(st) {
+    if (!st || !st.career) return;
+    if (st.career.producerAskYear === st.year && st.career.producerAskMonth === st.month) return;
+    st.career.producerAskCount = producerAsksUsed(st) + 1;
+    st.career.producerAskYear = st.year;
+    st.career.producerAskMonth = st.month;
+  }
+
+  function isProducerAskBeat(def, beat) {
+    if (!def || !beat || def.kind !== "becomeProducer") return false;
+    return beat.id === (def.askBeatId || "invite");
+  }
+
   sim.canStartBecomeProducerLine = function (state, config, opts) {
     var cr = state && state.career;
-    var def = findLineDef(config, "become-producer") ||
-      lineDefs(config).filter(function (l) { return l.kind === "becomeProducer"; })[0];
+    var def = producerLineDef(config);
     var minRank, prog;
     opts = opts || {};
     if (!sim.isCareerMode(state) || !cr || !cr.companyId) return false;
     if (sim.isCareerProducer(state)) return false;
     if (!def) return false;
+    if (producerAsksExhausted(state, config)) return false;
     minRank = def.minRank != null ? def.minRank : num(producerSpec(config).minJobRank, 4);
     if (!opts.ignoreMinRank && !opts.mentorSponsor && sim.careerJobRank(cr, config) < minRank) return false;
     if (exclusiveBlocked(state, def, config)) return false;
@@ -672,6 +705,7 @@
       sim.ensureCareerJuniorBond(st, config);
     }
     item = queueItemForBeat(st, def, beat, config);
+    if (isProducerAskBeat(def, beat)) noteProducerAsk(st);
     if ((beat.presentation || "notice") === "choice") {
       prog.pending = true;
       if (queue) queue.push(item);
@@ -1015,6 +1049,7 @@
         if (forkItem && queue) {
           queue.push(forkItem);
           st.career.lineForkYear = st.year;
+          noteProducerAsk(st);
           fired += 1;
         }
       }
@@ -1113,6 +1148,10 @@
       return 0;
     }
     opts = { ignoreMinRank: !!(pending.ignoreMinRank || pending.mentorSponsor), mentorSponsor: true };
+    if (producerAsksExhausted(st, config)) {
+      st.career.pendingMentorProducer = null;
+      return 0;
+    }
     if (!sim.canStartBecomeProducerLine(st, config, opts)) return 0;
     st.career.pendingMentorProducer = null;
     return activateLineInPlace(st, def, config, queue, notes);

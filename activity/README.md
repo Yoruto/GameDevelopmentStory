@@ -2,7 +2,7 @@
 
 虎扑活动 H5。现行页面是 **1995 生涯档**（刚毕业入职，点月打工到 2025）。2015 经营局仍在 `h5/js/sim/`，本版入口不走开公司。
 
-经营数字只改本目录的 `config.json`；生涯公司/作品/薪资/跳槽/职级/前辈/事件线只改 `career-world.json`。规则只在 `h5/js/sim/`（生涯事件线在 `careerLines.js`）。
+经营数字只改本目录的 `config.json`；生涯公司/作品/薪资/跳槽/职级/前辈/事件线只改 `career-world.json`。规则只在 `h5/js/sim/`（生涯事件线在 `careerLines.js`）。制作人询问次数（`become-producer.maxAsks`）、挖人能否还价（`mobility.inviteCanCounter`）也只改生涯表。
 
 ## 怎么打开
 
@@ -14,7 +14,7 @@
 
 ## 怎么改数值
 
-1. 经营平衡只改 `activity/config.json`；生涯公司/作品/薪资/跳槽/虚拟作/职级/前辈/事件线/制作人规则只改 `career-world.json`。不要把平衡数字抄进 design / HTML / sim。
+1. 经营平衡只改 `activity/config.json`；生涯公司/作品/薪资/跳槽/虚拟作/职级/前辈/事件线/制作人规则只改 `career-world.json`。不要把平衡数字抄进 design / HTML / sim。成为制作人询问上限、挖人还价开关也在生涯表里。
 2. `python scripts/sync_config.py`（同步 `h5/config.json` 与 `h5/js/config.generated.js`，并并入生涯表）。Windows 若失败再试 `python3`。改公司/作品目录可先改 `scripts/build_career_world.py` 再生成 json，然后 sync。
 3. `node tests/run-sim-tests.js`，必须绿。
 
@@ -24,7 +24,7 @@
 
 | 文件 | 给谁看 |
 |------|--------|
-| [design.md](design.md) | 现行玩法：生涯档（入口，含职级/事件线/制作人）+ 经营局、长线/版本、TGA、点月顺序 |
+| [design.md](design.md) | 现行玩法：生涯档（入口，含职级/事件线/制作人询问上限/挖人无还价）+ 经营局、长线/版本、TGA（年份横滑）、点月顺序 |
 | [architecture.md](architecture.md) | view / sim / config、公开接口、存档字段、测试与改数流程 |
 | [requirements.md](requirements.md) | 已拍板业务：云档、不分享、经营局公司名默认「喵扑studio」、生涯角色名默认「阿喵」 |
 | `config.json` | 经营数值唯一源；改完必须 sync + 测 |

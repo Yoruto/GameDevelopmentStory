@@ -371,10 +371,12 @@
       flex-direction: column;
       align-items: flex-start;
       gap: 2px;
+      pointer-events: none;
     }
-    .hop-opt-title { font-weight: 700; line-height: 1.3; }
-    .hop-opt-meta { color: var(--muted); font-size: 12px; font-weight: 600; }
+    .hop-opt-title { font-weight: 700; line-height: 1.3; pointer-events: none; }
+    .hop-opt-meta { color: var(--muted); font-size: 12px; font-weight: 600; pointer-events: none; }
     .hop-opt-pct {
+      pointer-events: none;
       flex: 0 0 auto;
       color: var(--gold);
       font-size: 16px;
@@ -567,14 +569,39 @@
       font-size: 13px; color: var(--gold); font-weight: 700;
       margin: 4px 0 6px; letter-spacing: .04em;
     }
-    .tga-year-nav {
-      display: flex; gap: 6px; overflow-x: auto;
-      padding: 2px 0 6px; -webkit-overflow-scrolling: touch;
-      scrollbar-width: none;
-      position: sticky; top: 0; z-index: 1;
-      background: var(--card);
+    #sc-tga.scene,
+    #sc-tga .scene-body,
+    #sc-tga .card {
+      min-width: 0;
+      max-width: 100%;
     }
-    .tga-year-nav::-webkit-scrollbar { display: none; }
+    .tga-year-scroller {
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      -webkit-overflow-scrolling: touch;
+      overscroll-behavior-x: contain;
+      touch-action: pan-x;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      background: var(--card);
+      padding: 2px 0 6px;
+    }
+    .tga-year-scroller::-webkit-scrollbar { display: none; width: 0; height: 0; }
+    .tga-year-nav {
+      display: flex;
+      flex-wrap: nowrap;
+      gap: 6px;
+      width: max-content;
+      min-width: 100%;
+      padding: 0;
+      background: transparent;
+    }
     .tga-year-chip {
       flex: 0 0 auto;
       background: var(--card2);

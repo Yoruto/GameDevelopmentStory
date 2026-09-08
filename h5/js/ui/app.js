@@ -37,7 +37,16 @@
 
   ui.showTickPage = function () {
     var page = ui.session.tickPages[ui.session.tickStep];
-    if (!page) return;
+    var hopOffers;
+    if (!page) {
+      ui.finishTickUi();
+      return;
+    }
+    hopOffers = ui.session.state && ui.session.state.career && ui.session.state.career.yearEndOffers;
+    if (page.type === "hop" && (!hopOffers || !hopOffers.length)) {
+      ui.advanceTickQueue();
+      return;
+    }
     var last = ui.session.tickStep >= ui.session.tickPages.length - 1;
     var nodes = [];
     var isChoice = page.presentation === "choice" && page.options && page.options.length;
@@ -388,7 +397,13 @@
 
     doc.addEventListener("click", function (ev) {
       var t = ev.target;
+      if (!t) return;
+      if (t.nodeType !== 1 && t.parentElement) t = t.parentElement;
       if (!t || !t.getAttribute) return;
+      if (t.closest) {
+        var bound = t.closest("[data-offer],[data-role],[data-release],[data-tga-year],[data-hop-pick],[data-hop-apply],[data-hop-offer],[data-promote],[data-event-opt]");
+        if (bound) t = bound;
+      }
       var offerId = t.getAttribute("data-offer");
       if (offerId) {
         ui.applySim(sim.acceptOpeningOffer(ui.session.state, offerId, config), "", function () {
@@ -505,6 +520,7 @@
           return;
         }
         ui.session.state = picked.state;
+        GDS.save.persist(picked.state);
         if (picked.notice) ui.toast(picked.notice);
         if (picked.queue && picked.queue.length) {
           ui.session.tickPages = ui.session.tickPages.slice(0, ui.session.tickStep + 1).concat(picked.queue).concat(ui.session.tickPages.slice(ui.session.tickStep + 1));

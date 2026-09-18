@@ -1,123 +1,227 @@
 {
-  "destination": "在虎扑做一款开罗《游戏开发物语》气质的经营小游戏：招人、做游戏、发售、工作室评级。",
-  "decisions": [
-    {
-      "id": "D1",
-      "question": "玩法体量做成精简经营还是更接近原作的完整经营？",
-      "options": {
-        "A": "精简经营：招人+做游戏+发售循环，几分钟一局",
-        "B": "完整经营：培训、研究技术、办公室扩张，更接近原作"
-      },
-      "recommend": "A",
-      "depends_on": [],
-      "status": "resolved",
-      "presented": true,
-      "choice": "B",
-      "note": "开发者拍板完整经营向：养成、工作室、主机、对手、年度奖；第一版年限是 2015–2025，更长档不做进第一版。"
-    },
-    {
-      "id": "D2",
-      "question": "主题用原味游戏公司，还是改成虎扑味的体育游戏工作室？",
-      "options": {
-        "A": "游戏公司原味（文案带一点虎扑气质）",
-        "B": "虎扑化：体育游戏工作室"
-      },
-      "recommend": "A",
-      "depends_on": [],
-      "status": "resolved",
-      "presented": true,
-      "choice": "A",
-      "note": "开发者拍板游戏公司原味，不做体育游戏工作室改包装。"
-    },
-    {
-      "id": "D3",
-      "question": "一局怎么结束？",
-      "options": {
-        "A": "有终点：做到第 5 年或做满 5 款游戏后出工作室评级",
-        "B": "无限经营，玩家自己决定何时收手"
-      },
-      "recommend": "A",
-      "depends_on": [],
-      "status": "resolved",
-      "presented": true,
-      "choice": "A",
-      "note": "开发者拍板有终点：第一版打到 2025，不是原先的 5 年/5 款。"
-    },
-    {
-      "id": "DP",
-      "kind": "prototype",
-      "question": "要先看个雏形模板吗？",
-      "options": {
-        "A": "要看（推荐）",
-        "B": "不用，直接做"
-      },
-      "recommend": "A",
-      "depends_on": [
-        "D1",
-        "D2",
-        "D3"
-      ],
-      "status": "resolved",
-      "presented": true,
-      "choice": "B",
-      "note": "开发者要先写设计文档，不先看雏形页面。"
-    },
-    {
-      "id": "DD",
-      "kind": "deployment",
-      "question": "进度和评分用云端保存还是只存在本机？",
-      "options": {
-        "A": "云端保存",
-        "B": "本地保存"
-      },
-      "recommend": "A",
-      "depends_on": [],
-      "status": "resolved",
-      "note": "开发者原话：1（记在云端）",
-      "presented": true,
-      "choice": "A"
-    },
-    {
-      "id": "D5",
-      "question": "关掉再打开要不要接着玩？",
-      "options": {
-        "A": "自动记录进度，下次接着玩",
-        "B": "不记进度，每次重新开局"
-      },
-      "recommend": "A",
-      "depends_on": [],
-      "status": "resolved",
-      "presented": true,
-      "choice": "A",
-      "note": "开发者原话：默认自动记录进度"
-    },
-    {
-      "id": "D6",
-      "question": "生涯结算要不要分享到微信/微博？",
-      "options": {
-        "A": "要分享",
-        "B": "不分享（不发微信/微博）"
-      },
-      "recommend": "B",
-      "depends_on": [],
-      "status": "resolved",
-      "presented": true,
-      "choice": "B",
-      "note": "开发者原话：默认不分享"
-    },
-    {
-      "id": "D7",
-      "question": "公司名和游戏名怎么起？",
-      "options": {
-        "A": "玩家自己写，公司名默认喵扑studio（可改）",
-        "B": "只用随机占位名，不让玩家输入"
-      },
-      "recommend": "A",
-      "depends_on": [],
-      "status": "resolved",
-      "presented": true,
-      "choice": "A",
-      "note": "开发者原话：玩家自己写，默认是喵扑studio"
-    }
-  ]
+ "destination": "在虎扑做一款开罗《游戏开发物语》气质的经营小游戏：招人、做游戏、发售、工作室评级。",
+ "decisions": [
+  {
+   "id": "D1",
+   "question": "玩法体量做成精简经营还是更接近原作的完整经营？",
+   "options": {
+    "A": "精简经营：招人+做游戏+发售循环，几分钟一局",
+    "B": "完整经营：培训、研究技术、办公室扩张，更接近原作"
+   },
+   "recommend": "A",
+   "depends_on": [],
+   "status": "resolved",
+   "presented": true,
+   "choice": "B",
+   "note": "开发者拍板完整经营向：养成、工作室、主机、对手、年度奖；第一版年限是 2015–2025，更长档不做进第一版。"
+  },
+  {
+   "id": "D2",
+   "question": "主题用原味游戏公司，还是改成虎扑味的体育游戏工作室？",
+   "options": {
+    "A": "游戏公司原味（文案带一点虎扑气质）",
+    "B": "虎扑化：体育游戏工作室"
+   },
+   "recommend": "A",
+   "depends_on": [],
+   "status": "resolved",
+   "presented": true,
+   "choice": "A",
+   "note": "开发者拍板游戏公司原味，不做体育游戏工作室改包装。"
+  },
+  {
+   "id": "D3",
+   "question": "一局怎么结束？",
+   "options": {
+    "A": "有终点：做到第 5 年或做满 5 款游戏后出工作室评级",
+    "B": "无限经营，玩家自己决定何时收手"
+   },
+   "recommend": "A",
+   "depends_on": [],
+   "status": "resolved",
+   "presented": true,
+   "choice": "A",
+   "note": "开发者拍板有终点：第一版打到 2025，不是原先的 5 年/5 款。"
+  },
+  {
+   "id": "DP",
+   "kind": "prototype",
+   "question": "要先看个雏形模板吗？",
+   "options": {
+    "A": "要看（推荐）",
+    "B": "不用，直接做"
+   },
+   "recommend": "A",
+   "depends_on": [
+    "D1",
+    "D2",
+    "D3"
+   ],
+   "status": "resolved",
+   "presented": true,
+   "choice": "B",
+   "note": "开发者要先写设计文档，不先看雏形页面。"
+  },
+  {
+   "id": "DD",
+   "kind": "deployment",
+   "question": "进度和评分用云端保存还是只存在本机？",
+   "options": {
+    "A": "云端保存",
+    "B": "本地保存"
+   },
+   "recommend": "A",
+   "depends_on": [],
+   "status": "resolved",
+   "note": "开发者原话：1（记在云端）",
+   "presented": true,
+   "choice": "A"
+  },
+  {
+   "id": "D5",
+   "question": "关掉再打开要不要接着玩？",
+   "options": {
+    "A": "自动记录进度，下次接着玩",
+    "B": "不记进度，每次重新开局"
+   },
+   "recommend": "A",
+   "depends_on": [],
+   "status": "resolved",
+   "presented": true,
+   "choice": "A",
+   "note": "开发者原话：默认自动记录进度"
+  },
+  {
+   "id": "D6",
+   "question": "生涯结算要不要分享到微信/微博？",
+   "options": {
+    "A": "要分享",
+    "B": "不分享（不发微信/微博）"
+   },
+   "recommend": "B",
+   "depends_on": [],
+   "status": "resolved",
+   "presented": true,
+   "choice": "B",
+   "note": "开发者原话：默认不分享"
+  },
+  {
+   "id": "D7",
+   "question": "公司名和游戏名怎么起？",
+   "options": {
+    "A": "玩家自己写，公司名默认喵扑studio（可改）",
+    "B": "只用随机占位名，不让玩家输入"
+   },
+   "recommend": "A",
+   "depends_on": [],
+   "status": "resolved",
+   "presented": true,
+   "choice": "A",
+   "note": "开发者原话：玩家自己写，默认是喵扑studio"
+  },
+  {
+   "id": "D-LO1",
+   "question": "长线是否还保留「中等公司起才能立项」的规模门槛？",
+   "options": {
+    "A": "保留门槛：仍要升到中等公司才能立长线",
+    "B": "取消门槛：长线退化为纯标签，小工作室也能立"
+   },
+   "recommend": "A",
+   "depends_on": [],
+   "status": "resolved",
+   "presented": true,
+   "choice": "A",
+   "note": "开发者拍板保留门槛。改动只是长线不再有额外机制，门槛本身不动。"
+  },
+  {
+   "id": "D-LO2",
+   "question": "长线的「后续版本」从哪来？",
+   "options": {
+    "A": "玩家重新立项：同系列新版本是一次完整立项（自选周期、组队、开发、点发布）",
+    "B": "系统按年自动生成版本作品，玩家不参与"
+   },
+   "recommend": "A",
+   "depends_on": [],
+   "status": "resolved",
+   "presented": true,
+   "choice": "A",
+   "note": "开发者拍板玩家重新立项；系统只做「每系列每年最多 1 部」的闸门。"
+  },
+  {
+   "id": "D-LO3",
+   "question": "TGA 最佳长线运营奖按什么排？",
+   "options": {
+    "A": "媒体均分（fallback 销量）",
+    "B": "销量（fallback 四维合计）",
+    "C": "四维合计"
+   },
+   "recommend": "C",
+   "depends_on": [],
+   "status": "resolved",
+   "presented": true,
+   "choice": "C",
+   "note": "开发者原话：当年长线运营发售版本的 4 维合计，比如原神 2.0、魔兽世界 3.0 都在同一年发售，按综合属性比较。据此 scoreFrom 由 livePeak 改为 qsum，候选限定为颁奖窗口内发售的长线标记作。"
+  },
+  {
+   "id": "D-LO4",
+   "question": "目录作的版本拆分铺多广？",
+   "options": {
+    "A": "只铺标志性系列（原神/魔兽/英雄联盟/王者荣耀等约 15–20 个）",
+    "B": "全量 88 个长线系列按年补全",
+    "C": "不新增条目，只改规则"
+   },
+   "recommend": "A",
+   "depends_on": [],
+   "status": "resolved",
+   "presented": true,
+   "choice": "A",
+   "note": "开发者拍板只铺标志性系列，其余长线保持单条。"
+  },
+  {
+   "id": "D-BD1",
+   "question": "取消月活榜后，长线和单机按什么排同一个榜？",
+   "options": {
+    "A": "纯本月实销：两类同一把尺，长线只在行尾显示月活",
+    "B": "加权热度：本月实销 × 长线加成系数，长线保持榜单优势",
+    "C": "等效月活：都折算成人数量级，长线会量级碾压单机"
+   },
+   "recommend": "A",
+   "depends_on": [],
+   "status": "resolved",
+   "presented": true,
+   "choice": "A",
+   "note": "开发者拍板纯本月实销。长线的月活本由实销 × mauPerMonthSales 反推，不参与排序后行尾月活仅为展示值；长线要体现长线感应改其自身衰减曲线，不靠榜单倾斜。"
+  },
+  {
+   "id": "D-BD2",
+   "question": "单机掉出榜单就停售的判定，要不要跟着缩到 15 席？",
+   "options": {
+    "A": "跟着缩到 15：榜单即生死线，经营档难度上升",
+    "B": "维持 30 席：展示 15 名与停售 30 席解耦，难度不变"
+   },
+   "recommend": "B",
+   "depends_on": [],
+   "status": "resolved",
+   "presented": true,
+   "choice": "A",
+   "note": "开发者拍板跟着缩到 15，接受经营档难度上升。注意 career 档不走该判定（applyChartDropOff 在 career 直接 return），只影响经营档。"
+  },
+  {
+   "id": "D-BD3",
+   "question": "席位缩到 15 后，垫底的填充游戏怎么处理？",
+   "options": {
+    "A": "只改席位数：填充值域不动，生死线 900→4120（难度 4.6 倍）",
+    "B": "填充裁成 15 条、值域不变：生死线仍 900，只是名额变少",
+    "C": "填充裁成 15 条、值域上移：生死线约 1800，难度温和上升"
+   },
+   "recommend": "C",
+   "depends_on": [
+    "D-BD2"
+   ],
+   "status": "resolved",
+   "presented": true,
+   "choice": "C",
+   "note": "开发者拍板路线 C。chartFillers 现有 30 条（7200 等差降至 900）恰好铺满 30 席，是隐藏的生死门槛；裁成 15 条并把值域上移到 7200→1800，生死线约 900→1800。"
+  }
+ ]
 }

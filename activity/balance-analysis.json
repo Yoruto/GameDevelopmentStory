@@ -1,0 +1,171 @@
+{
+  "params": {
+    "monthlyContribution": 2,
+    "contribMainMult": 1.15,
+    "contribOffMult": 0.4,
+    "attrRef": 100,
+    "contribMult": [
+      0,
+      0.6,
+      0.72,
+      0.84,
+      0.96,
+      1.08,
+      1.2
+    ],
+    "producerAllDims": 1
+  },
+  "staff_rows": [
+    {
+      "tier": 30,
+      "rank": 1,
+      "months": 6,
+      "main_monthly": 0.414,
+      "off_monthly": 0.144,
+      "final_main": 32.5,
+      "final_off": 30.9
+    },
+    {
+      "tier": 30,
+      "rank": 1,
+      "months": 12,
+      "main_monthly": 0.414,
+      "off_monthly": 0.144,
+      "final_main": 35.0,
+      "final_off": 31.7
+    },
+    {
+      "tier": 30,
+      "rank": 1,
+      "months": 24,
+      "main_monthly": 0.414,
+      "off_monthly": 0.144,
+      "final_main": 39.9,
+      "final_off": 33.5
+    },
+    {
+      "tier": 50,
+      "rank": 3,
+      "months": 6,
+      "main_monthly": 0.966,
+      "off_monthly": 0.336,
+      "final_main": 55.8,
+      "final_off": 52.0
+    },
+    {
+      "tier": 50,
+      "rank": 3,
+      "months": 12,
+      "main_monthly": 0.966,
+      "off_monthly": 0.336,
+      "final_main": 61.6,
+      "final_off": 54.0
+    },
+    {
+      "tier": 50,
+      "rank": 3,
+      "months": 24,
+      "main_monthly": 0.966,
+      "off_monthly": 0.336,
+      "final_main": 73.2,
+      "final_off": 58.1
+    },
+    {
+      "tier": 80,
+      "rank": 6,
+      "months": 6,
+      "main_monthly": 2.208,
+      "off_monthly": 0.768,
+      "final_main": 93.2,
+      "final_off": 84.6
+    },
+    {
+      "tier": 80,
+      "rank": 6,
+      "months": 12,
+      "main_monthly": 2.208,
+      "off_monthly": 0.768,
+      "final_main": 106.5,
+      "final_off": 89.2
+    },
+    {
+      "tier": 80,
+      "rank": 6,
+      "months": 24,
+      "main_monthly": 2.208,
+      "off_monthly": 0.768,
+      "final_main": 133.0,
+      "final_off": 98.4
+    }
+  ],
+  "producer_rows": [
+    {
+      "tier": 30,
+      "rank": 1,
+      "monthly_per_dim": 0.18,
+      "final_per_dim_24": 34.3
+    },
+    {
+      "tier": 50,
+      "rank": 3,
+      "monthly_per_dim": 0.42,
+      "final_per_dim_24": 60.1
+    },
+    {
+      "tier": 80,
+      "rank": 6,
+      "monthly_per_dim": 0.96,
+      "final_per_dim_24": 103.0
+    }
+  ],
+  "era_samples": [
+    {
+      "title": "pokemonRed",
+      "year": 1996,
+      "raw_mean": 80.5,
+      "era_mult": 1,
+      "scaled_mean": 80.5
+    },
+    {
+      "title": "kingdomHearts",
+      "year": 2002,
+      "raw_mean": 84.5,
+      "era_mult": 1,
+      "scaled_mean": 84.5
+    },
+    {
+      "title": "gta4",
+      "year": 2008,
+      "raw_mean": 88.5,
+      "era_mult": 1,
+      "scaled_mean": 88.5
+    },
+    {
+      "title": "hearthstone",
+      "year": 2014,
+      "raw_mean": 81.5,
+      "era_mult": 1,
+      "scaled_mean": 81.5
+    },
+    {
+      "title": "re7",
+      "year": 2017,
+      "raw_mean": 77.8,
+      "era_mult": 1,
+      "scaled_mean": 77.8
+    },
+    {
+      "title": "mhWilds",
+      "year": 2025,
+      "raw_mean": 85.0,
+      "era_mult": 1,
+      "scaled_mean": 85.0
+    }
+  ],
+  "era_summary": {
+    "early_raw": 82.3048780487805,
+    "early_scaled": 82.3048780487805,
+    "late_raw": 84.21830985915493,
+    "late_scaled": 84.21830985915493
+  }
+}

@@ -1,27 +1,6 @@
 (function (root) {
   var sim = root.GDS.sim;
   var MSG = {};
-  MSG[sim.ERR.HIRE_CAP_FULL] = "编制满了，先辞退或换场地";
-  MSG[sim.ERR.HIRE_NOT_FOUND] = "这个人已经不在市场上了";
-  MSG[sim.ERR.FIRE_BUSY] = "开发中或维护中的人这月走不开";
-  MSG[sim.ERR.FIRE_NOT_FOUND] = "找不到这名员工";
-  MSG[sim.ERR.RELOCATE_MAX] = "已经是大公司了";
-  MSG[sim.ERR.RELOCATE_FUNDS] = "钱不够";
-  MSG[sim.ERR.AD_FUNDS] = "钱不够";
-  MSG[sim.ERR.STUDIO_SCALE] = "升到大公司才能开工作室";
-  MSG[sim.ERR.STUDIO_NO_LEAD] = "先有一个能当负责人的人";
-  MSG[sim.ERR.PITCH_NO_STAFF] = "还没有员工，先去招人";
-  MSG[sim.ERR.PITCH_NO_PRODUCER] = "至少选 1 人当制作人";
-  MSG[sim.ERR.PITCH_TEAM_SIZE] = "最多 5 人含制作人";
-  MSG[sim.ERR.PITCH_LIVEOPS_SCALE] = "小工作室不能立项长线";
-  MSG[sim.ERR.PITCH_BUSY] = "选中的人这月没空";
-  MSG[sim.ERR.PITCH_PLATFORM] = "平台只能选主机、PC 或移动";
-  MSG[sim.ERR.PITCH_OUTSOURCE_CAP] = "同时进行的外包单已经满了";
-  MSG[sim.ERR.LIVEOPS_NOT_FOUND] = "找不到这条长线";
-  MSG[sim.ERR.LIVEOPS_INACTIVE] = "这条长线已经关了";
-  MSG[sim.ERR.LIVEOPS_STAFF_BUSY] = "这个人这月没空去维护";
-  MSG[sim.ERR.RELEASE_NOT_FOUND] = "这部游戏不在待发售里";
-  MSG[sim.ERR.RELEASE_NOT_PLAYING] = "这一局已经结束，不能再发布";
   MSG[sim.ERR.EVENT_NOT_FOUND] = "找不到这个事件";
   MSG[sim.ERR.EVENT_NOT_CHOICE] = "这个事件不用做选择";
   MSG[sim.ERR.EVENT_OPTION_INVALID] = "没有这个选项";

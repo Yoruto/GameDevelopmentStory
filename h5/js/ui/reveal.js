@@ -1,6 +1,7 @@
 (function (root) {
   var GDS = root.GDS;
   var ui = GDS.ui;
+  var sim = GDS.sim;
   var doc = root.document;
   var timers = [];
   var running = null;
@@ -91,11 +92,16 @@
     if (running && running.skip) running.skip();
   };
 
+  // 大奖 = 配置里标了 ceremonyLast 的奖项（年度游戏），滚幕 2 秒；其余小奖项 1 秒。
+  function isGrandAward(a) {
+    return !!(a && (a.ceremonyLast || a.id === "goty"));
+  }
+
   ui.ceremonyAwards = function (list) {
     var rest = [];
     var last = [];
     (list || []).forEach(function (a) {
-      if (a && (a.ceremonyLast || a.id === "goty")) last.push(a);
+      if (isGrandAward(a)) last.push(a);
       else rest.push(a);
     });
     return rest.concat(last);
@@ -154,7 +160,11 @@
     setBusy(!instant);
 
     function summary() {
-      var avg = rec.avg != null ? rec.avg : (rec.media && rec.media.avg);
+      // 「均分」必须是玩家能拿上面那几行手算出来的数：优先读四家媒体分的平均
+      // （media.avg 就是 rows 的算术平均），没有媒体行的记录才回退 rec.avg。
+      // 结算时 rec.avg 已对齐成 media.avg（sim/career.js 的 shipPlayerTitle），
+      // 两边不会打架——见 tests 里的 mediaAvgIsMeanOfOutlets。
+      var avg = (rec.media && rec.media.avg != null) ? rec.media.avg : rec.avg;
       if (avg != null) ui.$("dlg-body").textContent = "均分 " + avg;
       finishReveal(opts.onDone);
     }
@@ -194,7 +204,7 @@
       q.className = "quote fx-quote";
       score = doc.createElement("b");
       score.className = "stars fx-score" + (scored ? " on" : "");
-      score.textContent = String(salesAmt);
+      score.textContent = sim.formatUnits(salesAmt);
       q.appendChild(score);
       row.appendChild(q);
       extra().appendChild(row);
@@ -209,6 +219,7 @@
         summary();
         return;
       }
+      // 只揭晓月销量（rec.launchSales = 发售当月实销）。首周行于 2026-09-18 删除。
       score = appendSales(false);
       phase = "quote";
       inst.skip = function () {
@@ -306,7 +317,7 @@
       var wrap = doc.createElement("div");
       var name = doc.createElement("p");
       var win = doc.createElement("p");
-      wrap.className = "fx-award" + (a.ceremonyLast || a.id === "goty" ? " goty" : "");
+      wrap.className = "fx-award" + (isGrandAward(a) ? " goty" : "");
       name.className = "fx-award-name";
       name.textContent = a.n || "";
       win.className = "fx-award-win";
@@ -337,7 +348,7 @@
       }
       a = awards[i];
       wrap = doc.createElement("div");
-      wrap.className = "fx-award" + (a.ceremonyLast || a.id === "goty" ? " goty" : "");
+      wrap.className = "fx-award" + (isGrandAward(a) ? " goty" : "");
       nameEl = doc.createElement("p");
       nameEl.className = "fx-award-name";
       nameEl.textContent = a.n || "";
@@ -400,9 +411,10 @@
       }
 
       inst.skip = reveal;
-      reelMs = (i === 0 || a.ceremonyLast || a.id === "goty")
-        ? ms("awardReelMs", 3000)
-        : ms("awardLaterReelMs", 1200);
+      // 滚幕时长只按奖项大小分档（小 1 秒 / 大奖 2 秒），与这是第几个奖项无关。
+      reelMs = isGrandAward(a)
+        ? ms("awardReelMs", 2000)
+        : ms("awardSmallReelMs", 1000);
       later(reveal, reelMs);
     }
     playAward();

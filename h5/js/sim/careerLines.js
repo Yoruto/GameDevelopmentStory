@@ -342,6 +342,52 @@
     return text;
   }
 
+  // 后辈电话的准入：他所在的公司必须**已经成立**、且**当月确有在研目录作**，
+  // 「某天深夜一个陌生号码打来」这通电话才站得住——他得有拿得出手的新作。
+  // 只按作品窗口判不够：暖暖环游世界的开发期从 2012-06 起，而叠纸 2013 才成立，
+  // 不判成立年就会造出「他 2012 年就在叠纸做暖暖」。
+  // 返回 null = 没有绑定（配置异常）→ 调用方放行，避免把线永久卡死。
+  function juniorCallGate(st, config) {
+    var spec = eventLinesSpec(config);
+    var rule = (spec.bonds || {}).juniorCall || {};
+    var junior = bondRecord(st, "junior");
+    var co;
+    if (!junior || !junior.revealCompanyId) return null;
+    co = sim.careerCompany(junior.revealCompanyId, config);
+    if (!co) return null;
+    if (rule.requireFounded !== false && st.year < num(co.foundedYear, 0)) return false;
+    if (rule.requireInDev !== false && sim.companyInDevCatalogTitle &&
+        !sim.companyInDevCatalogTitle(junior.revealCompanyId, st, config, null)) {
+      return false;
+    }
+    return true;
+  }
+
+  // 那家公司是不是「再也不会有新作在研了」：已成立、当月没活，且它所有目录作的
+  // 发售月都已过去。用来收掉等不到的电话——线不能永久挂在 call 拍上。
+  // 必须 RNG-free（skipIf 用）；没有绑定、或无法判定时不跳（返回 false）。
+  function juniorCallWindowGone(st, config) {
+    var junior = bondRecord(st, "junior");
+    var gate, co, titles, i, t, last, idx;
+    if (!junior || !junior.revealCompanyId) return false;
+    co = sim.careerCompany(junior.revealCompanyId, config);
+    if (!co) return false;
+    if (st.year < num(co.foundedYear, 0)) return false;
+    gate = juniorCallGate(st, config);
+    if (gate === null || gate === true) return false;
+    titles = sim.careerWorld(config).titles || [];
+    last = null;
+    for (i = 0; i < titles.length; i++) {
+      t = titles[i];
+      if (!t || t.virtual || t.companyId !== junior.revealCompanyId) continue;
+      if (t.releaseYear == null) continue;
+      idx = sim.monthIndex(t.releaseYear, t.releaseMonth || 1);
+      if (last == null || idx > last) last = idx;
+    }
+    if (last == null) return false;
+    return sim.monthIndex(st.year, st.month) > last;
+  }
+
   function beatWaitReady(st, prog, beat, config) {
     var wait, now, hopMonth, mentor, peer, title, spec, minYear;
     if (!beat) return false;
@@ -352,6 +398,9 @@
       if (prog.waitUntil == null) return false;
       now = sim.monthIndex(st.year, st.month);
       if (now < num(prog.waitUntil, 0)) return false;
+      // 后辈电话：等够了还要把门（公司已成立 + 当月有在研目录作）。每月复查，
+      // 不满足就继续挂在这一拍上；彻底没活时由 skipIf.juniorCallGone 收掉。
+      if (wait.juniorInDev && juniorCallGate(st, config) === false) return false;
       if (wait.pathClearOrNextYear) {
         if (sim.isCareerProducer(st) || sim.careerJobRank(st.career, config) < 3) return true;
         if (!sim.hasActiveExclusiveGroup(st, "careerPath", config)) return true;
@@ -388,7 +437,14 @@
     if (wait.type === "bondDepart") {
       mentor = bondRecord(st, wait.bond || "mentor");
       if (!mentor || !mentor.successorCompanyId) return false;
-      return mentor.departYear == null || st.year >= num(mentor.departYear, 0);
+      if (!(mentor.departYear == null || st.year >= num(mentor.departYear, 0))) return false;
+      // 准入：前辈的新东家当月得真有在研目录作才开这一拍。否则"跟着走"＝进空窗，
+      // 过月就被判空窗、一两个月后被塞一部虚拟作。没活就先挂着，等它有活再拍。
+      if (sim.mobilityRequireInDevTitle && sim.mobilityRequireInDevTitle(config, "scripted") &&
+          sim.companyInDevCatalogTitle && !sim.companyInDevCatalogTitle(mentor.successorCompanyId, st, config, null)) {
+        return false;
+      }
+      return true;
     }
     if (wait.type === "peerEpicReady") {
       spec = ((eventLinesSpec(config).bonds) || {}).peerEpic || {};
@@ -411,7 +467,12 @@
             if (st.career && t.companyId === st.career.companyId) continue;
             co = sim.careerCompany(t.companyId, config);
             if (!sim.companyJoinable(co, st.year)) continue;
-            if (t.releaseYear != null && t.releaseYear < st.year) continue;
+            if (sim.mobilityRequireInDevTitle && sim.mobilityRequireInDevTitle(config, "scripted")) {
+              // 只认当月正在开发的史诗作（与 sim.pickPeerEpicTarget 同规则）。
+              if (!sim.titleCoversMonth(t, sim.careerTitleDetail(t.id, config, st), st.year, st.month)) continue;
+            } else if (t.releaseYear != null && t.releaseYear < st.year) {
+              continue;
+            }
             title = t;
             break;
           }
@@ -435,6 +496,11 @@
       if (!(mentor && mentor.successorCompanyId)) return true;
     }
     if (skip.noJunior && !bondRecord(st, "junior")) return true;
+    // 后辈身份已经揭晓过就不再重复演一遍（回国线是"兜底"路径，后辈线自己会收束）
+    if (skip.juniorRevealed && (bondRecord(st, "junior") || {}).revealed) return true;
+    // 后辈那家已经不出新作了 → 这通电话不会来。与 wait.juniorInDev 互补：
+    // 一个负责"等到他有新作"，一个负责"永远没有就别把线永久挂着"。必须 RNG-free。
+    if (skip.juniorCallGone && juniorCallWindowGone(st, config)) return true;
     if (skip.notHeld && (!prog.flags || !prog.flags.held)) return true;
     if (skip.notCollapse && (!prog.flags || !prog.flags.collapse)) return true;
     if (skip.flagOff && (!prog.flags || !prog.flags[skip.flagOff])) return true;
@@ -445,6 +511,11 @@
     if (skip.notProducer && !sim.isCareerProducer(st)) return true;
     if (skip.careerPathOccupied && sim.hasActiveExclusiveGroup(st, "careerPath", config)) return true;
     if (skip.noOtherStudio && !(sim.careerHasOtherStudio && sim.careerHasOtherStudio(st, config))) return true;
+    // offer/邀约的准入：没有"当月真有在研目录作"的落点时，干脆不给这个选项
+    //（否则点了要么原地不动、要么进空窗被塞虚拟作）。判定函数都要求 RNG-free。
+    if (skip.noOtherStudioInDev && !(sim.careerOtherStudioPool && sim.careerOtherStudioPool(st, config).length)) return true;
+    if (skip.noStrongHopTarget && !(sim.hasStrongHopTarget && sim.hasStrongHopTarget(st, config))) return true;
+    if (skip.noPeerEpicTarget && !(sim.hasPeerEpicTarget && sim.hasPeerEpicTarget(st, config))) return true;
     if (skip.noJoinableEmployer && !(st.career && st.career.companyId && sim.careerEmployerJoinable && sim.careerEmployerJoinable(st, config))) return true;
     if (skip.hasJoinableEmployer && st.career && st.career.companyId && sim.careerEmployerJoinable && sim.careerEmployerJoinable(st, config)) return true;
     if (skip.noCompany && !(st.career && st.career.companyId)) return true;
@@ -960,6 +1031,11 @@
       if (when.onTitle.minPrestige != null && num(title.prestige, 0) < when.onTitle.minPrestige) return false;
     }
     if (when.minMonthsOnTitle != null && monthsOnCurrentTitle(st) < when.minMonthsOnTitle) return false;
+    // 邀约线（回国线）专用：目标公司当月得真的有在研目录作，"进组当组员 / 当制作人去"
+    // 才有组可进。否则线先不开（retryNextYear 会年复一年地等），别把玩家挂进一家空公司。
+    if (when.requireInDevTarget && !(sim.hasCareerReturnTarget && sim.hasCareerReturnTarget(st, config))) {
+      return false;
+    }
     return true;
   }
 

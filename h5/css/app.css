@@ -2,10 +2,12 @@
       --bg: #16121c;
       --card: #241c2c;
       --card2: #2e2538;
-      --line: #3d3348;
+      --line: #453a52;
       --text: #f3ece3;
-      --muted: #a396ab;
+      --muted: #a89bb2;
       --gold: #e8a54b;
+      --gold-press: #c9873a;
+      --amber: #c9873a;
       --orange: #d46a3a;
       --green: #3ecf8e;
       --red: #e85d4c;
@@ -78,7 +80,7 @@
       gap: 2px;
     }
     .kpi-lab {
-      font-size: 10px;
+      font-size: 11px;
       letter-spacing: .08em;
       color: var(--muted);
     }
@@ -154,15 +156,74 @@
       border-radius: 999px; padding: 4px 8px; font-size: 12px; color: var(--muted);
     }
     .pill.on { border-color: var(--gold); color: var(--gold); }
+    .tag-live {
+      display: inline-block; margin-left: 5px; padding: 1px 5px;
+      border: 1px solid var(--line); border-radius: 999px;
+      color: var(--muted); font-size: 11px; font-style: normal; font-weight: 400;
+    }
+    /* 下月发售：一行一款。原来是「A · B · C」挤成一段，名单一长就看不出有几款。
+       行数会直接顶高「情报」卡，所以每行强制单行 + 省略号。 */
+    .next-releases { display: flex; flex-direction: column; }
+    .next-releases .nr-head { color: var(--muted); }
+    .next-releases .nr-row { display: flex; align-items: center; min-width: 0; }
+    /* 收缩但**不**抢占整行：名字短时「长线」标紧跟在名字后面。
+       若用 flex:1，标记会被甩到卡片最右边，和名字脱开一大截（实测截图确认过）。 */
+    .next-releases .nr-row > .nr-name {
+      flex: 0 1 auto; min-width: 0; color: var(--text);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    .next-releases .nr-row > .tag-live { flex: 0 0 auto; }
+    .next-releases .nr-more { color: var(--muted); }
+    /* 榜单行强制单行：标题省略号 + 数值不换行。
+       不这么做的话，长标题会把行高从 31px 顶到 47px，15 行在 360×640 上
+       会被底部坞切掉末尾三行（实测 rowsFullyVisible 12/15）。 */
+    #month-chart .item > .nm {
+      flex: 1 1 auto; min-width: 0;
+      display: flex; align-items: center;
+      overflow: hidden; white-space: nowrap;
+    }
+    #month-chart .item > .nm > .rk { flex: 0 0 auto; margin-right: 5px; }
+    /* 收缩权重 100 : 1 —— 宽度不够时先把「发行商 · 」压成省略号，游戏名最后才让位。
+       实测 360×640 下不改这条，长标题行的游戏名会被整个吃掉（只剩「拳头游戏 · …」）。 */
+    #month-chart .item > .nm > .pub {
+      flex: 0 100 auto; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    #month-chart .item > .nm > .ttl {
+      flex: 0 1 auto; min-width: 0;
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+    }
+    #month-chart .item > .tag-live { flex: 0 0 auto; margin-left: 0; }
+    #month-chart .item > b { flex: 0 0 auto; white-space: nowrap; }
+    /* 行距收紧：15 行合计省约 60px，让 360×640 这类矮屏也放得下满榜。 */
+    #month-chart .item { padding: 6px 0; }
     .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
     .grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
     .grid4[hidden] { display: none !important; }
     .bar[hidden] { display: none !important; }
     #hq-live-grid { margin-top: 8px; }
-    .stat { background: var(--card2); border-radius: 10px; padding: 8px 4px; text-align: center; }
+    .stat { position: relative; background: var(--card2); border-radius: 10px; padding: 8px 4px; text-align: center; }
     .stat b { display: block; font-size: 16px; }
     .stat span { color: var(--muted); font-size: 11px; }
+    .stat-float {
+      position: absolute;
+      left: 50%;
+      top: -2px;
+      transform: translateX(-50%);
+      color: #3dce7a;
+      font-weight: 800;
+      font-size: 12px;
+      line-height: 1;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 2;
+      animation: stat-float-up .5s ease-out forwards;
+    }
+    @keyframes stat-float-up {
+      from { opacity: 1; transform: translateX(-50%) translateY(0); }
+      to { opacity: 0; transform: translateX(-50%) translateY(-16px); }
+    }
     .grid4 .stat { padding: 8px 2px; }
     .grid4 .stat b { font-size: 15px; }
     .person, .item {
@@ -259,32 +320,70 @@
     .dock-l1 button.on {
       border-color: var(--gold); color: var(--gold);
     }
-    .dock-tick {
-      flex: 0 0 78px;
+    .dock-ticks {
+      flex: 0 0 auto;
       margin-left: auto;
+      display: flex;
+      gap: 6px;
+      align-items: stretch;
+    }
+    .dock-tick {
+      flex: 0 0 auto;
+      min-width: 64px;
       border: 2px solid #ffd2b8;
       border-radius: 12px;
       background: linear-gradient(180deg, #f08a3a 0%, #d44a2a 100%);
       color: #fff8f2;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 800;
       box-shadow: 0 4px 14px rgba(212, 74, 42, .45);
       cursor: pointer;
+      padding: 0 8px;
+      line-height: 1.15;
+    }
+    .dock-tick-month {
+      flex: 0 0 56px;
+      border-color: #5a5366;
+      background: linear-gradient(180deg, #3a3348 0%, #2a2436 100%);
+      box-shadow: 0 2px 8px rgba(0,0,0,.35);
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    #app.mode-company .dock-tick-month {
+      flex: 0 0 78px;
+      border-color: #ffd2b8;
+      background: linear-gradient(180deg, #f08a3a 0%, #d44a2a 100%);
+      box-shadow: 0 4px 14px rgba(212, 74, 42, .45);
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff8f2;
+    }
+    .dock-tick-skip {
+      flex: 0 0 78px;
+      font-size: 12px;
     }
     .dock-tick.off { display: none; }
+    .dock-ticks.off { display: none; }
     .dock-tick:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
     .dock-slot {
       flex: 1; min-width: 0;
+      display: flex; gap: 6px; align-items: stretch;
     }
     .dock-slot.off { display: none; }
+    .dock-slot button {
+      flex: 0 0 auto;
+      background: var(--card2); color: var(--text); border: 1px solid var(--line);
+      border-radius: 10px; padding: 0 16px; font-size: 12px; cursor: pointer;
+    }
     .hero {
       padding: 28px 20px 16px;
       flex: 1; min-height: 0; overflow: auto;
       display: flex; flex-direction: column;
       background: radial-gradient(ellipse at top, #3a2a18 0%, var(--bg) 55%);
     }
-    .hero-copy { flex: 1; }
-    .hero-form { flex-shrink: 0; padding-bottom: 8px; }
+    .hero-copy { flex: 0 0 auto; }
+    .hero-form { flex: 0 0 auto; padding-bottom: 8px; }
     .hero-form label { display: block; font-size: 12px; color: var(--muted); }
     .hero h1 { font-size: 28px; margin: 12px 0 8px; }
     .hero p { color: var(--muted); margin-bottom: 20px; }
@@ -392,6 +491,14 @@
       .name { font-size: 16px; }
       .card { padding: 6px 8px; }
       .chip { padding: 4px 6px; font-size: 11px; }
+      /* 开局可能一次抽到 3 条天赋（traitCountMax=3）。实测 360×640 下三张卡会把 .hero
+         顶出 8px（overflow:auto 会变成内部滚动 = 违反「一屏放完」），这里把 roll 卡收紧。 */
+      .hero p { margin-bottom: 12px; }
+      #sc-boot .roll-card { padding: 10px; }
+      #sc-boot .roll-trait { margin-top: 8px; padding-top: 8px; }
+      #sc-boot .roll-trait .roll-item + .roll-item { margin-top: 6px; padding-top: 6px; }
+      #sc-boot .btn.mt-12 { margin-top: 8px; }
+      #sc-boot .preview-flag { margin-top: 6px; }
     }
     .mask.fx-busy { cursor: pointer; }
     .fx-outlet { animation: fx-fade-in .28s ease-out; overflow: hidden; }
@@ -450,7 +557,7 @@
       padding: 8px 10px;
     }
     .dlg.dlg-awards .fx-award-name {
-      font-size: 10px;
+      font-size: 11px;
       letter-spacing: .04em;
       margin-bottom: 2px;
       white-space: normal;
@@ -482,6 +589,7 @@
     @media (prefers-reduced-motion: reduce) {
       .fx-outlet, .fx-quote, .fx-score, .fx-score.on { animation: none; }
       .fx-score, .fx-score.on { opacity: 1; }
+      .stat-float { animation: none; opacity: 0; }
     }
     .stars { color: var(--gold); font-size: 18px; font-weight: 800; }
     .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
@@ -544,13 +652,21 @@
     .mt-8 { margin-top: 8px; }
     .mt-10 { margin-top: 10px; }
     .mt-12 { margin-top: 12px; }
-    #app.mode-career .studio-only { display: none !important; }
-    #app.mode-company .career-only { display: none !important; }
-    #app.mode-career #dock-ops { display: none !important; }
+    #app.mode-career #btn-tick-skip { display: none !important; }
+    #app.mode-career .dock-tick-month {
+      flex: 0 0 78px;
+      border-color: #ffd2b8;
+      background: linear-gradient(180deg, #f08a3a 0%, #d44a2a 100%);
+      box-shadow: 0 4px 14px rgba(212, 74, 42, .45);
+      font-size: 14px;
+      font-weight: 800;
+      color: #fff8f2;
+    }
     #app.mode-career #dock-intel {
       grid-template-columns: 1fr 1fr;
     }
-    #app.mode-career #dock-intel [data-go="calendar"],
+    /* 履历已整合进「自身」页、年度奖有 dock-l1 副本，弹层内去重；
+       发售情报(cal)无其他入口，必须保留 */
     #app.mode-career #dock-intel [data-go="resume"],
     #app.mode-career #dock-intel [data-go="tga"] {
       display: none !important;
@@ -673,7 +789,7 @@
     }
     #sc-player .player-skills-card h2:first-child { margin-top: 0; }
     #sc-player #player-page-hint {
-      font-size: 10px;
+      font-size: 11px;
       margin: 0 0 2px;
       line-height: 1.25;
       flex-shrink: 0;
@@ -691,7 +807,7 @@
       gap: 4px;
       line-height: 1.2;
     }
-    #sc-player .skill-item .tier { font-size: 10px; }
+    #sc-player .skill-item .tier { font-size: 11px; }
     .resume-row {
       background: var(--card2);
       border: 1px solid var(--line);
@@ -741,6 +857,208 @@
       color: var(--gold);
       background: #2c2418;
     }
+    .trait-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .trait-card {
+      background: var(--card2);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 12px;
+      cursor: pointer;
+      text-align: left;
+      color: var(--text);
+      width: 100%;
+    }
+    .trait-card.picked { border-color: var(--gold); }
+    .trait-card .name { font-size: 15px; font-weight: 700; }
+    .trait-card .hint { margin: 4px 0 0; }
+    .trait-card .hint.gain { color: var(--gold); }
+    .trait-card .hint.cost { opacity: .75; }
+    /* 开局 roll 卡：属性 / 天赋 一掷定 */
+    .roll-card {
+      margin-top: 10px;
+      padding: 12px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--card);
+    }
+    .roll-head {
+      display: flex; align-items: baseline; gap: 8px;
+      margin-bottom: 8px;
+    }
+    .roll-head .sec-title { margin: 0; color: var(--gold); }
+    .roll-head .roll-total {
+      margin-left: auto;
+      color: var(--muted); font-size: 11px;
+      font-variant-numeric: tabular-nums;
+    }
+    .roll-card .grid4 { margin-top: 0; }
+    .roll-card .grid4 .stat { padding: 8px 2px; }
+    .roll-card .grid4 .stat.main b { color: var(--gold); }
+    .roll-trait {
+      margin-top: 10px; padding-top: 10px;
+      border-top: 1px dashed var(--line);
+    }
+    .roll-trait .roll-item .name { font-size: 13px; font-weight: 700; }
+    .roll-trait .roll-item .hint { margin: 2px 0 0; }
+    .roll-trait .roll-item + .roll-item {
+      margin-top: 8px; padding-top: 8px;
+      border-top: 1px dashed var(--line);
+    }
+    #btn-reroll:disabled { opacity: .45; cursor: not-allowed; }
     .pitch-plat { margin-top: 4px; }
     #studio-ok { display: none; }
+
+    /* ===== 界面改版：一屏网格 / 维度色 / 成员行 / 微交互 ===== */
+    .hq-grid {
+      flex: 1;
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: minmax(0, 1fr) minmax(0, 1fr);
+      gap: 8px;
+    }
+    .hq-grid > .card {
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+      overflow: hidden;
+      margin-bottom: 0;
+    }
+    #app.mode-company .hq-id { display: none; }
+    #app.mode-company #hq-team-card { grid-row: 1 / span 2; }
+    #hq-live-grid, #hq-player-grid { margin-top: auto; }
+    #hq-live-grid .stat, #hq-player-grid .stat { padding: 6px 4px; }
+    #hq-project-card .hint { margin-top: 4px; }
+    .intel-rows {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .intel-rows::-webkit-scrollbar { display: none; width: 0; height: 0; }
+    .intel-rows .hint { margin-top: 0; }
+    .staff-rows {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      scrollbar-width: none;
+      -ms-overflow-style: none;
+    }
+    .staff-rows::-webkit-scrollbar { display: none; width: 0; height: 0; }
+    .staff-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      min-width: 0;
+    }
+    .staff-ava {
+      flex: 0 0 auto;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background: var(--card2);
+      border: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 700;
+    }
+    .staff-name {
+      font-size: 12px;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
+    .staff-role {
+      flex: 0 0 auto;
+      margin-left: auto;
+      font-size: 11px;
+      color: var(--muted);
+    }
+    .dim-p { color: var(--gold); }
+    .dim-d { color: var(--green); }
+    .dim-a { color: var(--blue); }
+    .dim-m { color: var(--amber); }
+    .dim-p b, .staff-role.dim-p, .staff-ava.dim-p { color: var(--gold); }
+    .dim-d b, .staff-role.dim-d, .staff-ava.dim-d { color: var(--green); }
+    .dim-a b, .staff-role.dim-a, .staff-ava.dim-a { color: var(--blue); }
+    .dim-m b, .staff-role.dim-m, .staff-ava.dim-m { color: var(--amber); }
+    .staff-ava.dim-p { border-color: var(--gold); }
+    .staff-ava.dim-d { border-color: var(--green); }
+    .staff-ava.dim-a { border-color: var(--blue); }
+    .staff-ava.dim-m { border-color: var(--amber); }
+    .hq-grid .hq-sums {
+      grid-template-columns: 1fr;
+      grid-template-rows: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+      gap: 4px;
+      min-height: 0;
+    }
+    .hq-grid .hq-sum {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 4px 8px;
+      min-height: 0;
+      overflow: hidden;
+    }
+    .hq-grid .hq-sum b { font-size: 14px; line-height: 1.1; }
+    .btn, .chip, .pill, .role-pick, .trait-card, .dock-l1 button, .dock-l2 button,
+    .dock-tick, .pager button, .tga-year-chip, .hq-sum, .offer-card {
+      transition: transform .16s ease, border-color .16s ease, opacity .16s ease;
+      touch-action: manipulation;
+    }
+    .btn:active, .chip:active, .pill:active, .role-pick:active, .trait-card:active,
+    .dock-l1 button:active, .dock-l2 button:active, .dock-tick:active,
+    .pager button:active, .tga-year-chip:active, .hq-sum:active, .offer-card:active {
+      transform: scale(.96);
+    }
+    .bar i { transition: width .3s ease; }
+    .dock-shell .dock-tick-month,
+    #app.mode-career .dock-tick-month,
+    #app.mode-company .dock-tick-month {
+      border: 1px solid var(--gold);
+      background: var(--gold);
+      box-shadow: none;
+      color: #1a1320;
+      font-weight: 800;
+    }
+    .dock-shell .dock-tick-skip {
+      border: 1px solid var(--gold);
+      background: var(--card2);
+      box-shadow: none;
+      color: var(--gold);
+      font-weight: 700;
+    }
+    .scene.on { animation: scene-in .22s ease-out; }
+    @keyframes scene-in {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .btn, .chip, .pill, .role-pick, .trait-card, .dock-l1 button, .dock-l2 button,
+      .dock-tick, .pager button, .tga-year-chip, .hq-sum, .offer-card, .bar i {
+        transition: none;
+      }
+      .btn:active, .chip:active, .pill:active, .role-pick:active, .trait-card:active,
+      .dock-l1 button:active, .dock-l2 button:active, .dock-tick:active,
+      .pager button:active, .tga-year-chip:active, .hq-sum:active, .offer-card:active {
+        transform: none;
+      }
+      .scene.on { animation: none; }
+    }
 

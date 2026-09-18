@@ -1,5 +1,15 @@
 # -*- coding: utf-8 -*-
-"""生成 activity/career-world.json。改公司/作品/化名请改本脚本后重跑，或直接改 json。"""
+"""生成 activity/career-world.json。改公司/作品/化名请改本脚本后重跑，或直接改 json。
+
+⚠️ 重跑前必读（2026-09-16 数据事故后立此存照）：
+本脚本的模板值已与 JSON 里的手工调校长期分叉（player / save / mobility / growthStages /
+openingOffer / virtualPool / devEvents / colleagues / companies / titles 的 stats·score·
+peakDims / titleDetails 的工期·招募窗·文案……都手工改过）。整块覆盖型 key 重跑一次冲掉
+一次。写盘处的「保留非生成块 + 手加作品按 id 保留」逻辑只能保住一部分，其余生成块重跑
+即回旧值。重跑前：确认要刷新的块；跑完立刻 `git diff activity/career-world.json` 逐块
+核对；`node tests/run-sim-tests.js` 必须全绿（尤其 careerScoreTracksColleaguesAndMedia
+与 flagshipSeriesShipOneVersionPerYear）。
+"""
 from __future__ import print_function
 
 import json
@@ -48,6 +58,37 @@ def C(cid, name, alias, region, hq, founded, power, **kw):
     return row
 
 
+# 生涯世界表的玩法词汇比经营局 content.gameplay 细（rts / stealth / tactics…）。
+# 落表时统一收敛到配置里真实存在的玩法 id，否则经营局拿到的是读不懂的玩法。
+GP_MAP = {
+    "rts": "strategy",
+    "tactics": "strategy",
+    "towerDefense": "strategy",
+    "stealth": "action",
+    "hackSlash": "action",
+    "roguelike": "rpg",
+    "metroidvania": "platform",
+    "sandbox": "openWorld",
+}
+
+
+def gp_id(gp):
+    return GP_MAP.get(gp, gp)
+
+
+# 同理，题材词汇也要收敛：世界表写 western / cyber / xianxia，配置里只有
+# adventure / scifi / wuxia。
+GENRE_MAP = {
+    "xianxia": "wuxia",
+    "cyber": "scifi",
+    "western": "adventure",
+}
+
+
+def genre_id(g):
+    return GENRE_MAP.get(g, g)
+
+
 def T(tid, company, pub, name, alias, en, y, m, score, plats, genre, gp, **kw):
     row = {
         "id": tid,
@@ -60,8 +101,8 @@ def T(tid, company, pub, name, alias, en, y, m, score, plats, genre, gp, **kw):
         "releaseMonth": m,
         "score": score,
         "platforms": plats if isinstance(plats, list) else plats.split("+"),
-        "genreId": genre,
-        "gameplayId": gp,
+        "genreId": genre_id(genre),
+        "gameplayId": gp_id(gp),
         "releaseType": kw.get("rtype", "boxed"),
         "landmark": kw.get("land", False),
         "prestige": kw.get("pres", 3),
@@ -83,8 +124,8 @@ def S(sid, name, alias, genres, gameplay, hire=None):
         "id": sid,
         "name": name,
         "alias": alias,
-        "genreIds": list(genres),
-        "gameplayIds": list(gameplay),
+        "genreIds": [genre_id(g) for g in genres],
+        "gameplayIds": [gp_id(g) for g in gameplay],
     }
     if hire is not None:
         row["hireChance"] = hire
@@ -870,10 +911,21 @@ STATS = {
 }
 
 QUALITY = {
-    "comment": "配置基准 0-100；局内 live 四维允许>100，禁止硬夹满。对外 score 仍是 1-10。design 对应员工 script。",
+    "comment": "配置基准 0-100；局内 live 四维允许>100，禁止硬夹满。对外 score 仍是 1-10。design 对应员工 script。进局再乘 eraStatScale。",
     "statMin": 0,
     "statMax": 100,
     "liveCanExceedMax": True,
+    "statJitterMinPct": -10,
+    "statJitterMaxPct": 10,
+    "eraStatScale": {
+        "comment": "发售年线性插值。表内 stats 保持同时代高峰写法。",
+        "enabled": True,
+        "landmarksOnly": False,
+        "startYear": 1995,
+        "endYear": 2025,
+        "startMult": 0.62,
+        "endMult": 1.08,
+    },
     "dims": ["program", "design", "art", "music"],
 }
 
@@ -905,6 +957,152 @@ GP_BIAS = {
     "metroidvania": {"design": 8, "program": 5, "art": 4, "music": 3},
     "sportsGame": {"design": 6, "program": 4, "art": 2, "music": -2},
 }
+
+# 标志性长线系列的年度版本。长线现在按单机方式开发，一个版本就是一部独立作品
+# （名字写「系列：版本名」），同一系列每个自然年最多发一部。这里只铺这 20 个系列，
+# 其余长线作品保持单条记录。stats 由 apply_title_quality 按 id/score/prestige 派生。
+VERSION_SERIES = [
+    ("genshin", "原神", "genshin", 9, {
+        2021: "千手百眼", 2022: "虚空鼓动", 2023: "白露澈明",
+        2024: "黑潮与赤日", 2025: "空月之歌",
+    }),
+    ("wow", "魔兽世界", "wow", 11, {
+        2021: "统御之链", 2022: "巨龙时代", 2023: "梦境守护者",
+        2024: "地心之战", 2025: "至暗之夜",
+    }),
+    ("lol", "英雄联盟", "lol", 1, {
+        2021: "破败王者", 2022: "星之守护者", 2023: "灵魂莲华",
+        2024: "双城之战", 2025: "符文之地",
+    }),
+    ("hok", "王者荣耀", "hok", 1, {
+        2021: "破晓", 2022: "云梦", 2023: "海都",
+        2024: "长安", 2025: "星之破晓",
+    }),
+    ("arknights", "明日方舟", "arknights", 5, {
+        2021: "覆潮之下", 2022: "愚人号", 2023: "淬羽赫默",
+        2024: "萨卡兹的遗产", 2025: "雪山降临",
+    }),
+    ("hsr", "崩坏：星穹铁道", "starRail", 4, {
+        2024: "匹诺康尼", 2025: "翁法罗斯",
+    }),
+    ("zzz", "绝区零", "zzz", 7, {
+        2025: "新艾利都",
+    }),
+    ("wuwa", "鸣潮", "wuwa", 5, {
+        2025: "今州",
+    }),
+    ("honkai", "崩坏3", "honkai3", 10, {
+        2021: "薪炎永燃", 2022: "天元的回响", 2023: "星坠之前",
+        2024: "月之始源", 2025: "虚数之树",
+    }),
+    ("mhxy", "梦幻西游", "mhxy", 12, {
+        2021: "月华如练", 2022: "三界奇缘", 2023: "九霄龙吟",
+        2024: "长安幻梦", 2025: "天宫问道",
+    }),
+    ("dnf", "地下城与勇士", "dnf", 8, {
+        2021: "奥兹玛", 2022: "巴卡尔", 2023: "机械战神",
+        2024: "幽暗岛", 2025: "雾神",
+    }),
+    ("jx", "剑网3", "jx3", 8, {
+        2021: "北天药宗", 2022: "万灵山庄", 2023: "南诏皇宫",
+        2024: "雾海寻踪", 2025: "天策府",
+    }),
+    ("hs", "炉石传说", "hearthstone", 4, {
+        2021: "贫瘠之地的锤炼", 2022: "海底之城", 2023: "传说音乐节",
+        2024: "荒芜之地", 2025: "星际英雄传",
+    }),
+    ("ow", "守望先锋", "overwatch", 5, {
+        2021: "归来的号角", 2022: "归来", 2023: "入侵",
+        2024: "变革", 2025: "极地行动",
+    }),
+    ("pubg", "绝地求生", "pubg", 5, {
+        2021: "米拉玛", 2022: "泰戈", 2023: "德斯顿",
+        2024: "荣都", 2025: "萨诺",
+    }),
+    ("naraka", "永劫无间", "naraka", 8, {
+        2022: "破阵", 2023: "山海", 2024: "长夜", 2025: "幽都",
+    }),
+    ("minecraft", "我的世界", "minecraft", 6, {
+        2021: "洞穴与山崖", 2022: "荒野更新", 2023: "轨迹与传说",
+        2024: "诡秘试炼", 2025: "苍翠之境",
+    }),
+    ("dota", "DOTA2", "dota2", 3, {
+        2021: "新兵纪元", 2022: "无尽之路", 2023: "破晓之战",
+        2024: "苍穹之境", 2025: "灰烬余烬",
+    }),
+    ("diablo", "暗黑破坏神", "diablo4", 6, {
+        2021: "永恒之战", 2022: "憎恨之王", 2023: "血之收获",
+        2024: "憎恨之躯", 2025: "圣休亚瑞",
+    }),
+    ("fortnite", "堡垒之夜", "fortnite", 6, {
+        2021: "裂隙", 2022: "天堂", 2023: "荒野",
+        2024: "地下世界", 2025: "无双",
+    }),
+]
+
+# 版本之间的口碑浮动，按顺序循环取用，保证同年份不同系列有区分。
+VERSION_SCORE_DELTA = [0.0, 0.2, -0.1, 0.3, 0.1]
+
+
+def fill_version_names(titles):
+    """带系列的长线作品，名字写成「系列：版本名」的，顺手补 versionName，展示层统一读它。"""
+    n = 0
+    for t in titles:
+        if t.get("versionName") or not t.get("seriesId"):
+            continue
+        if t.get("releaseType") != "liveops":
+            continue
+        name = t.get("name") or ""
+        if u"\uff1a" not in name:
+            continue
+        tail = name.split(u"\uff1a", 1)[1].strip()
+        if tail:
+            t["versionName"] = tail
+            n += 1
+    return n
+
+
+def build_versions(titles, specs):
+    """按 VERSION_SERIES 生成年度版本条目。同系列当年已有作品时跳过，保证每系列每年 ≤1。"""
+    by_id = {t["id"]: t for t in titles}
+    busy = {}
+    for t in titles:
+        sid = t.get("seriesId")
+        if sid:
+            busy.setdefault(sid, set()).add(t["releaseYear"])
+    out = []
+    for sid, sname, base_id, month, vers in specs:
+        base = by_id.get(base_id)
+        assert base, "version series base missing: %s" % base_id
+        assert base.get("seriesId") == sid, "version series mismatch: %s" % base_id
+        for i, y in enumerate(sorted(vers)):
+            if y in busy.get(sid, ()):
+                print("version skip (same series already ships):", sid, y)
+                continue
+            vname = vers[y]
+            score = round(min(9.6, base["score"] + VERSION_SCORE_DELTA[i % len(VERSION_SCORE_DELTA)]), 1)
+            row = T(
+                "%s-y%d" % (sid, y),
+                base["companyId"],
+                base["publisherId"],
+                u"%s：%s" % (sname, vname),
+                vname,
+                "%s: %s" % (sname, vname),
+                y,
+                month,
+                score,
+                base["platforms"],
+                base["genreId"],
+                base["gameplayId"],
+                rtype="liveops",
+                pres=base.get("prestige", 3),
+                series=sid,
+            )
+            row["versionName"] = vname
+            row["versionOf"] = base_id
+            out.append(row)
+    return out
+
 
 
 def clamp_stat(n):
@@ -979,7 +1177,10 @@ def apply_title_quality(titles):
         if quote:
             t["shipQuote"] = quote
     if derived:
-        print("stats derived (no override):", ", ".join(derived))
+        shown = ", ".join(derived[:12])
+        if len(derived) > 12:
+            shown += " … 共 %d 条" % len(derived)
+        print("stats derived (no override):", shown)
 
 
 def QE(eid, name, dim, delta, **kw):
@@ -1066,7 +1267,8 @@ DEV_EVENTS = {
 
 def _merge_choice_catalog():
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "career_choice_events.py")
-    ns = {}
+    # exec 出来的模块拿不到 __file__，但 career_choice_events.py 用它定位仓库根，必须显式给。
+    ns = {"__file__": path, "__name__": "career_choice_events"}
     with open(path, "r", encoding="utf-8") as f:
         exec(compile(f.read(), path, "exec"), ns)
     DEV_EVENTS["list"][:] = ns["merge_dev_events"](DEV_EVENTS["list"])
@@ -1308,12 +1510,25 @@ COMPANY_XP = {
     ],
 }
 
+# 熟练度档位加成：ladder 与 COMPANY_XP.tiers 一一对应。
+# studioCombine=sum → 题材档 + 玩法档相加（上限 40%），乘在新作立项初始四维；
+# playerCombine=sum → 同规则，乘在开发月贡献。
+# 注意：career-world.json 上还有本脚本不产出的手改内容（virtualPool.craft / playerXp 等），
+# 重跑本脚本会覆盖它们，改平衡优先直接改 json 并跑 sync_config.py。
+PROFICIENCY = {
+    "comment": "熟练度档位加成，档位读 companyXp.tiers（生疏/熟练/拿手/看家本领）。ladder 依次 0% / 10% / 15% / 20%。studioCombine=sum 表示题材档加成 + 玩法档加成相加（最高 40%），作用在新作立项初始四维；playerCombine=sum 同规则，作用在开发月贡献。",
+    "ladder": [0, 0.1, 0.15, 0.2],
+    "studioCombine": "sum",
+    "playerCombine": "sum",
+}
+
 VIRTUAL_POOL = {
     "comment": "空窗时从词库抽虚拟作。不要抢同公司同月 landmark 档期。待命超过 idleMaxMonths 强制立项。",
     "idleMaxMonths": 1,
     "devMonthsMin": 6,
     "devMonthsMax": 14,
     "baseStats": {"program": 48, "design": 48, "art": 48, "music": 48},
+    "teamStatShare": 0.1,
     "statJitter": 8,
     "prestige": 2,
     "score": 7.2,
@@ -1539,6 +1754,9 @@ def main():
                     studio_bad.append("studio gameplay %s %s" % (s["id"], gid))
     assert not studio_bad, "\n".join(studio_bad)
     titles = dedupe_titles(TITLES)
+    titles.extend(build_versions(titles, VERSION_SERIES))
+    titles = dedupe_titles(titles)
+    print("versionName filled:", fill_version_names(titles))
     pad_year_releases(titles, COMPANIES, VIRTUAL_POOL["minWorldReleasesPerYear"])
     attach_title_studios(titles, COMPANIES)
     title_ids = [t["id"] for t in titles]
@@ -1608,6 +1826,7 @@ def main():
         "colleagues": COLLEAGUES,
         "scoreFromLive": SCORE_FROM_LIVE,
         "companyXp": COMPANY_XP,
+        "proficiency": PROFICIENCY,
         "virtualPool": VIRTUAL_POOL,
         "mobility": MOBILITY,
         "roles": [
@@ -1662,6 +1881,29 @@ def main():
         "titles": titles,
         "titleDetails": details,
     }
+    # 本表有一部分区块不是本脚本生成的（jobRanks / playerXp / postLaunch / lateJoin /
+    # producerCareer / producerEvents / eventLines / idleGap / launchSales …），
+    # 重跑时按 key 原样留住，否则重建会把手工维护的数据冲掉。
+    if os.path.exists(OUT):
+        try:
+            with open(OUT, "r", encoding="utf-8") as f:
+                prev = json.load(f)
+        except (ValueError, OSError):
+            prev = {}
+        kept = [k for k in prev if k not in data]
+        for k in kept:
+            data[k] = prev[k]
+        # titles / titleDetails 是"生成 + 手工增补"混合块：整块覆盖会冲掉手加作品
+        # （mir2 / lineage / ultimaOnline 等）。按 id 保留本轮没生成出来的旧条目。
+        for key in ("titles", "titleDetails"):
+            if key in prev and isinstance(prev[key], list):
+                gen_ids = {row.get("id") for row in data[key]}
+                hand_rows = [row for row in prev[key] if row.get("id") not in gen_ids]
+                if hand_rows:
+                    data[key] = data[key] + hand_rows
+                    print("kept hand-authored %s entries: %s" % (key, ", ".join(str(r.get("id")) for r in hand_rows)))
+        if kept:
+            print("kept non-generated blocks:", ", ".join(kept))
     with open(OUT, "w", encoding="utf-8", newline="\n") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
         f.write("\n")

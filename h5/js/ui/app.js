@@ -23,16 +23,92 @@
     ui.show("sc-hq");
   };
 
+  ui.captureCareerStatSnap = function () {
+    var state = ui.session.state;
+    var live;
+    var self;
+    if (!state || !state.career || !sim.isCareerMode || !sim.isCareerMode(state)) {
+      ui.session.statSnap = null;
+      return;
+    }
+    live = state.career.liveStats || null;
+    self = state.career.stats || null;
+    ui.session.statSnap = {
+      titleId: state.career.titleId || null,
+      // liveStats 是作品维，career.stats 是人物维——两套键不能共用一个循环。
+      live: live ? sim.cloneTitleStats(live, GDS.CONFIG) : null,
+      self: self ? {
+        program: self.program,
+        design: self.design,
+        art: self.art,
+        music: self.music
+      } : null
+    };
+  };
+
+  ui.flashStatDelta = function (elId, before, after) {
+    var el = ui.$(elId);
+    var parent;
+    var floater;
+    var delta;
+    if (!el || before == null || after == null) return;
+    delta = Math.round(after) - Math.round(before);
+    if (!delta) return;
+    parent = el.parentNode;
+    if (!parent) return;
+    floater = doc.createElement("span");
+    floater.className = "stat-float";
+    floater.textContent = (delta > 0 ? "+" : "") + delta;
+    parent.appendChild(floater);
+    root.setTimeout(function () {
+      if (floater.parentNode) floater.parentNode.removeChild(floater);
+    }, 500);
+  };
+
+  ui.flashCareerStatDeltas = function () {
+    var snap = ui.session.statSnap;
+    var state = ui.session.state;
+    var live;
+    var self;
+    ui.session.statSnap = null;
+    if (!snap || !state || !state.career) return;
+    self = state.career.stats || {};
+    if (snap.self) {
+      ui.flashStatDelta("hq-self-p", snap.self.program, self.program);
+      ui.flashStatDelta("hq-self-d", snap.self.design, self.design);
+      ui.flashStatDelta("hq-self-a", snap.self.art, self.art);
+      ui.flashStatDelta("hq-self-m", snap.self.music, self.music);
+    }
+    live = state.career.liveStats;
+    if (snap.live && live && snap.titleId && snap.titleId === state.career.titleId) {
+      ["p", "d", "a", "m"].forEach(function (suffix, i) {
+        var d = sim.titleDims(GDS.CONFIG)[i];
+        ui.flashStatDelta("hq-live-" + suffix, snap.live[d], live[d]);
+      });
+    }
+  };
+
   ui.finishTickUi = function () {
     ui.closeDlg();
     ui.$("btn-tick").disabled = false;
+    if (ui.$("btn-tick-skip")) ui.$("btn-tick-skip").disabled = false;
     GDS.save.persist(ui.session.state);
     ui.paintHq();
-    ui.paintMedia();
     ui.paintTga();
-    if (ui.session.state.phase === "BANKRUPT") ui.show("sc-bankrupt");
-    else if (ui.session.state.phase === "SETTLED") ui.show("sc-settled");
+    ui.flashCareerStatDeltas();
+    if (ui.session.state.phase === "SETTLED") ui.show("sc-settled");
     else ui.show("sc-hq");
+  };
+
+  ui.runTickResult = function (tick) {
+    ui.session.state = tick.state;
+    ui.session.tickPages = tick.queue || [];
+    ui.session.tickStep = 0;
+    if (!ui.session.tickPages.length) {
+      ui.finishTickUi();
+      return;
+    }
+    ui.showTickPage();
   };
 
   ui.showTickPage = function () {
@@ -150,47 +226,6 @@
     ui.finishTickUi();
   };
 
-  ui.releaseReadyGame = function (gameId) {
-    var config = cfg();
-    if (!ui.session.state) return;
-    var result = sim.releaseGame(ui.session.state, gameId, config);
-    if (!result || !result.ok) {
-      ui.toast(sim.errorMessage(result && result.error));
-      return;
-    }
-    ui.session.state = result.state;
-    GDS.save.persist(result.state);
-    var rec = result.rec;
-    ui.paintHq();
-    ui.paintProject();
-    ui.paintReleased();
-    ui.paintMedia();
-    if (rec && rec.media) {
-      var copy = config.copy || {};
-      ui.openDlg({
-        mode: "once",
-        kind: "info",
-        kicker: "发售",
-        title: "媒体评分 · " + rec.title,
-        body: copy.mediaRevealHint || "",
-        hideOk: true,
-        hideActions: true,
-        okText: "好的"
-      });
-      ui.startMediaReveal(rec, {
-        hint: copy.mediaRevealHint || "",
-        onDone: function () { ui.unlockDlgOk("好的"); }
-      });
-    } else {
-      ui.toast("发布了《" + ((rec && rec.title) || "") + "》");
-    }
-  };
-
-  function idOf(list, name) {
-    for (var i = 0; i < list.length; i++) if (sim.displayName(list[i]) === name) return list[i].id;
-    return list[0] && list[0].id;
-  }
-
   function bind() {
     var config = cfg();
     ui.paintStaticCopy();
@@ -215,60 +250,88 @@
           }
           if (saved && saved.mode === "career" && saved.phase === "OFFER" && saved.career) {
             ui.session.state = saved;
-            ui.session.pendingName = saved.career.characterName;
-            ui.session.pendingRole = saved.career.roleId;
+            ui.$("name-input").value = saved.career.characterName || copyC.defaultName;
             ui.paintCareerOffers();
             ui.show("sc-offer");
             return;
           }
-          ui.session.pendingName = v;
-          ui.paintCareerRoles();
-          ui.show("sc-role");
+          ui.enterCareerFromStart(v, config);
         });
       });
     });
 
-    ui.$("btn-role").addEventListener("click", function () {
-      var copyC = sim.careerCopy(config);
-      var roleId = ui.session.pendingRole;
-      var name = ui.session.pendingName || copyC.defaultName;
-      if (!roleId) { ui.toast(sim.errorMessage(sim.ERR.CAREER_ROLE_INVALID)); return; }
-      ui.session.state = sim.createCareerGame(name, roleId, config);
+    ui.$("btn-reroll").addEventListener("click", function () {
+      ui.rerollCareerStart(config);
+    });
+
+    function startRollRerolls(config) {
+      var spec = ((config.careerWorld || {}).player || {}).startRoll || {};
+      return spec.rerolls != null ? spec.rerolls : 3;
+    }
+
+    function scratchRng() {
+      return { rngSeed: (Date.now() % 100000) + 17, rngCount: 0 };
+    }
+
+    ui.enterCareerFromStart = function (name, config) {
+      var draft = ui.session.startRoll || {};
+      if (!draft.roleId) { ui.toast(sim.errorMessage(sim.ERR.CAREER_ROLE_INVALID)); return; }
+      ui.session.state = sim.createCareerGame(name, draft.roleId, config, {
+        stats: draft.stats,
+        genreIds: draft.genreIds,
+        gameplayIds: draft.gameplayIds,
+        traitIds: draft.traitIds || (draft.traitId ? [draft.traitId] : [])
+      });
+      ui.session.startRoll = null;
+      ui.session.rollsLeft = null;
       ui.paintCareerOffers();
       ui.show("sc-offer");
       GDS.save.persist(ui.session.state);
-    });
+    };
 
-    function backToBoot() { ui.show("sc-boot"); }
+    ui.rerollCareerStart = function (config) {
+      var copyC = sim.careerCopy(config);
+      if ((ui.session.rollsLeft || 0) <= 0) {
+        ui.toast(copyC.rollEmpty || "重掷机会用完了。");
+        return;
+      }
+      ui.session.rollsLeft -= 1;
+      ui.session.startRoll = sim.rollCareerStart(scratchRng(), config);
+      ui.paintCareerStartRoll();
+    };
+
+    ui.prepareCareerStart = function () {
+      var config = cfg();
+      if (!ui.session.startRoll) {
+        ui.session.rollsLeft = startRollRerolls(config);
+        ui.session.startRoll = sim.rollCareerStart(scratchRng(), config);
+      }
+      ui.paintCareerStartRoll();
+    };
+
+    ui.prepareCareerStart();
+
+    function backToBoot() {
+      ui.session.state = null;
+      ui.session.startRoll = null;
+      ui.session.rollsLeft = null;
+      ui.prepareCareerStart();
+      ui.show("sc-boot");
+    }
     ui.$("btn-restart").addEventListener("click", backToBoot);
     ui.$("btn-again1").addEventListener("click", backToBoot);
-    ui.$("btn-again2").addEventListener("click", backToBoot);
 
     doc.querySelectorAll("[data-go]").forEach(function (el) {
       el.addEventListener("click", function () {
         if (!ui.session.state) { ui.toast("先开张"); return; }
         var go = el.getAttribute("data-go");
-        var blocked = {
-          market: 1, pitch: 1, relocate: 1, ad: 1, studio: 1, liveops: 1,
-          released: 1, project: 1, bankrupt: 1
-        };
-        if (sim.isCareerMode(ui.session.state) && blocked[go]) return;
         ui.closeDockSheets();
-        if (go === "market") ui.paintMarket();
-        if (go === "pitch") ui.paintPitch();
-        if (go === "project") ui.paintProject();
-        if (go === "liveops") ui.paintLiveops();
-        if (go === "studio") ui.paintStudio();
-        if (go === "media") ui.paintMedia();
-        if (go === "tga") ui.paintTga();
-        if (go === "released") ui.paintReleased();
         if (go === "share") ui.paintShare();
+        if (go === "tga") ui.paintTga();
         if (go === "calendar") ui.paintCalendar();
         if (go === "resume") ui.paintResume && ui.paintResume();
         if (go === "player") ui.paintPlayer && ui.paintPlayer();
         if (go === "settled") ui.paintEnds();
-        if (go === "bankrupt") ui.paintEnds();
-        if (go === "relocate" || go === "ad") ui.paintStaticCopy();
         ui.show("sc-" + go);
       });
     });
@@ -279,106 +342,42 @@
     });
     ui.$("btn-dock-back").addEventListener("click", ui.goBack);
 
-    ui.$("btn-relocate").addEventListener("click", function () {
-      if (!ui.session.state) return;
-      var scale = ui.session.state.company.scale;
-      ui.applySim(sim.relocate(ui.session.state, config), "换了场地，现在是" + sim.scaleLabel(scale === "small" ? "medium" : "large", config), function () {
-        ui.paintStaticCopy();
-        ui.paintHq();
-        ui.show("sc-hq");
-      });
-    });
-
-    ui.$("btn-ad").addEventListener("click", function () {
-      if (!ui.session.state) return;
-      ui.applySim(sim.buyAd(ui.session.state, config), "粉丝涨了，加持挂在下一款发售上", function () {
-        ui.paintHq();
-        ui.show("sc-hq");
-      });
-    });
-
-    doc.querySelectorAll("[data-type]").forEach(function (el) {
-      el.addEventListener("click", function () {
-        doc.querySelectorAll("[data-type]").forEach(function (x) { x.classList.remove("on"); });
-        el.classList.add("on");
-      });
-    });
-    doc.querySelectorAll("[data-cyc]").forEach(function (el) {
-      el.addEventListener("click", function () {
-        doc.querySelectorAll("[data-cyc]").forEach(function (x) { x.classList.remove("on"); });
-        el.classList.add("on");
-      });
-    });
-
-    ui.$("btn-pitch").addEventListener("click", function () {
-      if (!ui.session.state) return;
-      var title = ui.$("game-title").value.replace(/^\s+|\s+$/g, "") || "未命名游戏";
-      var typeEl = doc.querySelector("[data-type].on");
-      var cycEl = doc.querySelector("[data-cyc].on");
-      var releaseType = typeEl ? typeEl.getAttribute("data-type") : "boxed";
-      var picked = [];
-      ui.$("pitch-team").querySelectorAll(".chip.on").forEach(function (b) {
-        picked.push(b.getAttribute("data-sid"));
-      });
-      GDS.bridge.auditText(title).then(function (res) {
-        if (!res.ok) { ui.toast(res.message); return; }
-        var gName = ui.session.pitchPick.genre;
-        var pName = ui.session.pitchPick.play;
-        var platName = ui.session.pitchPick.plat;
-        var studio = ui.session.state.studios[0];
-        var producerId = (studio && studio.leadId && picked.indexOf(studio.leadId) >= 0) ? studio.leadId : picked[0];
-        var result = sim.pitchProject(ui.session.state, {
-          title: title,
-          genreId: idOf(config.content.genres, gName),
-          gameplayId: idOf(config.content.gameplay, pName),
-          platformId: idOf(sim.platformsNow(ui.session.state, config), platName),
-          releaseType: releaseType,
-          cycle: cycEl ? cycEl.getAttribute("data-cyc") : "medium",
-          producerId: producerId,
-          memberIds: picked,
-          studioId: studio ? studio.id : null
-        }, config);
-        var months = result.ok ? sim.cycleMonths(cycEl ? cycEl.getAttribute("data-cyc") : "medium", config, releaseType) : 0;
-        ui.applySim(result, result.ok ? ("「" + title + "」开工了，做 " + months + " 个月") : "", function () {
-          ui.paintHq();
-          ui.show("sc-hq");
-        });
-      });
-    });
-
-    ui.$("btn-studio").addEventListener("click", function () {
-      if (!ui.session.state) return;
-      var nm = ui.$("studio-name").value.replace(/^\s+|\s+$/g, "") || "夜猫组";
-      var leadChip = ui.$("studio-leads").querySelector(".chip.on");
-      var leadId = leadChip ? leadChip.getAttribute("data-lead") : (ui.session.state.staff[0] && ui.session.state.staff[0].id);
-      GDS.bridge.auditText(nm).then(function (res) {
-        if (!res.ok) { ui.toast(res.message); return; }
-        ui.applySim(sim.foundStudio(ui.session.state, nm, leadId, config), "工作室「" + nm + "」成立，负责人默认当制作人", function () {
-          ui.paintStudio();
-        });
-      });
-    });
-
     ui.$("btn-tick").addEventListener("click", function () {
       if (ui.$("btn-tick").classList.contains("off") || ui.$("btn-tick").disabled) return;
       if (!ui.session.state || ui.session.state.phase !== "PLAYING") { ui.toast("这一局已经结束"); return; }
       ui.closeDockSheets();
       ui.$("btn-tick").disabled = true;
+      if (ui.$("btn-tick-skip")) ui.$("btn-tick-skip").disabled = true;
       try {
-        var tick = sim.tickMonth(ui.session.state, config);
-        ui.session.state = tick.state;
-        ui.session.tickPages = tick.queue || [];
-        ui.session.tickStep = 0;
-        if (!ui.session.tickPages.length) {
-          ui.finishTickUi();
-          return;
-        }
-        ui.showTickPage();
+        ui.captureCareerStatSnap();
+        ui.runTickResult(sim.tickMonth(ui.session.state, config));
       } catch (err) {
+        ui.session.statSnap = null;
         ui.$("btn-tick").disabled = false;
+        if (ui.$("btn-tick-skip")) ui.$("btn-tick-skip").disabled = false;
         ui.toast("过月没走完，再点一次");
       }
     });
+
+    if (ui.$("btn-tick-skip")) {
+      ui.$("btn-tick-skip").addEventListener("click", function () {
+        if (ui.$("btn-tick-skip").classList.contains("off") || ui.$("btn-tick-skip").disabled) return;
+        if (!ui.session.state || ui.session.state.phase !== "PLAYING") { ui.toast("这一局已经结束"); return; }
+        if (!sim.isCareerMode || !sim.isCareerMode(ui.session.state)) return;
+        ui.closeDockSheets();
+        ui.$("btn-tick").disabled = true;
+        ui.$("btn-tick-skip").disabled = true;
+        try {
+          ui.captureCareerStatSnap();
+          ui.runTickResult(sim.tickCareerToDecision(ui.session.state, config));
+        } catch (err) {
+          ui.session.statSnap = null;
+          ui.$("btn-tick").disabled = false;
+          ui.$("btn-tick-skip").disabled = false;
+          ui.toast("过月没走完，再点一次");
+        }
+      });
+    }
 
     ui.$("dlg-ok").addEventListener("click", function () {
       if (ui.session.dlgHook.mode === "tick") {
@@ -401,7 +400,7 @@
       if (t.nodeType !== 1 && t.parentElement) t = t.parentElement;
       if (!t || !t.getAttribute) return;
       if (t.closest) {
-        var bound = t.closest("[data-offer],[data-role],[data-release],[data-tga-year],[data-hop-pick],[data-hop-apply],[data-hop-offer],[data-promote],[data-event-opt]");
+        var bound = t.closest("[data-offer],[data-tga-year],[data-hop-pick],[data-hop-apply],[data-hop-offer],[data-promote],[data-event-opt]");
         if (bound) t = bound;
       }
       var offerId = t.getAttribute("data-offer");
@@ -410,17 +409,6 @@
           ui.paintHq();
           ui.show("sc-hq");
         });
-        return;
-      }
-      var rolePick = t.getAttribute("data-role");
-      if (rolePick) {
-        ui.session.pendingRole = rolePick;
-        ui.paintCareerRoles();
-        return;
-      }
-      var releaseId = t.getAttribute("data-release");
-      if (releaseId) {
-        ui.releaseReadyGame(releaseId);
         return;
       }
       var yearChip = t.closest ? t.closest("[data-tga-year]") : null;

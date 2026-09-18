@@ -1,6 +1,9 @@
 (function (root) {
   var sim = root.GDS.sim;
   var PLAYABLE = ["programmer", "art", "design", "music"];
+  // DIMS 是「人物维」：员工与玩家的属性（roles[].stat / jobRanks / career.stats / 同事 stats）。
+  // 「作品维」（play/fun/expression/immersion）一律走 sim.titleDims(config)，两者靠
+  // quality.personToTitle 系数矩阵换算。不要拿 DIMS 去索引作品 stats，也不要拿作品维索引员工。
   var DIMS = ["program", "design", "art", "music"];
 
   function num(v, fallback) {
@@ -22,12 +25,52 @@
     return out;
   }
 
+  sim.catalogEraStatMult = function (title, config) {
+    var world = sim.careerWorld(config);
+    var era = ((world && world.quality) || {}).eraStatScale || {};
+    var y, startY, endY, startM, endM, t;
+    if (!era || era.enabled === false) return 1;
+    if (!title || title.virtual) return 1;
+    if (era.landmarksOnly && !title.landmark) return 1;
+    y = num(title.releaseYear, 0);
+    startY = era.startYear != null ? num(era.startYear, 1995) : 1995;
+    endY = era.endYear != null ? num(era.endYear, 2025) : 2025;
+    startM = era.startMult != null ? num(era.startMult, 1) : 1;
+    endM = era.endMult != null ? num(era.endMult, 1) : 1;
+    if (endY <= startY) return y <= startY ? startM : endM;
+    t = (y - startY) / (endY - startY);
+    if (t < 0) t = 0;
+    if (t > 1) t = 1;
+    return startM + (endM - startM) * t;
+  };
+
+  sim.catalogTitleBaseStats = function (title, config) {
+    var out = sim.cloneTitleStats(title && title.stats, config);
+    var dims = sim.titleDims(config);
+    var mult, i, k, q, min, max;
+    if (!title || title.virtual) return out;
+    mult = sim.catalogEraStatMult(title, config);
+    if (mult !== 1) {
+      q = (sim.careerWorld(config).quality) || {};
+      min = q.statMin != null ? num(q.statMin, 0) : 0;
+      max = q.statMax;
+      for (i = 0; i < dims.length; i++) {
+        k = dims[i];
+        out[k] = Math.round(num(out[k], 0) * mult);
+        if (out[k] < min) out[k] = min;
+        if (max != null && !q.liveCanExceedMax && out[k] > max) out[k] = max;
+      }
+    }
+    return out;
+  };
+
   sim.applyCatalogStatJitter = function (st, stats, config) {
     var world = sim.careerWorld(config);
     var q = (world && world.quality) || {};
     var minPct = q.statJitterMinPct;
     var maxPct = q.statJitterMaxPct;
-    var out = cloneStats(stats);
+    var out = sim.cloneTitleStats(stats, config);
+    var dims = sim.titleDims(config);
     var i, k, pct, tmp;
     if (minPct == null) minPct = 0;
     if (maxPct == null) maxPct = 0;
@@ -39,8 +82,8 @@
       maxPct = tmp;
     }
     if (!st || (minPct === 0 && maxPct === 0)) return out;
-    for (i = 0; i < DIMS.length; i++) {
-      k = DIMS[i];
+    for (i = 0; i < dims.length; i++) {
+      k = dims[i];
       pct = sim.irand(st, minPct, maxPct);
       out[k] = Math.ceil(num(out[k], 0) * (1 + pct / 100));
       if (out[k] < 0) out[k] = 0;
@@ -49,8 +92,8 @@
   };
 
   function catalogStatsForWorld(st, title, config) {
-    if (!title || title.virtual) return cloneStats(title && title.stats);
-    return sim.applyCatalogStatJitter(st, title.stats, config);
+    if (!title || title.virtual) return sim.cloneTitleStats(title && title.stats, config);
+    return sim.applyCatalogStatJitter(st, sim.catalogTitleBaseStats(title, config), config);
   }
 
   function cloneXpMap(src) {
@@ -526,19 +569,24 @@
     return sim.defaultStudioId(co);
   }
 
+  // 邀约/跳槽时"挂到哪部作"：只挂当年月真的在开发（titleCoversMonth）的目录作。
+  // 旧实现在找不到时会兜底到 nextCatalogTitle()——那是"下一档还没开工的真作"，
+  // 玩家于是被挂在一部几年后才开工的作品上，过月被判空窗，一两个月后被塞一部虚拟作。
+  // 找不到就返回 null，交回 joinCompany 走 assignCareerProject 的统一判定。
   function pickScriptedInviteTitle(st, companyId, preferredId, config) {
-    var preferred, det, assigned, next, studioId;
+    var preferred, det, assigned, studioId;
     studioId = defaultStudioForCompany(companyId, config);
     preferred = preferredId ? sim.careerTitle(preferredId, config, st) : null;
     det = preferredId ? sim.careerTitleDetail(preferredId, config, st) : null;
     if (preferred && det && sim.titleCoversMonth && sim.titleCoversMonth(preferred, det, st.year, st.month)) {
       return preferredId;
     }
+    // 先看玩家会进的那个工作室，再看全公司（有些在研作挂在别的工作室）。
+    // 虚拟作不算：那是空窗的产物，不能拿它当"有活干"。
     assigned = sim.pickCareerAssignment(companyId, st.year, st.month, config, st, studioId);
-    if (assigned) return assigned.id;
-    next = sim.nextCatalogTitle(st, config, companyId, studioId);
-    if (next) return next.id;
-    if (preferred) return preferredId;
+    if (assigned && !assigned.virtual) return assigned.id;
+    assigned = sim.pickCareerAssignment(companyId, st.year, st.month, config, st, null);
+    if (assigned && !assigned.virtual) return assigned.id;
     return null;
   }
 
@@ -622,7 +670,9 @@
       if (!bond) continue;
       home = bondHomeCompanyId(bond);
       was = bond.colocated !== false;
-      now = companyOrSuccessorMatch(home, playerCo, config);
+      // bond.departed：剧情已经把这个人判成"离队"（如后辈线 juniorLeave）。
+      // 离队是既成事实，不因为玩家还留在原公司就被重算拉回"坐在旁边"。
+      now = bond.departed ? false : companyOrSuccessorMatch(home, playerCo, config);
       bond.colocated = now;
       noteBondRemoteFlip(st, k, was, now, config);
     }
@@ -646,8 +696,9 @@
     if (!st.career.bonds) st.career.bonds = { mentor: null, peer: null, junior: null };
     co = sim.careerCompany(st.career.companyId, config);
     seniors = sim.careerSeniors(co, config);
-    if (!st.career.bonds.mentor && seniors.length) {
-      senior = seniors[0];
+    if (!st.career.bonds.mentor) {
+      // 公司可无前辈：无前辈时建立“占位导师”（以公司名指代），保证师徒玩法不崩
+      senior = seniors[0] || { id: null, name: (co && co.name) || "公司", alias: (co && co.alias) || (co && co.name) || "公司", title: "", departYear: null, successorCompanyId: null, successorSeniorId: null };
       st.career.bonds.mentor = stampBondHome({
         seniorId: senior.id,
         companyId: st.career.companyId,
@@ -705,11 +756,215 @@
       bond = b[k];
       if (!bond) continue;
       if (bond.colocated && st.career.companyId) {
-        bond.monthsTogether = num(bond.monthsTogether, 0) + 1;
+        bond.monthsTogether = num(bond.monthsTogether, 0) +
+          Math.max(0, 1 + sim.careerTraitSum(st, "bondTogetherBonus", config));
       } else {
-        bond.monthsApart = num(bond.monthsApart, 0) + 1;
+        // bondApartDelta：分离月数增量的通用钩子（-1 即冻结）。当前没有天赋用它——
+        // monthsApart 全仓还没有读取点，写进天赋等于白写（见 tests 的 careerTraitsStayOnLiveKeys）。
+        bond.monthsApart = num(bond.monthsApart, 0) +
+          Math.max(0, 1 + sim.careerTraitSum(st, "bondApartDelta", config));
       }
     }
+  };
+
+  function careerTraits(st) {
+    if (!st || !st.career) return [];
+    return st.career.traits || [];
+  }
+
+  sim.careerTraitIds = function (st) {
+    return careerTraits(st).slice();
+  };
+
+  sim.hasCareerTrait = function (st, id) {
+    return careerTraits(st).indexOf(id) >= 0;
+  };
+
+  sim.careerTraitMult = function (st, key, config, dflt) {
+    var m = 1;
+    var found = false;
+    careerTraits(st).forEach(function (id) {
+      var t = sim.traitDef(id, config);
+      if (!t || t[key] == null) return;
+      m *= num(t[key], 1);
+      found = true;
+    });
+    return found ? m : (dflt == null ? 1 : dflt);
+  };
+
+  sim.careerTraitSum = function (st, key, config) {
+    var s = 0;
+    careerTraits(st).forEach(function (id) {
+      var t = sim.traitDef(id, config);
+      if (t && t[key] != null) s += num(t[key], 0);
+    });
+    return s;
+  };
+
+  // 天赋的「收益轴」：抽多条时同轴只出一条（见 traits-draft §12.5）。没标 axis 的按各自独立处理，
+  // 这样新增天赋忘标 axis 时只是少一层去重，不会把别人挤掉。
+  sim.careerTraitAxis = function (id, config) {
+    var t = sim.traitDef(id, config);
+    return (t && t.axis) || ("$" + id);
+  };
+
+  // 风口猎手 / 古董商：熟练度加成按「是否踩中当前潮流」分派倍率。
+  sim.careerTrendSkillMult = function (st, title, config) {
+    var hits;
+    if (!st || !st.career) return 1;
+    hits = !!sim.matchesTrend(
+      { genreId: title && title.genreId, gameplayId: title && title.gameplayId },
+      st.trend
+    );
+    return hits
+      ? sim.careerTraitMult(st, "skillBonusTrendOnMult", config, 1)
+      : sim.careerTraitMult(st, "skillBonusTrendOffMult", config, 1);
+  };
+
+  sim.careerYearsElapsed = function (st, config) {
+    var cal = (sim.careerWorld(config).timeline) || {};
+    return num(st && st.year, num(cal.startYear, 1995)) - num(cal.startYear, 1995);
+  };
+
+  sim.careerTraitStatGrowthMult = function (st, config) {
+    var m = 1;
+    var y = sim.careerYearsElapsed(st, config);
+    careerTraits(st).forEach(function (id) {
+      var t = sim.traitDef(id, config);
+      if (!t) return;
+      if (t.splitYear != null) {
+        m *= num(y < t.splitYear ? t.earlyStatGrowthMult : t.lateStatGrowthMult, 1);
+      } else if (t.statGrowthMult != null) {
+        m *= num(t.statGrowthMult, 1);
+      }
+    });
+    return m;
+  };
+
+  sim.rollCareerTraitDraw = function (st, config) {
+    var spec = sim.careerWorld(config).careerTraits || {};
+    var ids = sim.traitIds(config, "career");
+    var n = Math.min(num(spec.drawCount, 3), ids.length);
+    var pool = ids.map(function (id) {
+      var t = sim.traitDef(id, config);
+      return { id: id, weight: num(t && t.drawWeight, 1) };
+    });
+    var out = [];
+    var i, choice;
+    for (i = 0; i < n; i++) {
+      if (!pool.length) break;
+      choice = sim.pickWeighted(st, pool);
+      if (!choice) break;
+      out.push(choice.id);
+      pool = pool.filter(function (x) { return x.id !== choice.id; });
+    }
+    return out;
+  };
+
+  sim.rollCareerStart = function (st, config) {
+    var world = sim.careerWorld(config);
+    var spec = ((world.player || {}).startRoll) || {};
+    var px = world.playerXp || {};
+    var q = world.quality || {};
+    var cap = q.statMax;
+    var totalMin = num(spec.totalMin, 30);
+    var totalMax = num(spec.totalMax, 50);
+    var spread = num(spec.weightSpread, 3);
+    var total = sim.irand(st, totalMin, totalMax);
+    var i, k, sumW, acc, best, role, choice;
+    var weights = [];
+    var stats = {};
+    var left = total;
+    // 先 roll 总属性，再按随机权重把点数分到四维（每维至少 1 点）。
+    for (i = 0; i < DIMS.length; i++) weights.push(1 + sim.rand(st) * spread);
+    sumW = 0;
+    for (i = 0; i < weights.length; i++) sumW += weights[i];
+    for (i = 0; i < DIMS.length; i++) {
+      k = DIMS[i];
+      stats[k] = i === DIMS.length - 1
+        ? left
+        : Math.max(1, Math.min(left - (DIMS.length - 1 - i), Math.round(total * weights[i] / sumW)));
+      left -= stats[k];
+    }
+    if (cap != null) {
+      for (i = 0; i < DIMS.length; i++) {
+        k = DIMS[i];
+        if (stats[k] > cap) stats[k] = cap;
+      }
+    }
+    // 最高的一维定擅长主职；并列时随机取一。
+    best = [DIMS[0]];
+    for (i = 1; i < DIMS.length; i++) {
+      if (stats[DIMS[i]] > stats[best[0]]) best = [DIMS[i]];
+      else if (stats[DIMS[i]] === stats[best[0]]) best.push(DIMS[i]);
+    }
+    best = [sim.pick(st, best)];
+    role = null;
+    (sim.careerPlayableRoles(config) || []).forEach(function (r) {
+      if (!role && best.indexOf(r.stat) >= 0) role = r;
+    });
+    // 天赋按 drawWeight 抽 traitCountMin~traitCountMax 条（默认 1~3，不重复）；入行熟练与属性同一掷一起出。
+    // traitAxisDistinct：同一「收益轴」最多出一条 —— 否则三条产出向能叠到 ×1.8 的强度爆炸，
+    // 且叠在一起的正负修正会互相抵消（工作狂 × 学得快 = 月贡献净 1.0），玩家拿了两张却感觉不到。
+    var minN = Math.max(0, Math.round(num(spec.traitCountMin, num(spec.traitCount, 1))));
+    var maxN = Math.max(minN, Math.round(num(spec.traitCountMax, minN)));
+    var traitCount = maxN > minN ? sim.irand(st, minN, maxN) : minN;
+    var axisDistinct = spec.traitAxisDistinct !== false;
+    var traitPool = sim.traitIds(config, "career").map(function (id) {
+      var t = sim.traitDef(id, config);
+      return { id: id, weight: num(t && t.drawWeight, 1) };
+    });
+    var traitIds = [];
+    var usedAxis = {};
+    for (i = 0; i < traitCount && traitPool.length; i++) {
+      choice = sim.pickWeighted(st, traitPool);
+      if (!choice) break;
+      traitIds.push(choice.id);
+      usedAxis[sim.careerTraitAxis(choice.id, config)] = true;
+      traitPool = traitPool.filter(function (x) {
+        if (x.id === choice.id) return false;
+        if (axisDistinct && usedAxis[sim.careerTraitAxis(x.id, config)]) return false;
+        return true;
+      });
+    }
+    return {
+      total: total,
+      stats: stats,
+      mainDim: best[0],
+      roleId: role ? role.id : null,
+      traitIds: traitIds,
+      traitId: traitIds[0] || null,
+      genreIds: pickAbleIds(st, (config.content || {}).genres, num(px.startingAbleGenreCount, 0)),
+      gameplayIds: pickAbleIds(st, (config.content || {}).gameplay, num(px.startingAbleGameplayCount, 0))
+    };
+  };
+
+  sim.pickCareerTrait = function (state, traitId, config) {
+    var st = sim.clone(state);
+    var t;
+    if (!st || !st.career) return st;
+    if (st.career.traitsLocked) return st;
+    if (st.phase !== "OFFER") return st;
+    t = sim.traitDef(traitId, config);
+    if (!t || (t.scope || "staff") !== "career") return st;
+    st.career.traits = [traitId];
+    st.career.traitsLocked = true;
+    return st;
+  };
+
+  sim.careerTraitName = function (st, config) {
+    return careerTraits(st).map(function (id) {
+      var t = sim.traitDef(id, config);
+      return t && t.displayName ? t.displayName : id;
+    }).join(" / ");
+  };
+
+  sim.careerTraitLine = function (st, config) {
+    return careerTraits(st).map(function (id) {
+      var t = sim.traitDef(id, config);
+      if (!t) return "";
+      return t.summary ? (t.displayName + "：" + t.summary) : t.displayName;
+    }).filter(Boolean).join(" ");
   };
 
   sim.ensureCareerJuniorBond = function (st, config) {
@@ -771,13 +1026,17 @@
     return ((sim.careerWorld(config).eventLines) || {}).bonds || {};
   }
 
-  function pickPeerEpicTitle(st, config) {
+  // 「和同事一起搭一部史诗作」的候选作。准入（mobility.requireInDevTitle.scripted）：
+  // 只挑**当月正在开发**的史诗作——只按"发售年还没到"筛，会挑到几年后才开工的那部，
+  // 玩家于是被挂在一部还没开工的作上，过月被判空窗，一两个月后被塞一部虚拟作。
+  function peerEpicPool(st, config) {
     var spec = eventLinesBonds(config).peerEpic || {};
     var titles = sim.careerWorld(config).titles || [];
     var minPrestige = spec.minPrestige != null ? spec.minPrestige : 4;
     var landmarkOnly = spec.landmarkOnly !== false;
+    var needsWork = requireInDevTitle(config, "scripted");
     var pool = [];
-    var i, t, co;
+    var i, t, co, det;
     for (i = 0; i < titles.length; i++) {
       t = titles[i];
       if (!t || t.virtual) continue;
@@ -786,37 +1045,63 @@
       if (st.career && t.companyId === st.career.companyId) continue;
       co = sim.careerCompany(t.companyId, config);
       if (!sim.companyJoinable(co, st.year)) continue;
-      if (t.releaseYear != null && t.releaseYear < st.year) continue;
+      if (needsWork) {
+        det = sim.careerTitleDetail(t.id, config, st);
+        if (!det || !sim.titleCoversMonth(t, det, st.year, st.month)) continue;
+      } else if (t.releaseYear != null && t.releaseYear < st.year) {
+        continue;
+      }
       pool.push(t);
     }
+    return pool;
+  }
+
+  function pickPeerEpicTitle(st, config) {
+    var pool = peerEpicPool(st, config);
     if (!pool.length) return null;
     return sim.pick(st, pool) || pool[0];
   }
 
+  // RNG-free：只回答"有没有这样的史诗作"。给选项 skipIf 用。
+  sim.hasPeerEpicTarget = function (st, config) {
+    return peerEpicPool(st, config).length > 0;
+  };
+
+  // 回国线的落点。只有"当月真的在研一部目录作"的公司接得住这名回国的员工：
+  // 挂进一家当月空着的公司，玩家过月就被判空窗，一两个月后被自动塞一部虚拟作
+  // （"我明明在做暖暖环游世界，过月怎么变成一个没听过的游戏了"）。
+  // 小T 所在的那家不成立就返回 null（回国线靠 when.requireInDevTarget 等它成立）。
   function pickReturnInviteTarget(st, config) {
     var spec = eventLinesBonds(config).returnInvite || {};
     var junior = st.career && st.career.bonds && st.career.bonds.junior;
     var ids = spec.companyIds || ["mihoyo", "hypergryph", "paperGames"];
     var byCo = spec.titlesByCompany || {};
-    var i, id, co;
-    if (junior && junior.revealCompanyId) {
-      co = sim.careerCompany(junior.revealCompanyId, config);
-      if (co) {
-        return {
-          companyId: junior.revealCompanyId,
-          titleId: junior.revealTitleId || byCo[junior.revealCompanyId] || null
-        };
-      }
+    var order = [];
+    var i, id, co, hit;
+    if (junior && junior.revealCompanyId) order.push(junior.revealCompanyId);
+    else {
+      for (i = 0; i < ids.length; i++) order.push(ids[i]);
     }
-    for (i = 0; i < ids.length; i++) {
-      id = ids[i];
+    for (i = 0; i < order.length; i++) {
+      id = order[i];
       co = sim.careerCompany(id, config);
-      if (co) {
-        return { companyId: id, titleId: byCo[id] || null };
-      }
+      if (!co) continue;
+      // 准入看全公司（哪个工作室有活都行），具体挂哪部交给 pickScriptedInviteTitle。
+      hit = sim.companyInDevCatalogTitle(id, st, config, null);
+      if (!hit) continue;
+      return {
+        companyId: id,
+        titleId: (junior && junior.revealCompanyId === id && junior.revealTitleId)
+          ? junior.revealTitleId
+          : (byCo[id] || null)
+      };
     }
     return null;
   }
+
+  sim.hasCareerReturnTarget = function (st, config) {
+    return !!pickReturnInviteTarget(st, config);
+  };
 
   sim.applyScriptedCareerInvite = function (st, kind, config) {
     var co, companyId, titleId, roleId, studioId, late, target, title, peer;
@@ -857,7 +1142,15 @@
     }
     co = sim.careerCompany(companyId, config);
     if (!co) return st;
-    studioId = defaultStudioForCompany(companyId, config);
+    // 准入（mobility.requireInDevTitle.scripted）：这家当月手上没活就"这趟不去"，原地不动。
+    // 剧情入口一般已用 skipIf / 等待条件挡住（同事线跳槽/搭史诗作、前辈线跟着走），
+    // 这里是老存档或数据改动后的兜底：宁可不动，也不把人挂进空窗。
+    if (requireInDevTitle(config, "scripted")) {
+      titleId = pickScriptedInviteTitle(st, companyId, titleId, config);
+      if (!titleId) return st;
+    }
+    title = titleId ? sim.careerTitle(titleId, config, st) : null;
+    studioId = (title && title.studioId) || defaultStudioForCompany(companyId, config);
     detachFromProject(st, config);
     joinCompany(st, companyId, roleId, null, titleId, config, studioId, "invite", null);
     if (late && titleId) {
@@ -870,21 +1163,36 @@
     return st;
   };
 
-  function pickStrongHopCompany(st, config) {
+  // 「跳去别家」的候选公司。准入（mobility.requireInDevTitle.scripted）：只考虑当年月真有
+  // 在研目录作的东家——跟着跳过去是为了做事情，不是去坐冷板凳。
+  function strongHopPool(st, config) {
     var companies = sim.careerWorld(config).companies || [];
+    var needsWork = requireInDevTitle(config, "scripted");
     var pool = [];
     var i, co, w;
     for (i = 0; i < companies.length; i++) {
       co = companies[i];
       if (!co || co.id === (st.career && st.career.companyId)) continue;
       if (!sim.companyJoinable(co, st.year)) continue;
+      if (needsWork && !sim.companyInDevCatalogTitle(co.id, st, config, null)) continue;
       w = num(co.power, 1);
       if (w <= 0) w = 1;
       pool.push({ id: co, weight: w });
     }
+    return pool;
+  }
+
+  function pickStrongHopCompany(st, config) {
+    var pool = strongHopPool(st, config);
     if (!pool.length) return null;
     return (sim.pickWeighted(st, pool) || pool[0]).id;
   }
+
+  // RNG-free：只回答"有没有这样的东家"。给选项 skipIf 用——判定函数不能掷骰，
+  // 否则每帧评估一次选项就会搅乱随机流。
+  sim.hasStrongHopTarget = function (st, config) {
+    return strongHopPool(st, config).length > 0;
+  };
 
   sim.careerSignedCreditCount = function (st) {
     var n = 0;
@@ -1002,17 +1310,36 @@
     return st;
   };
 
-  sim.applyCareerMoveStudio = function (st, config) {
-    var co, list, i, next, title;
-    if (!st || !st.career || !st.career.companyId) return st;
+  // 内部调岗的目标工作室（不含当前那个）。准入（mobility.requireInDevTitle.studioMove）：
+  // 优先调去当年月真有在研目录作的工作室——调过去接着做事情，而不是坐进空窗。
+  sim.careerOtherStudioPool = function (st, config) {
+    var co, list, needsWork, pool = [];
+    var i;
+    if (!st || !st.career || !st.career.companyId) return pool;
     co = sim.careerCompany(st.career.companyId, config);
-    list = sim.careerStudios(co);
-    next = null;
+    list = sim.careerStudios(co) || [];
+    needsWork = requireInDevTitle(config, "studioMove");
     for (i = 0; i < list.length; i++) {
-      if (list[i] && list[i].id !== st.career.studioId) {
-        next = list[i];
-        break;
-      }
+      if (!list[i] || list[i].id === st.career.studioId) continue;
+      if (needsWork && !sim.companyInDevCatalogTitle(st.career.companyId, st, config, list[i].id)) continue;
+      pool.push(list[i]);
+    }
+    return pool;
+  };
+
+  sim.applyCareerMoveStudio = function (st, config) {
+    var next, pool, title;
+    if (!st || !st.career || !st.career.companyId) return st;
+    pool = sim.careerOtherStudioPool(st, config);
+    next = pool.length ? pool[0] : null;
+    if (!next && !requireInDevTitle(config, "studioMove")) {
+      (function fallbackAnyStudio() {
+        var list = sim.careerStudios(sim.careerCompany(st.career.companyId, config)) || [];
+        var i;
+        for (i = 0; i < list.length; i++) {
+          if (list[i] && list[i].id !== st.career.studioId) { next = list[i]; return; }
+        }
+      })();
     }
     if (!next) return st;
     closeTenure(st);
@@ -1086,6 +1413,9 @@
   sim.applyCareerJuniorLeave = function (st, config) {
     var junior = st && st.career && st.career.bonds && st.career.bonds.junior;
     if (!junior) return st;
+    // 必须落一个持久标记：refreshCareerBondColocation 每回合按"老家公司 == 现公司"重算
+    // colocated，只设 colocated=false 会在下一回合被拉回 true（人走了又坐回旁边）。
+    junior.departed = true;
     junior.colocated = false;
     void config;
     return st;
@@ -1136,6 +1466,10 @@
     });
     ((cr && cr.credits) || []).forEach(function (c) {
       var title = sim.careerTitle(c.titleId, config, state);
+      var rec = findWorldReleased(state, c.titleId);
+      // 履历的「作品总销量」：首发簿记（stampCareerLaunchSales）盖的是 lifetimeSales，
+      // 目录作 / 后期加入的作品只有 launchSales，兜底读它；两条都缺（没发售过）就不显示。
+      var sales = rec ? num(rec.lifetimeSales != null ? rec.lifetimeSales : rec.launchSales, null) : null;
       credits.push({
         titleId: c.titleId,
         titleLabel: title ? sim.worldLabel(title, config) : c.titleId,
@@ -1152,6 +1486,7 @@
         virtual: !!c.virtual,
         unsigned: !c.shipped,
         score: c.score,
+        sales: sales,
         mainStatDelta: c.mainStatDelta,
         awards: c.awards || [],
         statusLabel: c.shipped
@@ -1191,7 +1526,9 @@
     };
   };
 
-  function grantMainStatAndXp(st, kind, config, title) {
+  // phaseMult：开发月的阶段权重（sim.careerPhaseMult）。0 表示这个月没有实质产出
+  // （金盘期等发售），连职级经验一起停——「这个月你在项目上实际投入了多少」是一个倍率管全部。
+  function grantMainStatAndXp(st, kind, config, title, phaseMult) {
     var spec = jobRankSpec(config);
     var statGain = spec.statGain || {};
     var xpGain = spec.jobXpGain || {};
@@ -1200,8 +1537,10 @@
     var virtual = !!(title && title.virtual);
     var statAmt = 0;
     var xpAmt = 0;
+    var rankBonus, rk, offAmt, pdims, pi, dk;
     var rec;
     if (!st || !st.career) return;
+    phaseMult = num(phaseMult, 1);
     if (kind === "dev") {
       statAmt = num(statGain.perDevMonth, 0);
       xpAmt = num(xpGain.perDevMonth, 0);
@@ -1212,9 +1551,33 @@
       statAmt = num(statGain.perPostLaunchMonth, 0);
       xpAmt = num(xpGain.perPostLaunchMonth, 0);
     }
+    if (st.career.inspirationMonth) {
+      statAmt = 0;
+      xpAmt = 0;
+    } else {
+      if (statAmt) {
+        statAmt = statAmt * phaseMult * sim.careerTraitStatGrowthMult(st, config);
+        // 职级只给对数加成，避免「职级 × 属性」双线性相乘把后期拉爆。
+        rankBonus = num(statGain.rankLogBonus, 0);
+        rk = sim.careerJobRank(st.career, config);
+        if (rankBonus > 0 && rk > 1) statAmt = statAmt * (1 + rankBonus * Math.log(rk) / Math.LN2);
+      }
+      if (xpAmt) xpAmt = xpAmt * phaseMult * sim.careerTraitMult(st, "jobXpMult", config, 1);
+    }
     if (key && statAmt) {
+      // 主职维全量、副维按 offRoleShare 微量跟进——只涨主职维会让玩到后期的角色
+      // 仍是单维怪，副维永远停在开局值。
       if (!st.career.stats) st.career.stats = cloneStats();
       st.career.stats[key] = num(st.career.stats[key], 0) + statAmt;
+      offAmt = statAmt * num(statGain.offRoleShare, 0);
+      if (offAmt > 0) {
+        pdims = sim.personDims(config);
+        for (pi = 0; pi < pdims.length; pi++) {
+          dk = pdims[pi];
+          if (dk === key) continue;
+          st.career.stats[dk] = num(st.career.stats[dk], 0) + offAmt;
+        }
+      }
     }
     if (xpAmt) st.career.jobXp = num(st.career.jobXp, 0) + xpAmt;
     rec = findCredit(st, st.career.titleId);
@@ -1302,6 +1665,33 @@
       if (progress <= until) return p;
     }
     return phases[phases.length - 1];
+  };
+
+  // 开发期成长旋钮（career-world.json 的 development 段）。
+  function careerDevSpec(config) {
+    return (sim.careerWorld(config) || {}).development || {};
+  }
+
+  // 阶段权重：按项目所处阶段缩放「开发月的属性成长 + 作品贡献」。
+  // 立项期在摸需求、学得慢；填充与打磨期反复调优、学得最快；金盘期只等压盘，无实质产出（0）。
+  // 参数是阶段 id 而不是 state：调用方（tick）手上已经有 projectView.phase，不必再算一次。
+  // 长线运营月的 phase 是 postLaunch.phase（id="support"），查不到表项自然回退 default 1。
+  sim.careerPhaseMult = function (phaseId, config) {
+    var spec = careerDevSpec(config);
+    var table = spec.phaseMult || {};
+    var v = phaseId != null ? table[phaseId] : null;
+    return v == null ? num(spec.phaseMultDefault, 1) : num(v, 1);
+  };
+
+  // 体量阻尼：一个人在小项目里一人多岗、产出占比高；在 3A 里只是螺丝钉。
+  // 只作用在「作品月贡献」上，不动属性成长——大项目跟着强团队学得多，不等于个人功劳大。
+  // 体量取 company.power（虚拟作兜底读 title.power），同 sim.careerLaunchSales 的口径。
+  sim.careerPowerContribMult = function (title, config) {
+    var spec = careerDevSpec(config);
+    var table = spec.powerContribMult || {};
+    var p = titlePower(title, config);
+    var v = p != null ? table[p] : null;
+    return v == null ? num(spec.powerContribDefault, 1) : num(v, 1);
   };
 
   sim.titleCoversMonth = function (title, detail, year, month) {
@@ -1443,6 +1833,17 @@
       return (a.releaseMonth || 1) - (b.releaseMonth || 1);
     });
     return pool[0];
+  };
+
+  // 一家公司当年月是否真有一部"目录作品"在开发（虚拟作不算：虚拟作本身就是空窗的产物）。
+  // 这是 offer / 邀约的准入条件——企业挖人、发 offer 是为了让人做事情，把人挂进一家
+  // 当月空着的公司，过月就被判空窗，一两个月后被塞一部虚拟作
+  //（见 activity/issues/bug-career-project-swapped-to-virtual.md）。
+  sim.companyInDevCatalogTitle = function (companyId, st, config, studioId) {
+    var hit;
+    if (!companyId || !st) return null;
+    hit = sim.pickCareerAssignment(companyId, st.year, st.month, config, st, studioId);
+    return (hit && !hit.virtual) ? hit : null;
   };
 
   function salarySpec(config) {
@@ -1591,6 +1992,20 @@
     return ref > 0 ? ref : 1;
   }
 
+  // 人物属性 → 产出倍率的唯一换算。属性本身不封顶（career.stats 不夹），但产出必须收敛：
+  // softMax × stat / (stat + softRef)，stat = softRef 时正好 1.0，再往上趋近 softMax 但不越过。
+  // 旧口径 stat / attrRef 是线性无界的——属性 200 时产出 2 倍、300 时 3 倍，中后期直接失控。
+  // 没配 statSoftCap 时退回旧线性口径，免得打错配置把产出打成 0。
+  sim.careerStatFactor = function (stat, config) {
+    var spec = ((sim.careerWorld(config).quality) || {}).statSoftCap || {};
+    var ref = num(spec.ref, 0);
+    var max = num(spec.max, 0);
+    var v = num(stat, 0);
+    if (!(v > 0)) return 0;
+    if (!(ref > 0) || !(max > 0)) return v / attrRefOf(config);
+    return max * v / (v + ref);
+  };
+
   function careerStateArg(st) {
     if (!st) return null;
     return st.career ? st : { career: careerArg(st) };
@@ -1604,7 +2019,7 @@
     var cr = st && st.career ? st.career : careerArg(st);
     var rank = sim.careerJobRank(cr, config);
     var main = sim.careerMainStat(st, config);
-    var factor = rankTableVal(jobRankSpec(config).contribMult, rank, 1) * (main / attrRefOf(config));
+    var factor = rankTableVal(jobRankSpec(config).contribMult, rank, 1) * sim.careerStatFactor(main, config);
     if (factor < 0) factor = 0;
     return factor;
   };
@@ -1614,7 +2029,7 @@
     var cr = st && st.career ? st.career : careerArg(st);
     var rank = sim.careerJobRank(cr, config);
     var main = sim.careerMainStat(st, config);
-    var w = num(m.playerWeight, 0) * rankTableVal(jobRankSpec(config).playerWeightMult, rank, 1) * (main / attrRefOf(config));
+    var w = num(m.playerWeight, 0) * rankTableVal(jobRankSpec(config).playerWeightMult, rank, 1) * sim.careerStatFactor(main, config);
     if (m.playerWeightMin != null && w < m.playerWeightMin) w = m.playerWeightMin;
     if (m.playerWeightMax != null && w > m.playerWeightMax) w = m.playerWeightMax;
     if (w < 0) w = 0;
@@ -1645,11 +2060,64 @@
     return (sim.careerWorld(config).virtualPool || {}).craft || {};
   }
 
-  function meanOfStats(stats) {
-    var s = 0, i;
-    for (i = 0; i < DIMS.length; i++) s += num(stats && stats[DIMS[i]], 0);
-    return DIMS.length ? s / DIMS.length : 0;
+  function proficiencySpec(config) {
+    return (sim.careerWorld(config) || {}).proficiency || {};
   }
+
+  // 熟练度档位序号：0 生疏 / 1 熟练 / 2 拿手 / 3 看家本领。
+  sim.xpTierIndex = function (xp, config) {
+    var tiers = sim.xpTiers(config);
+    var i;
+    xp = num(xp, 0);
+    for (i = 0; i < tiers.length; i++) {
+      if (xp <= num(tiers[i].until, 0)) return i;
+    }
+    return tiers.length ? tiers.length - 1 : 0;
+  };
+
+  // 档位 → 加成百分比：config.proficiency.ladder，默认 0% / 10% / 15% / 20%。
+  function proficiencyLadder(config) {
+    var ladder = proficiencySpec(config).ladder;
+    if (!ladder || !ladder.length) ladder = [0, 0.1, 0.15, 0.2];
+    return ladder;
+  }
+
+  function combineProficiencyPct(a, b, mode) {
+    if (mode === "higher") return Math.max(a, b);
+    if (mode === "average") return (a + b) / 2;
+    return a + b;
+  }
+
+  // 题材 / 玩法两条线的经验值：工作室优先，没有工作室时退回公司经验桶。
+  function projectXpValue(st, companyId, studioId, kind, id) {
+    var v = studioId ? sim.studioXpValue(st, studioId, kind, id) : 0;
+    if (!v && companyId) v = sim.companyXpValue(st, companyId, kind, id);
+    return v;
+  }
+
+  // 工作室对题材 + 玩法的熟练度加成，用于新作立项初始四维。
+  sim.studioProficiencyBonusPct = function (st, companyId, studioId, genreId, gameplayId, config) {
+    var mode = proficiencySpec(config).studioCombine || "sum";
+    var ladder = proficiencyLadder(config);
+    var g = projectXpValue(st, companyId, studioId, "genre", genreId);
+    var p = projectXpValue(st, companyId, studioId, "gameplay", gameplayId);
+    var gp = num(ladder[sim.xpTierIndex(g, config)], 0);
+    var pp = num(ladder[sim.xpTierIndex(p, config)], 0);
+    return combineProficiencyPct(gp, pp, mode);
+  };
+
+  // 玩家个人对题材 + 玩法的熟练度加成，用于开发月贡献。
+  sim.playerProficiencyBonusPct = function (st, genreId, gameplayId, config) {
+    var mode = proficiencySpec(config).playerCombine || "sum";
+    var ladder = proficiencyLadder(config);
+    var g = sim.playerXpValue(st, "genre", genreId);
+    var p = sim.playerXpValue(st, "gameplay", gameplayId);
+    var gp = num(ladder[sim.xpTierIndex(g, config)], 0);
+    var pp = num(ladder[sim.xpTierIndex(p, config)], 0);
+    return combineProficiencyPct(gp, pp, mode);
+  };
+
+  // （作品四维均值统一走 sim.titleQualityMean，不要在这里再写一份。）
 
   sim.careerTeamMembers = function (st, config) {
     var list = [];
@@ -1687,25 +2155,16 @@
     return out;
   };
 
-  sim.careerCraftPublicScore = function (teamAvgStat, teamN, months, config) {
+  // 虚拟作「四维均值 → 对外口碑」：craft.scoreBase + 均值 / craft.statDivisor，夹 1～10。
+  // 人数与工期不在这里重复计算：人数已折进立项四维（teamStatShare 求和），工期靠每月贡献抬 live。
+  sim.careerCraftPublicScore = function (liveMean, config) {
     var spec = craftSpec(config);
     var m = scoreFromLiveSpec(config);
-    var refN = num(spec.refTeamSize, 1);
-    var refM = num(spec.refMonths, 1);
-    var sizeExp = spec.sizeExp != null ? spec.sizeExp : 0;
-    var timeExp = spec.timeExp != null ? spec.timeExp : 0;
-    var div = spec.statDivisor;
-    var n, sizeF, timeF, score, min, max, dec, f;
+    var base = spec.scoreBase != null ? num(spec.scoreBase, 0) : 0;
+    var div = num(spec.statDivisor, 0);
+    var score, min, max, dec, f;
     if (!div) div = 1;
-    if (!refN) refN = 1;
-    if (!refM) refM = 1;
-    n = num(teamN, refN);
-    months = num(months, refM);
-    if (n < 0) n = 0;
-    if (months < 0) months = 0;
-    sizeF = Math.pow(n / refN, sizeExp);
-    timeF = Math.pow(months / refM, timeExp);
-    score = num(teamAvgStat, 0) / div * sizeF * timeF;
+    score = base + num(liveMean, 0) / div;
     min = m.min != null ? m.min : score;
     max = m.max != null ? m.max : score;
     if (score < min) score = min;
@@ -1715,27 +2174,31 @@
     return Math.round(score * f) / f;
   };
 
-  sim.careerCraftLiveStats = function (st, months, teamN, config) {
-    var spec = craftSpec(config);
+  // 新作立项基础分：全员四维各取 virtualPool.teamStatShare（默认 10%）相加后向下取整，
+  // 再乘工作室对题材 + 玩法的熟练度加成。玩家个人熟练度不进这里，改走开发月贡献。
+  sim.careerCraftLiveStats = function (st, months, teamN, config, genreId, gameplayId) {
     var pool = sim.careerWorld(config).virtualPool || {};
-    var avg = sim.careerTeamAvgStats(st, config);
-    var n = teamN != null ? num(teamN, 0) : sim.careerTeamMembers(st, config).length;
-    var refN = num(spec.refTeamSize, 1);
-    var refM = num(spec.refMonths, 1);
-    var sizeExp = spec.sizeExp != null ? spec.sizeExp : 0;
-    var timeExp = spec.timeExp != null ? spec.timeExp : 0;
-    var sizeF, timeF, out = cloneStats(), i, k;
-    if (!n) return cloneStats(pool.baseStats);
-    months = months != null ? num(months, refM) : refM;
-    if (!refN) refN = 1;
-    if (!refM) refM = 1;
-    sizeF = Math.pow(n / refN, sizeExp);
-    timeF = Math.pow(months / refM, timeExp);
+    var members = sim.careerTeamMembers(st, config);
+    var n = teamN != null ? num(teamN, 0) : members.length;
+    var share = pool.teamStatShare != null ? num(pool.teamStatShare, 0.1) : 0.1;
+    var cr = (st && st.career) || {};
+    var pct = sim.studioProficiencyBonusPct(st, cr.companyId, cr.studioId, genreId, gameplayId, config);
+    var personSum = {}, i, j, k, sum, out;
+    DIMS.forEach(function (d) { personSum[d] = 0; });
+    if (!n || !members.length) return sim.cloneTitleStats(pool.baseStats, config);
+    // 先按人物维把全员收一遍，再整块过 personToTitle 落到作品维。
     for (i = 0; i < DIMS.length; i++) {
       k = DIMS[i];
-      out[k] = num(avg[k], 0) * sizeF * timeF;
-      if (out[k] < 0) out[k] = 0;
+      sum = 0;
+      for (j = 0; j < members.length; j++) sum += num(members[j].stats && members[j].stats[k], 0);
+      personSum[k] = sum;
     }
+    out = sim.titleStatsFromPerson(personSum, config, share);
+    sim.titleDims(config).forEach(function (d) {
+      var v = Math.floor(num(out[d], 0));
+      if (pct) v = Math.floor(v * (1 + pct));
+      out[d] = v < 0 ? 0 : v;
+    });
     return out;
   };
 
@@ -1747,23 +2210,61 @@
         max: m.mediaJitterMax
       });
     }
-    return sim.scoreMedia(st, sim.liveStatsForMedia(st.career && st.career.liveStats), [], config, null);
+    return sim.scoreMedia(st, sim.liveStatsForMedia(st.career && st.career.liveStats, config), [], config, null);
   }
 
+  // 表驱动的倍率取值：表键是字符串（"1"/"2"/"3"），查不到就回退 dflt。
+  function tableMult(table, key, dflt) {
+    var v;
+    if (!table || key == null || key === "") return dflt;
+    v = table[String(key)];
+    if (v == null) v = table[key];
+    v = num(v, null);
+    return v == null ? dflt : v;
+  }
+
+  // 作品的发行方实力（1/2/3）。目录作读 companyId 指向的公司，虚拟作/兜底读 title.power。
+  // 查不到返回 null，由调用方用 launchSales.powerDefault 兜底。
+  function titlePower(title, config) {
+    var co;
+    if (!title) return null;
+    if (title.power != null) return title.power;
+    if (!title.companyId || !sim.careerCompany) return null;
+    co = sim.careerCompany(title.companyId, config);
+    return co && co.power != null ? co.power : null;
+  }
+
+  // 首月销量基准 = 单位量 × 评分曲线 × prestige 倍率 × 质量倍率 × 发行方倍率。
+  // 评分曲线在 scoreRef 处换斜率：及格线以上每分 ×e^scoreExp（约 ×5.5），落差由评分主导而不是靠堆线性系数
+  // （旧的 scoreCoeff 线性写法下 9.9 分和 7 分只差 1.7 倍，销量对评分几乎不敏感）。
+  // 及格线以下换更缓的 scoreExpBelow：纯指数的下尾会把 3 分作品压到个位数，而真实市场里再烂的作品
+  // 也有基础曝光。这个旋钮只抬下尾，7 分及以上完全由 scoreExp 决定、一个数不动。
   sim.careerLaunchSales = function (title, publicScore, config, liveStats) {
     var spec = (sim.careerWorld(config).launchSales) || {};
     var score = num(publicScore, 0);
-    var prestige = num(title && title.prestige, 0);
     var stats = liveStats || (title && title.stats) || {};
-    var qsum = num(stats.program, 0) + num(stats.design, num(stats.script, 0)) +
-      num(stats.art, 0) + num(stats.music, 0);
-    var baseline = Math.round(
-      score * num(spec.scoreCoeff, 0) +
-      prestige * num(spec.prestigeCoeff, 0) +
-      qsum * num(spec.qualitySumCoeff, 0)
+    var qsum = sim.titleQualitySum(stats, config);
+    var qref = num(spec.qualityRef, 0);
+    var qexp = num(spec.qualityExp, 0);
+    var qm = qref > 0 ? Math.pow(Math.max(0, qsum) / qref, qexp) : 1;
+    var qmin = num(spec.qualityMin, null);
+    var qmax = num(spec.qualityMax, null);
+    var ref = num(spec.scoreRef, 0);
+    var curveExp;
+    var baseline, y1, sales;
+    if (qmin != null && qm < qmin) qm = qmin;
+    if (qmax != null && qm > qmax) qm = qmax;
+    curveExp = score < ref
+      ? num(spec.scoreExpBelow, num(spec.scoreExp, 0))
+      : num(spec.scoreExp, 0);
+    baseline = Math.round(
+      num(spec.baseUnit, 0) *
+      Math.exp(curveExp * (score - ref)) *
+      tableMult(spec.prestigeMult, title && title.prestige, 1) *
+      qm *
+      tableMult(spec.powerMult, titlePower(title, config), num(spec.powerDefault, 1))
     );
-    var y1, sales;
-    if (baseline < 0) baseline = 0;
+    if (!(baseline >= 0)) baseline = 0;
     y1 = sim.salesFactor ? sim.salesFactor(1, score, config) : 1;
     if (!(y1 > 0)) y1 = 0;
     sales = sim.boxedActualFromY
@@ -1778,15 +2279,13 @@
     rec.baselineSales = packed.baselineSales;
     rec.launchSales = packed.launchSales;
     rec.lifetimeSales = packed.launchSales;
-    if (!sim.isLiveOpsTitle(title) && !sim.isLiveOpsTitle(rec)) {
-      rec.monthSales = packed.launchSales;
-    }
+    rec.monthSales = packed.launchSales;
   }
 
   sim.liveToPublicScore = function (liveStats, worldScore, config, st, title) {
     var world = sim.careerWorld(config);
     var m = world.scoreFromLive || {};
-    var dims = (world.quality && world.quality.dims) || DIMS;
+    var dims = sim.titleDims(config);
     var sum = 0, n = 0, i, avg, divisor, fromLive, w, mixed, min, max, dec, f, bonus, floor, catalog;
     var state = careerStateArg(st);
     liveStats = liveStats || {};
@@ -1803,7 +2302,8 @@
     if (divisor == null || divisor === 0) divisor = 1;
     fromLive = avg / divisor;
     if (title && title.virtual) {
-      mixed = fromLive;
+      // 虚拟作走 craft 自己的标尺（scoreBase + 均值 / statDivisor），不混目录 score。
+      mixed = sim.careerCraftPublicScore(avg, config);
     } else {
       bonus = sim.careerMasterpieceBonus(title, config);
       catalog = worldScore == null ? fromLive : (num(worldScore, 0) + bonus);
@@ -1829,11 +2329,21 @@
   };
 
   sim.applyCareerLiveDelta = function (st, dim, delta, config) {
-    var world, q, key, next, min;
+    var world, q, key, next, min, dims, pdims, pi;
     if (!st.career || !st.career.liveStats || !dim) return;
     world = sim.careerWorld(config);
     q = world.quality || {};
-    key = dim === "script" ? "design" : dim;
+    // liveStats 存的是作品维。历史别名（script/design）按位置对到作品维上，
+    // 人物维一旦传进来就直接忽略，免得把两套维度混在一张表里。
+    dims = sim.titleDims(config);
+    if (dims.indexOf(dim) >= 0) {
+      key = dim;
+    } else {
+      pdims = sim.personDims(config);
+      pi = pdims.indexOf(dim === "script" ? "design" : dim);
+      if (pi < 0) return;
+      key = dims[pi % dims.length];
+    }
     next = num(st.career.liveStats[key], 0) + num(delta, 0);
     min = q.statMin != null ? q.statMin : 0;
     if (next < min) next = min;
@@ -1858,22 +2368,29 @@
   }
 
   function scaleQualityAmount(st, amount, config, unscaled) {
-    var f, i, k, out;
+    var f, i, k, out, posM, negM;
     if (unscaled || amount == null) return amount;
     f = sim.careerPlayerImpactFactor(st, config);
+    // 赌徒（好坏都放大）/ 稳如老狗（好坏都削减）：按正负号分派倍率。
+    posM = sim.careerTraitMult(st, "eventQualityPosMult", config, 1);
+    negM = sim.careerTraitMult(st, "eventQualityNegMult", config, 1);
+    function scaleOne(v) {
+      v = num(v, 0) * f;
+      return v >= 0 ? v * posM : v * negM;
+    }
     if (isArr(amount)) {
       out = [];
-      for (i = 0; i < amount.length; i++) out.push(num(amount[i], 0) * f);
+      for (i = 0; i < amount.length; i++) out.push(scaleOne(amount[i]));
       return out;
     }
     if (typeof amount === "object") {
       out = {};
       for (k in amount) {
-        if (Object.prototype.hasOwnProperty.call(amount, k)) out[k] = num(amount[k], 0) * f;
+        if (Object.prototype.hasOwnProperty.call(amount, k)) out[k] = scaleOne(amount[k]);
       }
       return out;
     }
-    return num(amount, 0) * f;
+    return scaleOne(amount);
   }
 
   function initPlayerStats(role, player) {
@@ -1898,6 +2415,7 @@
     if (st.career.lastPay == null) st.career.lastPay = 0;
     if (st.career.inviteYearStamp == null) st.career.inviteYearStamp = 0;
     if (st.career.invitesRolledThisYear == null) st.career.invitesRolledThisYear = 0;
+    if (st.career.inviteYearHit == null) st.career.inviteYearHit = false;
     if (st.career.hopFailedYear == null) st.career.hopFailedYear = null;
     if (!st.career.leftProjectLive) st.career.leftProjectLive = {};
     if (!st.career.genreXp) st.career.genreXp = {};
@@ -2053,61 +2571,122 @@
     if (amt.play) sim.addPlayerXp(st, null, title.gameplayId, amt.play);
   }
 
-  function xpPairBonus(gxp, pxp, per, cap) {
-    var bonus;
-    if (per == null) per = 0;
-    bonus = Math.floor(num(gxp, 0) * per) + Math.floor(num(pxp, 0) * per);
-    if (cap != null && bonus > cap) bonus = cap;
-    if (bonus < 0) bonus = 0;
-    return bonus;
+  // 玩家熟练度只作用在开发月贡献上：档位加成乘全部四个维（制作人同样吃）。
+  // 顺 / 逆潮流的特性倍率仍只放大「熟练度带来的那部分」。
+  function playerSkillContribMult(st, title, config) {
+    var pct = sim.playerProficiencyBonusPct(st, title && title.genreId, title && title.gameplayId, config);
+    if (!pct) return 1;
+    return 1 + pct * sim.careerTrendSkillMult(st, title, config);
   }
 
-  sim.playerSkillLiveBonus = function (st, genreId, gameplayId, config) {
-    var spec = (sim.careerWorld(config).playerXp) || {};
-    return xpPairBonus(
-      sim.playerXpValue(st, "genre", genreId),
-      sim.playerXpValue(st, "gameplay", gameplayId),
-      spec.liveBonusPerXp,
-      spec.liveBonusCap
-    );
-  };
-
-  sim.playerSkillContribBonus = function (st, genreId, gameplayId, config) {
-    var spec = (sim.careerWorld(config).playerXp) || {};
-    return xpPairBonus(
-      sim.playerXpValue(st, "genre", genreId),
-      sim.playerXpValue(st, "gameplay", gameplayId),
-      spec.contribBonusPerXp,
-      spec.contribBonusCap
-    );
+  sim.careerMonthlyContributionByDim = function (st, config) {
+    var world = sim.careerWorld(config);
+    var player = (world && world.player) || {};
+    var prod = world.producerCareer || {};
+    var out = { program: 0, design: 0, art: 0, music: 0 };
+    var rank = sim.careerJobRank(st && st.career, config);
+    var rankM = rankTableVal(jobRankSpec(config).contribMult, rank, 1);
+    var title = st && st.career && st.career.titleId ? sim.careerTitle(st.career.titleId, config, st) : null;
+    var skillM = playerSkillContribMult(st, title, config);
+    var role = sim.careerRole(st && st.career && st.career.roleId, config);
+    var main = role && role.stat;
+    var stats = (st && st.career && st.career.stats) || {};
+    var base, attr, mainM, offM, i, k;
+    if (sim.isCareerProducer && sim.isCareerProducer(st)) {
+      base = num(prod.monthlyContributionAllDims, 1);
+      attr = sim.careerStatFactor(sim.careerMainStat(st, config), config);
+      if (prod.monthlyContributionRankScale !== false) {
+        base = base * rankM * attr;
+      }
+      for (i = 0; i < DIMS.length; i++) out[DIMS[i]] = base * skillM;
+      return out;
+    }
+    mainM = player.contribMainMult != null ? num(player.contribMainMult, 1) : 1;
+    offM = player.contribOffMult != null ? num(player.contribOffMult, 0) : 0;
+    base = num(player.monthlyContribution, 0) * rankM;
+    for (i = 0; i < DIMS.length; i++) {
+      k = DIMS[i];
+      attr = sim.careerStatFactor(num(stats[k], 0), config);
+      out[k] = base * attr * (main && k === main ? mainM : offM) * skillM;
+    }
+    return out;
   };
 
   sim.careerMonthlyContribution = function (st, config) {
-    var world = sim.careerWorld(config);
-    var base = num(world.player && world.player.monthlyContribution, 0);
-    var rank = sim.careerJobRank(st && st.career, config);
-    var title = st && st.career && st.career.titleId ? sim.careerTitle(st.career.titleId, config, st) : null;
-    var prod = world.producerCareer || {};
-    var attr = sim.careerMainStat(st, config) / attrRefOf(config);
-    if (sim.isCareerProducer && sim.isCareerProducer(st)) {
-      base = num(prod.monthlyContributionAllDims, 1);
-      if (prod.monthlyContributionRankScale !== false) {
-        base = base * rankTableVal(jobRankSpec(config).contribMult, rank, 1) * attr;
-      }
-      return base + sim.playerSkillContribBonus(st, title && title.genreId, title && title.gameplayId, config);
-    }
-    base = base * rankTableVal(jobRankSpec(config).contribMult, rank, 1) * attr;
-    return base + sim.playerSkillContribBonus(st, title && title.genreId, title && title.gameplayId, config);
+    var by = sim.careerMonthlyContributionByDim(st, config);
+    var role = sim.careerRole(st && st.career && st.career.roleId, config);
+    if (sim.isCareerProducer && sim.isCareerProducer(st)) return by.program;
+    if (role && role.stat) return by[role.stat];
+    return by.program;
   };
+
+  // 拼命三郎：连续作战计数 + 每 N 月强制倦怠一次。
+  sim.tickCareerGrind = function (st, config, working) {
+    var c, every;
+    if (!st || !st.career) return;
+    c = st.career;
+    c.grindStreak = working ? num(c.grindStreak, 0) + 1 : 0;
+    c.burnoutMonth = false;
+    every = Math.round(sim.careerTraitSum(st, "burnoutEveryMonths", config));
+    if (every > 0 && c.grindStreak > 0 && c.grindStreak % every === 0) c.burnoutMonth = true;
+  };
+
+  sim.careerGrindMult = function (st, config) {
+    var c = st && st.career;
+    if (!c) return 1;
+    if (c.burnoutMonth) return sim.careerTraitMult(st, "burnoutContributionMult", config, 1);
+    if (num(c.grindStreak, 0) >= sim.careerTraitSum(st, "streakThreshold", config)) {
+      return sim.careerTraitMult(st, "streakContributionMult", config, 1);
+    }
+    return 1;
+  };
+
+  // mult：外部传入的成长倍率（开发月 = 阶段权重 × 体量阻尼）。0 表示这个月没有实质产出，
+  // 四维一律不加；缺省 1（长线运营月与旧调用点）。
+  function applyMonthlyLiveContribution(st, config, mult) {
+    var by = sim.careerMonthlyContributionByDim(st, config);
+    var m = sim.careerTraitMult(st, "monthContributionMult", config, 1);
+    var extra = num(mult, 1);
+    var role = sim.careerRole(st && st.career && st.career.roleId, config);
+    var mainDim = role && role.stat;
+    var mainM = sim.careerTraitMult(st, "mainDimContributionMult", config, 1);
+    var offM = sim.careerTraitMult(st, "offDimContributionMult", config, 1);
+    var grindM = sim.careerGrindMult(st, config);
+    var personGain = {};
+    // by 是人物维的产出（主职维倍率已经算在里面），整块过 personToTitle 落到作品维。
+    DIMS.forEach(function (dim) {
+      personGain[dim] = num(by[dim], 0) * m * extra * grindM * (mainDim && dim === mainDim ? mainM : offM);
+    });
+    var titleGain = sim.titleStatsFromPerson(personGain, config);
+    sim.titleDims(config).forEach(function (dim) {
+      if (!titleGain[dim]) return;
+      sim.applyCareerLiveDelta(st, dim, titleGain[dim], config);
+    });
+  }
+
+  function rollInspirationMonth(st, config, notes) {
+    var rate, bonus, dim;
+    if (!st || !st.career) return;
+    rate = sim.careerTraitMult(st, "inspirationRate", config, 0);
+    bonus = sim.careerTraitSum(st, "inspirationDimBonus", config);
+    if (rate <= 0 || bonus <= 0) return;
+    if (sim.rand(st) >= rate) return;
+    dim = sim.pick(st, sim.titleDims(config));
+    sim.applyCareerLiveDelta(st, dim, bonus, config);
+    st.career.inspirationMonth = true;
+    st.career.inspirationCount = num(st.career.inspirationCount, 0) + 1;
+    notes.push("灵感爆发：" + sim.titleDimLabel(dim, config) + " +" + bonus + "，但这个月学不进东西");
+  }
 
   sim.xpTierLabel = function (xp, config) {
     return sim.worldLabel(sim.xpTierFor(xp, config), config) || "";
   };
 
+  // 目录真作不是玩家立项，只吃工作室经验平加；玩家熟练度一概不进 live 底。
   function liveFromTitle(st, title, config) {
-    var base, spec, studioId, gxp, pxp, per, bonus, cap, i, role, main, playerBonus;
-    if (title && title.virtual) return cloneStats(title.stats);
-    base = cloneStats(title && title.stats);
+    var base, spec, studioId, gxp, pxp, per, bonus, cap, dims, i;
+    if (title && title.virtual) return sim.cloneTitleStats(title.stats, config);
+    base = sim.catalogTitleBaseStats(title, config);
     spec = sim.careerWorld(config).companyXp || {};
     studioId = (title && title.studioId) || (st.career && st.career.studioId);
     gxp = sim.studioXpValue(st, studioId, "genre", title && title.genreId);
@@ -2117,22 +2696,8 @@
     bonus = Math.floor(gxp * per) + Math.floor(pxp * per);
     cap = spec.statBonusCap;
     if (cap != null && bonus > cap) bonus = cap;
-    for (i = 0; i < DIMS.length; i++) base[DIMS[i]] = num(base[DIMS[i]], 0) + bonus;
-    role = sim.careerRole(st && st.career && st.career.roleId, config);
-    main = role && role.stat;
-    playerBonus = sim.playerSkillLiveBonus(st, title && title.genreId, title && title.gameplayId, config);
-    if (sim.isCareerProducer && sim.isCareerProducer(st)) {
-      (function producerLiveBonus() {
-        var prod = sim.careerWorld(config).producerCareer || {};
-        var scale = num(prod.skillLiveBonusScale, 0.5);
-        var bonus = Math.floor(playerBonus * scale);
-        var j;
-        if (!prod.skillLiveBonusAllDims || !bonus) return;
-        for (j = 0; j < DIMS.length; j++) base[DIMS[j]] = num(base[DIMS[j]], 0) + bonus;
-      })();
-    } else if (main && playerBonus) {
-      base[main] = num(base[main], 0) + playerBonus;
-    }
+    dims = sim.titleDims(config);
+    for (i = 0; i < dims.length; i++) base[dims[i]] = num(base[dims[i]], 0) + bonus;
     return base;
   }
 
@@ -2177,6 +2742,32 @@
     if (!xp) return;
     fill("genre", content.genres, num(spec.startingAbleGenreCount, 0));
     fill("gameplay", content.gameplay, num(spec.startingAbleGameplayCount, 0));
+  }
+
+  function pickAbleIds(st, pool, count) {
+    var left = (pool || []).filter(function (row) { return row && row.id; });
+    var out = [];
+    var i, hit;
+    for (i = 0; i < count && left.length; i++) {
+      hit = sim.pick(st, left);
+      out.push(hit.id);
+      left = left.filter(function (x) { return x.id !== hit.id; });
+    }
+    return out;
+  }
+
+  function applyStartXpIds(st, config, start) {
+    var xp = startingAbleXpValue(config);
+    var content = config.content || {};
+    function inPool(list, id) {
+      return (list || []).some(function (row) { return row && row.id === id; });
+    }
+    (start.genreIds || []).forEach(function (id) {
+      if (inPool(content.genres, id)) sim.addPlayerXp(st, id, null, xp);
+    });
+    (start.gameplayIds || []).forEach(function (id) {
+      if (inPool(content.gameplay, id)) sim.addPlayerXp(st, null, id, xp);
+    });
   }
 
   function grantPlayerTitleXp(st, title, amount) {
@@ -2238,20 +2829,16 @@
       prestige: title.prestige || 0,
       releaseType: title.releaseType || (sim.isLiveOpsTitle(title) ? "liveops" : "boxed"),
       live: sim.isLiveOpsTitle(title),
-      livePeak: 0,
-      versionMajor: sim.isLiveOpsTitle(title) ? ((config.liveOps && config.liveOps.versions && config.liveOps.versions.startMajor) || 1) : 0,
-      versionMinor: 0,
+      versionName: title.versionName || "",
       player: !!player,
       virtual: !!title.virtual,
       mau: num(title.mau, 0)
     };
-    rec.livePeak = sim.careerLivePeak(rec, config);
-    if (!sim.isLiveOpsTitle(title) && !sim.isLiveOpsTitle(rec)) {
-      // 给盒装世界作盖 baselineSales/launchSales，月销量排行才能按生命周期算当月销量。
-      var packed = sim.careerLaunchSales(title, rec.avg != null ? rec.avg : rec.score, config, rec.stats);
-      rec.baselineSales = packed.baselineSales;
-      rec.launchSales = packed.launchSales;
-    }
+    // 长线标记作和盒装走同一条生命周期，所以一样盖 baselineSales/launchSales，
+    // 月销量排行与畅销榜才能算出当月销量。
+    var packed = sim.careerLaunchSales(title, rec.avg != null ? rec.avg : rec.score, config, rec.stats);
+    rec.baselineSales = packed.baselineSales;
+    rec.launchSales = packed.launchSales;
     st.worldReleased.push(rec);
     grantReleaseXp(st, rec, config, player);
     return rec;
@@ -2304,7 +2891,8 @@
     return out;
   };
 
-  sim.createCareerGame = function (characterName, roleId, config) {
+  sim.createCareerGame = function (characterName, roleId, config, start) {
+    start = start || {};
     var world = sim.careerWorld(config);
     var cal = world.timeline || {};
     var player = world.player || {};
@@ -2380,7 +2968,7 @@
         lastPay: 0,
         titleId: null,
         liveStats: null,
-        stats: initPlayerStats(role, player),
+        stats: start.stats ? cloneStats(start.stats) : initPlayerStats(role, player),
         colleagues: [],
         colleaguePool: {},
         credits: [],
@@ -2394,6 +2982,7 @@
         virtualSeq: 0,
         inviteYearStamp: 0,
         invitesRolledThisYear: 0,
+        inviteYearHit: false,
         hopFailedYear: null,
         hopNotice: "",
         leftProjectLive: {},
@@ -2409,10 +2998,22 @@
         producerPitchOptions: null,
         producerReleaseBias: 0,
         producerAskCount: 0,
-        priorRoleId: null
+        priorRoleId: null,
+        traits: [],
+        traitsLocked: false,
+        inspirationMonth: false,
+        inspirationCount: 0
       }
     };
-    grantStartingAbleSkills(st, config);
+    if (start.genreIds || start.gameplayIds) applyStartXpIds(st, config, start);
+    else grantStartingAbleSkills(st, config);
+    if (start.traitIds && start.traitIds.length) {
+      st.career.traits = start.traitIds.filter(function (id) {
+        var t = sim.traitDef(id, config);
+        return t && (t.scope || "staff") === "career";
+      });
+      st.career.traitsLocked = true;
+    }
     st.career.openingOffers = sim.rollOpeningOffers(st, st.career.roleId, config);
     seedCompanyXp(st, config);
     seedWorldReleasedBeforeStart(st, config);
@@ -2575,8 +3176,10 @@
     var genreId, gameplayId, months, relY, relM, tries, title, detail, seq, pickedName;
     var base, n, minM, maxM, next, nextDet, nextStart, gap, cap, relIndex;
     opts = opts || {};
+    var isProd = !!(sim.isCareerProducer && sim.isCareerProducer(st));
     if (!companyId) return null;
-    if (!canStartCareerVirtual(st, config)) return null;
+    // 制作人可自定向下虚拟项目（无在制作品时）；职员仍受目录空窗约束。
+    if (!sim.isCareerProducer(st) && !canStartCareerVirtual(st, config)) return null;
     sim.ensureCareerExtras(st);
     genreId = opts.genreId || pickStudioContentId(st, studio && studio.genreIds, pool.genreWeights, content.genres);
     gameplayId = opts.gameplayId || pickStudioContentId(st, studio && studio.gameplayIds, pool.gameplayWeights, content.gameplay);
@@ -2592,7 +3195,10 @@
       maxM = cap;
     }
     if (maxM < minM) return null;
-    months = sim.irand(st, minM, maxM);
+    // devMonthsDelta：只用来拉长「空窗虚拟作」的周期——玩家在研目录作的档期由目录表钉死，
+    // 改不到这里。事件选项可以传它；天赋侧已不使用（只影响虚拟作，作代价太弱）。
+    months = sim.irand(st, minM, maxM) + Math.round(sim.careerTraitSum(st, "devMonthsDelta", config));
+    if (months < 1) months = 1;
     relY = st.year;
     relM = st.month + months;
     while (relM > 12) { relM -= 12; relY += 1; }
@@ -2606,7 +3212,7 @@
       tries += 1;
     }
     relIndex = sim.monthIndex(relY, relM);
-    if (nextStart != null && relIndex > nextStart) {
+    if (nextStart != null && !isProd && relIndex > nextStart) {
       months = nextStart - sim.monthIndex(st.year, st.month);
       if (months < minM) return null;
       relY = st.year;
@@ -2618,7 +3224,7 @@
     pickedName = pickVirtualTitle(st, genreId, config);
     sim.ensureCareerColleagues(st, config);
     n = sim.careerTeamMembers(st, config).length;
-    base = sim.careerCraftLiveStats(st, months, n, config);
+    base = sim.careerCraftLiveStats(st, months, n, config, genreId, gameplayId);
     title = {
       id: "virt-" + companyId + "-" + st.year + "-" + st.month + "-" + seq,
       companyId: companyId,
@@ -2628,7 +3234,7 @@
       alias: pickedName.alias,
       releaseYear: relY,
       releaseMonth: relM,
-      score: sim.careerCraftPublicScore(meanOfStats(sim.careerTeamAvgStats(st, config)), n, months, config),
+      score: sim.careerCraftPublicScore(sim.titleQualityMean(base, config), config),
       platforms: ["pc"],
       genreId: genreId,
       gameplayId: gameplayId,
@@ -2662,6 +3268,64 @@
     st.career.virtualProjects.push(title);
     st.career.virtualDetails.push(detail);
     return title;
+  };
+
+  sim.queueProducerVirtualPitch = function (st, config, queue) {
+    var world, content, genres, gameplay, pairs, opts, i, j;
+    if (!st || !st.career) return false;
+    if (!(sim.isCareerProducer && sim.isCareerProducer(st))) return false;
+    if (st.career.titleId) {
+      var cur = sim.careerTitle(st.career.titleId, config, st);
+      if (cur && !cur.virtual) return false;
+    }
+    world = sim.careerWorld(config);
+    content = config.content || {};
+    genres = (content.genres || []).slice();
+    gameplay = (content.gameplay || []).slice();
+    if (!genres.length || !gameplay.length) return false;
+    pairs = [];
+    for (i = 0; i < genres.length && pairs.length < 4; i++) {
+      for (j = 0; j < gameplay.length && pairs.length < 4; j++) {
+        pairs.push({ genre: genres[i], gameplay: gameplay[j] });
+      }
+    }
+    if (!pairs.length) return false;
+    opts = pairs.map(function (p, idx) {
+      return { id: "pitch-" + idx, genreId: p.genre.id, gameplayId: p.gameplay.id };
+    });
+    st.career.producerPitchOptions = opts;
+    st.career.awaitingProducerPitch = true;
+    if (queue) {
+      queue.push({
+        type: "producerPitch",
+        kind: "event",
+        id: "producerPitch",
+        options: opts,
+        kicker: (world.producerCareer && world.producerCareer.pitchKicker) || "制作人企划",
+        title: (world.producerCareer && world.producerCareer.pitchTitle) || "下一部作品方向",
+        body: ""
+      });
+    }
+    return true;
+  };
+
+  sim.resolveProducerPitch = function (st, optId, config) {
+    var opts, chosen, title;
+    if (!st || !st.career) return { ok: false };
+    if (!(sim.isCareerProducer && sim.isCareerProducer(st))) return { ok: false };
+    if (!st.career.awaitingProducerPitch) return { ok: false };
+    opts = st.career.producerPitchOptions || [];
+    chosen = null;
+    for (var i = 0; i < opts.length; i++) { if (opts[i].id === optId) { chosen = opts[i]; break; } }
+    if (!chosen) return { ok: false };
+    title = sim.startVirtualProject(st, config, { genreId: chosen.genreId, gameplayId: chosen.gameplayId });
+    if (!title || !title.virtual) return { ok: false };
+    st.career.titleId = title.id;
+    st.career.liveStats = liveFromTitle(st, title, config);
+    st.career.awaitingProducerPitch = false;
+    st.career.producerPitchOptions = null;
+    st.career.idleMonths = 0;
+    return { ok: true, virtual: true, state: st, titleId: title.id };
   };
 
   function queueIdleGapChoice(st, config, queue, next) {
@@ -2746,6 +3410,19 @@
       }
     }
     picked = sim.pickCareerAssignment(st.career.companyId, st.year, st.month, config, st, st.career.studioId);
+    // 玩家正在做一部"本公司当年月还在开发"的目录作时，不要因为同公司别部开工（prestige 更高
+    // 的 landmark 排前面）就把人静默顶走。只有目录作受保护：虚拟作本来就是填空窗的，按设计
+    // 让位给下一档真作（virtualPool.comment：发售不得压过下一档真作开工月）。
+    if (picked) {
+      cur = sim.careerTitle(st.career.titleId, config, st);
+      det = sim.careerTitleDetail(st.career.titleId, config, st);
+      if (cur && !cur.virtual && cur.id !== picked.id &&
+          cur.companyId === st.career.companyId &&
+          det && sim.titleCoversMonth(cur, det, st.year, st.month) &&
+          !findWorldReleased(st, cur.id)) {
+        picked = cur;
+      }
+    }
     pool = sim.careerWorld(config).virtualPool || {};
     idleMax = num(pool.idleMaxMonths, 1);
     minDev = num(idleGapSpec(config).minDevMonths, virtualMinDevMonths(config));
@@ -2909,10 +3586,9 @@
     var title;
     if (!id || !live) return;
     if (!st.career.leftProjectLive) st.career.leftProjectLive = {};
-    st.career.leftProjectLive[id] = cloneStats(live);
+    st.career.leftProjectLive[id] = sim.cloneTitleStats(live, config);
     title = sim.findById(virtualList(st, "virtualProjects"), id);
-    if (title) title.stats = cloneStats(live);
-    void config;
+    if (title) title.stats = sim.cloneTitleStats(live, config);
   }
 
   function markCreditLeft(st, titleId) {
@@ -2974,6 +3650,9 @@
     } else {
       st.career.titleId = null;
       st.career.liveStats = null;
+      // 刚入职不继承上一家的空窗计数：否则进一家"当月没有在研目录作"的公司会当场开出虚拟作。
+      st.career.idleMonths = 0;
+      st.career.idleGap = null;
       sim.assignCareerProject(st, config);
     }
     sim.ensureCareerColleagues(st, config);
@@ -3371,7 +4050,7 @@
       }
       applyPlayerSkillFx(st, ev, config);
       rec = findWorldReleased(st, st.career.titleId);
-      if (rec) rec.stats = cloneStats(st.career.liveStats);
+      if (rec) rec.stats = sim.cloneTitleStats(st.career.liveStats, config);
     }
     if (notes) notes.push(ev.displayName);
     return ev;
@@ -3440,27 +4119,142 @@
   };
 
   function careerAwardCandidate(g, config) {
-    var stats = g.stats || {};
-    var program = num(stats.program, 0);
-    var design = num(stats.design, num(stats.script, 0));
-    var art = num(stats.art, 0);
-    var music = num(stats.music, 0);
+    var stats = sim.cloneTitleStats(g && g.stats, config);
     var score = g.score != null ? g.score : num(g.avg, 0);
-    return {
+    var out = {
       player: !!g.player,
       titleId: g.id,
       title: sim.worldLabel(g, config),
       label: sim.worldLabel(g, config),
       avg: score,
       score: score,
-      qsum: program + design + art + music,
-      stats: { program: program, design: design, script: design, art: art, music: music },
+      qsum: sim.titleQualitySum(stats, config),
+      stats: stats,
       prestige: num(g.prestige, 0),
-      livePeak: sim.careerLivePeak(g, config),
       live: sim.isLiveOpsTitle(g),
       releaseType: g.releaseType,
-      sales: g.sales
+      // 销量口径统一走 launchSales：worldReleased 上记的是首月实销，没有 sales 字段。
+      // 之前只读 g.sales，候选的销量恒为 undefined，导致「玩家之选」回退到 prestige——
+      // 奖项名不副实。
+      sales: num(g.launchSales != null ? g.launchSales : g.sales, 0)
     };
+    // 顶层再摊开一份作品维，供 readAwardStat 的 title[dim] 回退读取。
+    sim.titleDims(config).forEach(function (d) { out[d] = num(stats[d], 0); });
+    return out;
+  }
+
+  // ── TGA 评分子 ──────────────────────────────────────────────────────────
+  // 归一化三部分（口碑 / 质量 / 商业，都是 0-100）才能加权比较。
+  function awardScoreParts(c, config) {
+    var spec = (config.awards && config.awards.score) || {};
+    var dims = sim.titleDims(config).length || 4;
+    var salesRef = num(spec.salesRef, 0);
+    var salesCap = num(spec.salesScoreCap, 100);
+    var sales = num(c.sales, 0);
+    var salesPart = 0;
+    if (sales > 0 && salesRef > 0) {
+      salesPart = num(spec.salesLogScale, 0) * Math.log(1 + sales / salesRef) / Math.LN10;
+      if (salesPart > salesCap) salesPart = salesCap;
+    }
+    return {
+      score: Math.max(0, Math.min(100, num(c.score, 0) * 10)),
+      quality: Math.max(0, Math.min(100, num(c.qsum, 0) / dims)),
+      sales: Math.max(0, salesPart)
+    };
+  }
+
+  function awardWeightsFor(a, config) {
+    var spec = (config.awards && config.awards.score) || {};
+    var weights = spec.weights || {};
+    return (a && a.id && weights[a.id]) || weights.default || { score: 0.5, quality: 0.3, sales: 0.2 };
+  }
+
+  function awardScoreOf(c, a, config) {
+    var w = awardWeightsFor(a, config);
+    var p = c._parts || awardScoreParts(c, config);
+    return num(w.score, 0) * p.score + num(w.quality, 0) * p.quality + num(w.sales, 0) * p.sales;
+  }
+
+  // 奖项专属分：stat 类看对应那一维、avg 看口碑、sales 看商业、qsum 看质量。
+  function awardCategoryPart(c, a, config) {
+    var from = a.scoreFrom || (a.stat ? "stat" : "");
+    var p = c._parts || awardScoreParts(c, config);
+    var v;
+    if (from === "avg" || from === "score") return p.score;
+    if (from === "sales") return p.sales;
+    if (from === "qsum") return p.quality;
+    if (a.stat) {
+      v = sim.readAwardStat(c, a.stat, a.statAliases);
+      return Math.max(0, Math.min(100, v));
+    }
+    return p.score;
+  }
+
+  // 提名与得奖的排序键。按奖项口径分三路，别一刀切：
+  //   单一维度奖（stat）→ 0.8 × 该维 + 0.2 × 综合分，防止「一维极高、整体平庸」拿走单项奖；
+  //   口碑/商业/四维合计（avg / sales / qsum）→ 直接用该奖项自己的评分子或专属分；
+  //   真正需要跨维比较的（goty 这类无 stat 的 avg 奖）→ 用该奖项权重算出的综合分。
+  function awardPickScore(c, a, config) {
+    var spec = (config.awards && config.awards.score) || {};
+    var from = a.scoreFrom || (a.stat ? "stat" : "");
+    var cw = num(spec.categoryWeight, 0.8);
+    if (!a.stat) {
+      if (from === "qsum") return awardCategoryPart(c, a, config);
+      // 现算该奖项自己的权重，不能复用按 default 权重缓存的 _awardScore——
+      // 否则「玩家之选」这种商业权重 0.6 的奖项会退化成一个不含销量的分数。
+      return awardScoreOf(c, a, config);
+    }
+    if (cw < 0) cw = 0;
+    if (cw > 1) cw = 1;
+    return awardCategoryPart(c, a, config) * cw + num(c._awardScore, 0) * (1 - cw);
+  }
+
+  // 提名门槛：绝对线与「当年池子中位数 × 系数」取严。池子小的时候不自动放宽，
+  // 由调用方在达标数过少时回退，避免早期奖项长期空缺。
+  function awardGateOf(pool, config) {
+    var spec = (config.awards && config.awards.score) || {};
+    var gate = spec.gate || {};
+    var abs = num(gate.absolute, 0);
+    var mul = num(gate.medianMul, 1);
+    var vals = [];
+    var i, mid;
+    for (i = 0; i < (pool || []).length; i++) vals.push(num(pool[i]._awardScore, 0));
+    if (!vals.length) return abs;
+    vals.sort(function (x, y) { return x - y; });
+    mid = vals.length % 2
+      ? vals[(vals.length - 1) / 2]
+      : (vals[vals.length / 2 - 1] + vals[vals.length / 2]) / 2;
+    return Math.max(abs, mid * mul);
+  }
+
+  // 评审抖动：分差够大就让强者稳定胜出，只在前二咬得紧时才摇号——颁奖夜才有悬念。
+  // 抖动幅度是归一化分制上的绝对分（jitter × 100）。
+  function pickJuryWinner(st, noms, a, config) {
+    var spec = (config.awards && config.awards.score) || {};
+    var jitter = num(spec.juryJitter, 0);
+    var gap = num(spec.jurySuppressGap, 0);
+    var i, v, pick, wid;
+    if (!noms || !noms.length) return null;
+    if (!(jitter > 0) || noms.length < 2) return noms[0];
+    if (awardPickScore(noms[0], a, config) - awardPickScore(noms[1], a, config) > gap) return noms[0];
+    pick = -Infinity;
+    wid = 0;
+    for (i = 0; i < noms.length; i++) {
+      v = awardPickScore(noms[i], a, config) + (sim.rand(st) - 0.5) * 2 * jitter * 100;
+      if (v > pick) { pick = v; wid = i; }
+    }
+    return noms[wid];
+  }
+
+  // 同一奖项的历次获胜次数，用于重复获奖的名气衰减。
+  function awardPriorWins(st, awardId) {
+    var n = 0;
+    ((st && st.awardsHistory) || []).forEach(function (h) {
+      ((h && h.awards) || []).forEach(function (a) {
+        if (a.id === awardId && a.playerWon) n += 1;
+      });
+    });
+    return n;
   }
 
   sim.runCareerAwards = function (st, config, notes) {
@@ -3482,19 +4276,35 @@
     var honorWin = spec.honorPerWin || 0;
     var fameNom = spec.famePerNomination || 0;
     var honorNom = spec.honorPerNomination || 0;
+    var scoreSpec = (config.awards && config.awards.score) || {};
+    var repeatDecay = num(scoreSpec.repeatFameDecay, 0);
     var won = 0;
     var nominated = 0;
     var nomCount = (config.awards && config.awards.nomineeCount) || 5;
+    var gate, liveGate;
+    // 评分子只算一次，挂到候选上供门槛与各奖项共用。
+    pool.concat(livePool).forEach(function (c) {
+      c._parts = awardScoreParts(c, config);
+      c._awardScore = awardScoreOf(c, null, config);
+    });
+    gate = awardGateOf(pool, config);
+    liveGate = awardGateOf(livePool, config);
     (st.career.credits || []).forEach(function (c) {
       if (creditIsSigned(c)) credits[c.titleId] = true;
     });
     var awardPack = (config.awards.list || []).map(function (a) {
       var list = a.liveOnly ? livePool : pool;
-      var noms, hit, playerNom, playerWin;
-      noms = sim.pickAwardNominees(list, function (c) {
-        return sim.scoreAwardCategory(c, a);
-      }, a.nomineeCount || nomCount);
-      hit = noms[0] || null;
+      var useGate = a.liveOnly ? liveGate : gate;
+      var eligible = list.filter(function (c) { return num(c._awardScore, 0) >= useGate; });
+      var noms, hit, playerNom, playerWin, prior, decay;
+      // 达标不足两部就保底取全池：早期作品池小，不能让奖项长期空缺。
+      if (eligible.length < 2) eligible = list.slice();
+      noms = sim.rankAwardCandidates(eligible, function (c) {
+        return awardPickScore(c, a, config);
+      }).slice(0, Math.max(1, a.nomineeCount || nomCount));
+      hit = pickJuryWinner(st, noms, a, config);
+      // 得主排到首位：揭晓动效与 nominees[0] 都当它是第一名在用。
+      if (hit) noms = [hit].concat(noms.filter(function (c) { return c !== hit; }));
       playerNom = noms.some(function (c) { return c.titleId && credits[c.titleId]; });
       playerWin = !!(hit && hit.titleId && credits[hit.titleId]);
       if (playerNom) {
@@ -3504,7 +4314,10 @@
       }
       if (playerWin) {
         won += 1;
-        st.career.fame = (st.career.fame || 0) + fameWin;
+        // 同一奖项拿得越多名气越不值钱：第 N 次拿同一奖 ×(1+历次数)^(−decay)。
+        prior = awardPriorWins(st, a.id);
+        decay = repeatDecay > 0 ? Math.pow(1 + prior, -repeatDecay) : 1;
+        st.career.fame = (st.career.fame || 0) + Math.round(fameWin * decay);
         st.career.honor = (st.career.honor || 0) + honorWin;
       }
       if ((playerNom || playerWin) && hit && hit.titleId) {
@@ -3539,6 +4352,66 @@
     return awardPack;
   };
 
+  // 玩家那部被提名/获奖的作品名：获奖直接读 a.w，只有提名时从 nominees 里找带 player 标记的那个。
+  function awardStoryTitleOf(a) {
+    var i, noms;
+    if (!a) return "";
+    if (a.playerWon && a.w && a.w !== "—") return a.w;
+    noms = a.nominees || [];
+    for (i = 0; i < noms.length; i++) {
+      if (noms[i] && noms[i].player) return noms[i].label || "";
+    }
+    return "";
+  }
+
+  function awardStoryPage(a, kind, copy) {
+    var isGoty = kind === "goty";
+    var map = { title: awardStoryTitleOf(a), award: (a && a.n) || "" };
+    var fallbackTitle = isGoty ? "年度游戏" : "提名名单上有你的名字";
+    var fallbackBody = isGoty
+      ? "《{title}》——{award}。台上念出这个名字时，掌声从很远的地方涌过来。你没有喊，只是坐在原地，想起凌晨四点还亮着的那盏灯。它陪了你两年，此刻终于有人替你鼓了掌。"
+      : "电话是深夜打来的。对方念出《{title}》的名字，说它进了{award}的提名名单。办公室里静了一瞬。你想起那些被砍掉又捡回来的功能——原来真的有人在看。";
+    return {
+      type: "story",
+      kind: "event",
+      presentation: "notice",
+      kicker: copy.awardKicker || "年度盛典",
+      title: fillPaceTemplate(
+        isGoty ? (copy.tgaGotyTitle || fallbackTitle) : (copy.tgaNomTitle || fallbackTitle), map),
+      body: fillPaceTemplate(
+        isGoty ? (copy.tgaGotyStory || fallbackBody) : (copy.tgaNomStory || fallbackBody), map)
+    };
+  }
+
+  // 首次 TGA 提名 / 首次拿下年度游戏的叙事页。纯剧情，不动任何属性。
+  // 同一年既被提名又拿了年度游戏时只出大奖那一条：flag.nominated 一并置位，提名剧情不再补播
+  // （颁奖夜刚念过年度游戏，紧跟一条「提名」会显得倒叙）。
+  // 持久标记落 st.career.awardStory，随存档走；每次只判「第一次」，之后不再重复。
+  sim.collectCareerAwardStory = function (st, config, pack) {
+    var copy = sim.careerCopy(config);
+    var pages = [];
+    var flag, goty = null, anyNom = null, i, a;
+    if (!st || !st.career || !pack || !pack.length) return pages;
+    flag = st.career.awardStory || (st.career.awardStory = {});
+    for (i = 0; i < pack.length; i++) {
+      a = pack[i];
+      if (!a) continue;
+      if (a.id === "goty" && a.playerWon && !goty) goty = a;
+      if ((a.playerNominated || a.playerWon) && !anyNom) anyNom = a;
+    }
+    if (goty && !flag.goty) {
+      flag.goty = true;
+      flag.nominated = true;
+      pages.push(awardStoryPage(goty, "goty", copy));
+      return pages;
+    }
+    if (anyNom && !flag.nominated) {
+      flag.nominated = true;
+      pages.push(awardStoryPage(anyNom, "nom", copy));
+    }
+    return pages;
+  };
+
   sim.shipWorldTitlesThisMonth = function (st, config) {
     var titles = sim.allCareerTitles(config, st);
     var skip = st.career && st.career.titleId;
@@ -3551,40 +4424,39 @@
           return c.titleId === t.id && creditIsSigned(c);
         });
         rec = pushWorldReleased(st, t, config, credited);
-        if (leftover) rec.stats = cloneStats(leftover);
+        if (leftover) rec.stats = sim.cloneTitleStats(leftover, config);
         rec.player = !!credited;
       }
     });
   };
 
-  sim.liveStatsForMedia = function (live) {
-    live = live || {};
-    return {
-      program: num(live.program, 0),
-      script: num(live.design, num(live.script, 0)),
-      design: num(live.design, num(live.script, 0)),
-      art: num(live.art, 0),
-      music: num(live.music, 0)
-    };
+  sim.liveStatsForMedia = function (live, config) {
+    return sim.cloneTitleStats(live, config);
   };
 
   sim.shipPlayerTitle = function (st, config, notes, queue) {
     var title = sim.careerTitle(st.career.titleId, config, st);
     var copy = sim.careerCopy(config);
-    var avg, rec, label, media;
+    var avg, pub, rec, label, media;
     if (!title) return;
     label = sim.worldLabel(title, config);
-    avg = sim.liveToPublicScore(st.career.liveStats, title.score, config, st, title);
+    // pub 是「对外口碑」= 媒体分的抖动中心，只用于生成四家分数，不再直接当作品评分。
+    pub = sim.liveToPublicScore(st.career.liveStats, title.score, config, st, title);
     rec = findWorldReleased(st, title.id);
     if (!rec) rec = pushWorldReleased(st, title, config, false);
-    rec.stats = cloneStats(st.career.liveStats || title.stats);
-    rec.score = avg;
-    rec.avg = avg;
-    rec.liveStats = cloneStats(st.career.liveStats);
+    rec.stats = sim.cloneTitleStats(st.career.liveStats || title.stats, config);
+    rec.liveStats = sim.cloneTitleStats(st.career.liveStats, config);
     rec.genreId = title.genreId;
     rec.gameplayId = title.gameplayId;
-    media = scoreCareerMedia(st, avg, config);
+    media = scoreCareerMedia(st, pub, config);
     rec.media = media;
+    // 作品的评分取四家媒体分的算术平均（media.avg）：玩家唯一看得见的分数就是这四行 + 均分，
+    // 榜单 / 奖项 / 销量曲线 / 履历 / 情报条再读别的数就会自相矛盾（2026-09-18 的
+    // 「四家都不是 10 分、均分却写 10」就是 rec.avg 存了口碑、面板拿它当均分显示）。
+    // 抖动是零和的，所以这个均分仍然≈口碑，只差四舍五入。
+    avg = media.avg;
+    rec.score = avg;
+    rec.avg = avg;
     rec.title = label;
     stampCareerLaunchSales(rec, title, avg, config, rec.liveStats || rec.stats);
     (function markShippedCredit() {
@@ -3769,7 +4641,7 @@
     var cr = state && state.career;
     var role = sim.careerRole(cr && cr.roleId, config);
     var mainStat = 0;
-    var chance, min, max;
+    var chance, min, max, powMul;
     if (base == null) base = (spec.hireChanceByPower && spec.hireChanceByPower[power]);
     if (base == null) base = 0.5;
     if (role && cr && cr.stats) mainStat = num(cr.stats[role.stat], 0);
@@ -3778,6 +4650,11 @@
       + Math.max(0, mainStat - num(sal.statRef, 0)) * num(spec.statHirePer, 0)
       + rankTableVal(jobRankSpec(config).hireChanceRankBonus, sim.careerJobRank(cr, config), 0)
       + sim.careerSkillHireBonus(state, config, company, studio, title);
+    // 按公司体量对整条通过率打折（mobility.hireChancePowerMul）。
+    // company.hireChance 已是 power 级基准，但上面四项加成会把它一路推到 hireChanceMax——
+    // 不乘这一下，大厂到后期就是 92% 的保险箱。作用在夹取之前。
+    powMul = tableMult(spec.hireChancePowerMul, power, 1);
+    if (powMul >= 0 && powMul !== 1) chance = chance * powMul;
     min = spec.hireChanceMin;
     max = spec.hireChanceMax;
     if (min != null && chance < min) chance = min;
@@ -3804,6 +4681,25 @@
     if (busy.length) return sim.pick(st, busy);
     return sim.pick(st, studios);
   }
+
+  // offer / 邀约的准入开关：mobility.requireInDevTitle
+  //   true（默认）/ 省略 → 四面全开；false → 全关；
+  //   { offer:false, invite:false, scripted:false, studioMove:false } → 分面关。
+  // kind: "offer"（年底 offer 表）| "invite"（年中挖人）| "scripted"（剧情邀约：同事线跳槽/
+  //       前辈线跟着走/搭史诗作/回国）| "studioMove"（剧情内部调岗）。
+  function requireInDevTitle(config, kind) {
+    var mob = (sim.careerWorld(config).mobility) || {};
+    var spec = mob.requireInDevTitle;
+    if (spec === false) return false;
+    if (!spec || spec === true || typeof spec !== "object") return true;
+    if (spec.all === false) return false;
+    if (kind && spec[kind] === false) return false;
+    return true;
+  }
+
+  sim.mobilityRequireInDevTitle = function (config, kind) {
+    return requireInDevTitle(config, kind);
+  };
 
   function producerOfferUnlocked(st, config) {
     var mob = (sim.careerWorld(config).mobility) || {};
@@ -3876,6 +4772,8 @@
 
   function makeHopOffer(st, config, co, studio, roleId, year, month, salaryYear, internal, index) {
     var title = sim.pickCareerAssignment(co.id, year, month, config, st, studio && studio.id);
+    // 准入：这家（这个工作室）当月手上没活，就不该发 offer——进去就是空窗，过月被塞虚拟作。
+    if (!title && requireInDevTitle(config, "offer")) return null;
     var chance = sim.careerHireChance(co, st, config, studio, title);
     var powerKey = co && co.power != null ? String(co.power) : "2";
     var minRank = (jobRankSpec(config).offerMinRankByPower || {})[powerKey] || 1;
@@ -3888,6 +4786,10 @@
       if (chance < 0) chance = 0;
       if (chance > 1) chance = 1;
     }
+    // 通过率 0 的 offer 不占选项位：职级不够时大厂（offerMinRankByPower[3]=3）会被硬置 0，
+    // 原先仍以「0%」挂在跳槽页上——玩家看着一整排进不去的公司，既挤掉稀缺选项位，
+    // 又误导「这家可以试」。返回 null 由调用方跳过（调用方已标记 usedCo，不会重复抽同一家）。
+    if (!(chance > 0)) return null;
     return {
       id: "ye-" + year + "-" + index + "-" + co.id + "-" + ((studio && studio.id) || "x"),
       offerYear: year,
@@ -3923,7 +4825,10 @@
     var out = [];
     var usedCo = {};
     var internals = [];
-    var pool, i, s, co, studio, hiring, roleId;
+    var pool, i, s, co, studio, hiring, roleId, offer;
+    // 准入（mobility.requireInDevTitle.offer）：当年月手上没有在研目录作的公司不进 offer 池——
+    // 进去就是空窗，过月被塞虚拟作。抽公司前先过滤，免得权重抽签白抽在死公司上。
+    var needsWork = requireInDevTitle(config, "offer");
     if (current) usedCo[current] = true;
     if (curCo) {
       (sim.careerStudios(curCo) || []).forEach(function (row) {
@@ -3935,10 +4840,13 @@
       s = sim.pick(state, pool);
       pool = pool.filter(function (x) { return x.id !== s.id; });
       roleId = pickMobilityRole(state, config, "hop");
-      out.push(makeHopOffer(state, config, curCo, s, roleId, year, month, salaryYear, true, out.length));
+      offer = makeHopOffer(state, config, curCo, s, roleId, year, month, salaryYear, true, out.length);
+      if (offer) out.push(offer);
     }
     hiring = companies.filter(function (c) {
-      return !usedCo[c.id] && sim.companyJoinable(c, year);
+      if (usedCo[c.id] || !sim.companyJoinable(c, year)) return false;
+      if (needsWork && !sim.companyInDevCatalogTitle(c.id, state, config, null)) return false;
+      return true;
     });
     while (out.length < count) {
       pool = hiring.filter(function (c) { return !usedCo[c.id]; });
@@ -3953,7 +4861,8 @@
       usedCo[co.id] = true;
       studio = pickStudioForOffer(state, co, year, month, config);
       roleId = pickMobilityRole(state, config, "hop");
-      out.push(makeHopOffer(state, config, co, studio, roleId, year, month, salaryYear, false, out.length));
+      offer = makeHopOffer(state, config, co, studio, roleId, year, month, salaryYear, false, out.length);
+      if (offer) out.push(offer);
     }
     if (((jobRankSpec(config).promotion || {}).yearEndSlot !== false) && sim.canPromoteCareer(state, config)) {
       (function unshiftPromo() {
@@ -4059,6 +4968,9 @@
       if (state.career && state.career.titleId === d.id) continue;
       t = sim.findById(titles, d.id);
       if (!t) continue;
+      // 准入：邀约必须挂着"当月真在开发"的作（inviteWindow 本来就落在开发窗口内，
+      // 这里是硬约束，防止窗口与开发窗口改歪之后把人送进空窗）。
+      if (requireInDevTitle(config, "invite") && !sim.titleCoversMonth(t, d, state.year, state.month)) continue;
       if (sim.careerTitleIsLate(t, d, state.year, state.month, config) && lateJoinSpec(config).inviteEligible !== true) continue;
       if (state.career && t.companyId === state.career.companyId) continue;
       co = sim.careerCompany(t.companyId, config);
@@ -4099,6 +5011,10 @@
     return out;
   };
 
+  // 邀约按「年」掷骰：每年只掷一次，inviteChance 直接就是「这一年会不会有厂商来挖」的概率。
+  // 旧写法是每月独立掷一次（失败不消耗次数），12 次叠加后年内命中率 ≈ 99.8%，
+  // 等于每年必被挖一次；而邀约是必成的（acceptCareerInvite 不掷骰），
+  // 于是「进大厂」变成零门槛。现在改成年度单次判定，概率才可预期。
   function rollInvitesThisMonth(st, config) {
     var spec = sim.careerWorld(config).mobility || {};
     var max = spec.inviteMaxPerYear != null ? spec.inviteMaxPerYear : 1;
@@ -4107,12 +5023,13 @@
     if (st.career.inviteYearStamp !== st.year) {
       st.career.inviteYearStamp = st.year;
       st.career.invitesRolledThisYear = 0;
+      if (chance == null) chance = 1;
+      st.career.inviteYearHit = sim.rand(st) < chance;
     }
+    if (!st.career.inviteYearHit) return st.career.invites || [];
     if (st.career.invitesRolledThisYear >= max) return st.career.invites || [];
     eligible = sim.listCareerInvites(st, config);
     if (!eligible.length) return st.career.invites || [];
-    if (chance == null) chance = 1;
-    if (sim.rand(st) >= chance) return st.career.invites || [];
     (function pickInvite() {
       var weighted = eligible.map(function (inv) {
         var title = sim.careerTitle(inv.titleId, config, st);
@@ -4257,13 +5174,6 @@
         months[t.releaseMonth].push(t);
       }
     });
-    if (sim.listLiveOpsVersionDrops) {
-      sim.listLiveOpsVersionDrops(st || { mode: "career" }, year, config).forEach(function (d) {
-        if (!d.month) return;
-        months[d.month] = months[d.month] || [];
-        months[d.month].push(d);
-      });
-    }
     return { year: year, months: months };
   };
 
@@ -4363,11 +5273,13 @@
     var mobility = world.mobility || {};
     var hopMonth = mobility.hopMonth || 12;
     var awardPack = null;
+    var awardStory = [];
     var firedEvent = null;
     var lineFired = 0;
-    var pay, living, co, view, projectView, phaseLabel, role, invites, supporting, titleNow, xpSpec, contrib;
+    var pay, living, co, view, projectView, phaseLabel, role, invites, supporting, titleNow, xpSpec, phaseMult;
 
     sim.ensureCareerExtras(st, config);
+    if (st.career) st.career.inspirationMonth = false;
     if (st.month === 1 && sim.applyPendingStoryPromos) {
       sim.applyPendingStoryPromos(st, config);
     }
@@ -4379,9 +5291,15 @@
     view = projectView;
     xpSpec = world.playerXp || {};
     titleNow = st.career.titleId ? sim.careerTitle(st.career.titleId, config, st) : null;
+    if (sim.tickCareerGrind) {
+      sim.tickCareerGrind(st, config, !!st.career.liveStats && (supporting || !projectView.idle));
+    }
     if (supporting && st.career.liveStats) {
-      grantPlayerTitleXp(st, titleNow, num(xpSpec.xpPerPostLaunchMonth, 0));
+      grantPlayerTitleXp(st, titleNow, num(xpSpec.xpPerPostLaunchMonth, num(xpSpec.xpPerDevMonth, 0)));
       grantMainStatAndXp(st, "support", config, titleNow);
+      role = sim.careerRole(st.career.roleId, config);
+      // 长线运营月不吃阶段权重（那是开发期的节奏），只吃体量阻尼。
+      applyMonthlyLiveContribution(st, config, sim.careerPowerContribMult(titleNow, config));
       (function markSupported() {
         var cred = findCredit(st, st.career.titleId);
         if (cred) cred.supported = true;
@@ -4390,26 +5308,20 @@
       if (phaseLabel) notes.push((copy.phasePrefix || "阶段") + " " + phaseLabel);
     } else if (!projectView.idle && st.career.liveStats) {
       role = sim.careerRole(st.career.roleId, config);
-      contrib = sim.careerMonthlyContribution(st, config);
-      if (sim.isCareerProducer && sim.isCareerProducer(st)) {
-        DIMS.forEach(function (dim) {
-          if (contrib) sim.applyCareerLiveDelta(st, dim, contrib, config);
-        });
-      } else if (role && role.stat && contrib) {
-        sim.applyCareerLiveDelta(st, role.stat, contrib, config);
-      }
-      grantPlayerTitleXp(st, titleNow, num(xpSpec.xpPerDevMonth, 0));
-      grantMainStatAndXp(st, "dev", config, titleNow);
+      if (st.career.burnoutMonth) notes.push("倦怠：连轴转太久了，这个月状态只剩一半");
+      // 开发月的成长倍率：阶段权重（立项慢 / 填充·打磨快 / 金盘期 0）× 体量阻尼。
+      // 同一个倍率同时管「属性成长」「职级经验」「作品月贡献」，玩家才对得上「这个月干了多少活」。
+      phaseMult = sim.careerPhaseMult(projectView.phase && projectView.phase.id, config) *
+        sim.careerPowerContribMult(titleNow, config);
+      applyMonthlyLiveContribution(st, config, phaseMult);
+      rollInspirationMonth(st, config, notes);
+      grantPlayerTitleXp(st, titleNow, num(xpSpec.xpPerDevMonth, 0) * phaseMult);
+      grantMainStatAndXp(st, "dev", config, titleNow, phaseMult);
       phaseLabel = projectView.phase ? sim.worldLabel(projectView.phase, config) : "";
       if (phaseLabel) notes.push((copy.phasePrefix || "阶段") + " " + phaseLabel);
     }
 
     sim.shipWorldTitlesThisMonth(st, config);
-    if (sim.applyLiveOpsVersion) {
-      (st.worldReleased || []).forEach(function (g) {
-        sim.applyLiveOpsVersion(st, g, config, notes, null);
-      });
-    }
 
     if (st.career.titleId && !sim.careerPostLaunch(st)) {
       view = sim.careerTitle(st.career.titleId, config, st);
@@ -4441,8 +5353,12 @@
     pay = st.career.salary || 0;
     st.career.lastPay = pay;
     st.career.savings = (st.career.savings || 0) + pay;
+    // ⚠️ 钱在生涯档目前没有出口：deductLivingCost=false，savings 只喂 UI 与结算页，
+    // savingsGate 也没有消费方。要打开这个开关，先让「钱能买到什么」成立，否则只是数字变化；
+    // 在那之前不要给天赋写 livingCostMult（守卫测试 careerTraitsStayOnLiveKeys 会拦）。
     if (eco.deductLivingCost) {
-      living = sim.careerLivingCost(st.year, config);
+      living = sim.careerLivingCost(st.year, config) *
+        sim.careerTraitMult(st, "livingCostMult", config, 1);
       st.career.savings -= living;
     }
     st.company.funds = st.career.savings;
@@ -4454,6 +5370,9 @@
 
     if (st.phase === "PLAYING" && st.month === (config.awards.month || 11)) {
       awardPack = sim.runCareerAwards(st, config, notes);
+      if (sim.collectCareerAwardStory) {
+        awardStory = sim.collectCareerAwardStory(st, config, awardPack);
+      }
     }
 
     invites = rollInvitesThisMonth(st, config);
@@ -4514,7 +5433,114 @@
         body: copy.awardBody || "",
         awards: awardPack
       });
+      // 剧情页排在颁奖夜之后：先看滚幕揭晓，再读这一段。
+      awardStory.forEach(function (p) { queue.push(p); });
     }
     return { state: st, queue: queue };
+  };
+
+  function careerPaceSpec(config) {
+    return (sim.careerWorld(config).careerPace) || {};
+  }
+
+  function awardsInvolvePlayer(pack) {
+    return (pack || []).some(function (a) {
+      return !!(a && (a.playerWon || a.playerNominated));
+    });
+  }
+
+  function fillPaceTemplate(tpl, map) {
+    var out = String(tpl || "");
+    Object.keys(map || {}).forEach(function (k) {
+      out = out.split("{" + k + "}").join(String(map[k]));
+    });
+    return out;
+  }
+
+  function dateLabel(year, month) {
+    return year + "." + (month < 10 ? "0" : "") + month;
+  }
+
+  sim.careerQueueNeedsDecision = function (queue, config) {
+    var pace = careerPaceSpec(config);
+    var stopTypes = pace.stopOnTypes || [
+      "invite", "hop", "promotion", "media", "producerPitch", "careerLine", "careerLineFork"
+    ];
+    var stopOnChoice = pace.stopOnChoice !== false;
+    var stopOnPlayerAwards = pace.stopOnPlayerAwards !== false;
+    var i;
+    var page;
+    for (i = 0; i < (queue || []).length; i++) {
+      page = queue[i];
+      if (!page) continue;
+      if (stopOnChoice && page.presentation === "choice") return true;
+      if (page.type === "awards") {
+        if (stopOnPlayerAwards && awardsInvolvePlayer(page.awards)) return true;
+        continue;
+      }
+      if (stopTypes.indexOf(page.type) >= 0) return true;
+    }
+    return false;
+  };
+
+  sim.tickCareerToDecision = function (state, config) {
+    var pace;
+    var maxSkip;
+    var summaryMin;
+    var fromY;
+    var fromM;
+    var skipped;
+    var st;
+    var last;
+    var queue;
+    var copy;
+    var summary;
+    var toY;
+    var toM;
+    if (!state || state.mode !== "career") {
+      return sim.tickMonth(state, config);
+    }
+    pace = careerPaceSpec(config);
+    maxSkip = num(pace.maxSkipMonths, 12);
+    if (maxSkip < 1) maxSkip = 1;
+    summaryMin = num(pace.summaryMinSkipped, 2);
+    if (summaryMin < 1) summaryMin = 1;
+    fromY = state.year;
+    fromM = state.month;
+    skipped = 0;
+    st = state;
+    last = null;
+    while (st.phase === "PLAYING") {
+      last = sim.tickCareerMonth(st, config);
+      st = last.state;
+      skipped += 1;
+      if (st.phase !== "PLAYING") break;
+      if (sim.careerQueueNeedsDecision(last.queue, config)) break;
+      if (skipped >= maxSkip) break;
+    }
+    queue = (last && last.queue) ? last.queue.slice() : [];
+    toY = st.year;
+    toM = st.month;
+    if (skipped >= summaryMin) {
+      copy = sim.careerCopy(config);
+      summary = {
+        type: "paceSkip",
+        kind: "info",
+        kicker: copy.paceSkipKicker || "时间飞逝",
+        title: fillPaceTemplate(copy.paceSkipTitle || "推进了 {months} 个月", { months: skipped }),
+        body: fillPaceTemplate(
+          copy.paceSkipBody || "{from} → {to}。途中没有需要你当场决定的事。",
+          { from: dateLabel(fromY, fromM), to: dateLabel(toY, toM), months: skipped }
+        )
+      };
+      queue = [summary].concat(queue);
+    }
+    return {
+      state: st,
+      queue: queue,
+      skippedMonths: skipped,
+      from: { year: fromY, month: fromM },
+      to: { year: toY, month: toM }
+    };
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);

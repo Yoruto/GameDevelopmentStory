@@ -17,9 +17,9 @@
   ui.session = {
     state: null,
     pendingName: "",
-    pendingRole: "",
-    pitchPick: { genre: "", play: "", plat: "" },
-    uiPage: { fire: 0, released: 0, series: 0, live: 0, genre: 0, play: 0, rival: 0, project: 0, chart: 0 },
+    startRoll: null,
+    rollsLeft: null,
+    uiPage: {},
     tickPages: [],
     tickStep: 0,
     tgaYear: null,
@@ -85,14 +85,14 @@
   };
 
   ui.l2Open = function () {
-    return ui.$("dock-ops").classList.contains("on") || ui.$("dock-intel").classList.contains("on");
+    var intel = ui.$("dock-intel");
+    return !!(intel && intel.classList.contains("on"));
   };
 
   ui.syncDock = function () {
     var dock = ui.$("dock-shell");
     if (!dock) return;
     var boot = ui.$("sc-boot").classList.contains("on") ||
-      (ui.$("sc-role") && ui.$("sc-role").classList.contains("on")) ||
       (ui.$("sc-offer") && ui.$("sc-offer").classList.contains("on"));
     dock.classList.toggle("off", boot);
     var hq = ui.$("sc-hq").classList.contains("on");
@@ -100,29 +100,52 @@
     ui.$("btn-dock-back").classList.toggle("off", hq && !sheet);
     ui.$("dock-l1").classList.toggle("off", !hq || sheet);
     ui.$("dock-sub-slot").classList.toggle("off", hq);
+    // 履历整合进自身：在「自身」页的 dock 空槽放履历入口
+    (function fillSubSlot() {
+      var sub = ui.$("dock-sub-slot");
+      var playerOn = ui.$("sc-player").classList.contains("on");
+      if (!sub) return;
+      if (playerOn && !sub.getAttribute("data-filled")) {
+        var b = doc.createElement("button");
+        b.type = "button";
+        b.className = "career-only";
+        b.textContent = "履历";
+        b.addEventListener("click", function () {
+          if (!ui.session.state) return;
+          if (ui.paintResume) ui.paintResume();
+          ui.show("sc-resume");
+        });
+        sub.textContent = "";
+        sub.appendChild(b);
+        sub.setAttribute("data-filled", "1");
+      } else if (!playerOn && sub.getAttribute("data-filled")) {
+        sub.textContent = "";
+        sub.removeAttribute("data-filled");
+      }
+    })();
     ui.$("btn-tick").classList.toggle("off", !hq);
+    if (ui.$("btn-tick-skip")) ui.$("btn-tick-skip").classList.toggle("off", !hq);
+    if (ui.$("dock-ticks")) ui.$("dock-ticks").classList.toggle("off", !hq);
   };
 
   ui.closeDockSheets = function () {
-    ["dock-ops", "dock-intel"].forEach(function (id) {
-      var el = ui.$(id);
-      if (el) el.classList.remove("on");
-    });
-    ["btn-sheet-ops", "btn-sheet-intel"].forEach(function (id) {
-      var el = ui.$(id);
-      if (el) el.classList.remove("on");
-    });
+    var intel = ui.$("dock-intel");
+    if (intel) intel.classList.remove("on");
+    var btn = ui.$("btn-sheet-intel");
+    if (btn) btn.classList.remove("on");
     ui.syncDock();
   };
 
   ui.toggleDockSheet = function (name) {
-    var panel = name === "ops" ? ui.$("dock-ops") : ui.$("dock-intel");
+    var panel = ui.$("dock-intel");
+    var btn = ui.$("btn-sheet-intel");
+    if (!panel || !btn) return;
     var already = panel.classList.contains("on");
-    ["dock-ops", "dock-intel"].forEach(function (id) { ui.$(id).classList.remove("on"); });
-    ["btn-sheet-ops", "btn-sheet-intel"].forEach(function (id) { ui.$(id).classList.remove("on"); });
+    panel.classList.remove("on");
+    btn.classList.remove("on");
     if (!already) {
       panel.classList.add("on");
-      ui.$(name === "ops" ? "btn-sheet-ops" : "btn-sheet-intel").classList.add("on");
+      btn.classList.add("on");
     }
     ui.syncDock();
   };

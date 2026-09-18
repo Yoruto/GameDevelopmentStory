@@ -1,10 +1,9 @@
 (function (root) {
   var sim = root.GDS.sim;
 
-  function num(v, fallback) {
-    var n = Number(v);
-    return (n == null || isNaN(n)) ? (fallback != null ? fallback : 0) : n;
-  }
+  // 只保留生涯档还在用的盒装生命周期部件：
+  // Y 曲线（salesFactor / boxedActualFromY）与本月榜单（monthlyChart）。
+  // 「待发售→发布→逐月结算→掉榜停售」这条经营局链路已随公司档一并移除。
 
   sim.lifecycleCfg = function (config) {
     return (config && config.lifecycle) || {};
@@ -18,11 +17,11 @@
     return null;
   };
 
+  // 带长线标记的作品和盒装走同一条曲线：这里只排除外包。
   sim.usesBoxedLifecycle = function (g) {
     if (!g) return false;
-    if (g.releaseType === "outsource" || g.releaseType === "liveops") return false;
-    if (g.live) return false;
-    if (g.releaseType && g.releaseType !== "boxed") return false;
+    if (g.releaseType === "outsource") return false;
+    if (g.releaseType && g.releaseType !== "boxed" && g.releaseType !== "liveops") return false;
     return true;
   };
 
@@ -37,35 +36,6 @@
     if (g.launchSales != null && g.launchSales !== "") return Number(g.launchSales);
     if (g.sales != null && g.sales !== "") return Number(g.sales);
     return 0;
-  };
-
-  sim.boxedBaselineFormula = function (st, p, config, consumeAd) {
-    if (!st || !p || !config) return 0;
-    var q = (p.stats && p.stats.program || 0) + (p.stats && p.stats.script || 0) +
-      (p.stats && p.stats.art || 0) + (p.stats && p.stats.music || 0);
-    var rel = config.release || {};
-    var sales = Math.round(st.company.fans * (rel.fanSalesCoeff || 0) + q * (rel.qualitySumSalesCoeff || 0));
-    if (st.company.adOn) {
-      var ad = (config.economy && config.economy.advertising) || {};
-      sales = Math.round(sales * (ad.nextReleaseSalesMultiplier || 1));
-      if (consumeAd) st.company.adOn = false;
-    }
-    if (sim.matchesTrend(p, st.trend)) {
-      sales = Math.round(sales * (rel.trendSalesMultiplier || 1));
-      var trendExtra = sim.bestTraitValue(
-        st, p.memberIds, p.producerId, "trendRider",
-        "producerTrendSalesExtra", "memberTrendSalesExtra", config
-      );
-      if (trendExtra) sales = Math.round(sales * (1 + trendExtra));
-    }
-    if (p.seriesId && config.series) {
-      sales = Math.round(sales * (1 + (config.series.guaranteedSalesInheritRate || 0)));
-    }
-    var fold = (config.company && config.company.ownConsoleFoldIntoPlatformId) || "console";
-    if (st.company.ownConsole && sim.platformFamilyId(p.platformId, config) === fold) {
-      sales = Math.round(sales * (config.company.ownConsoleSalesMultiplier || 1));
-    }
-    return sales;
   };
 
   sim.clearMonthSalesMods = function (g) {
@@ -93,56 +63,38 @@
     return amt;
   };
 
-  sim.salesFactor = function (m, score, config) {
-    var lc = sim.lifecycleCfg(config);
+  // 评分归一化到 0..1（scoreMin→0，scoreMax→1）。Y 与首周份额共用，别再各写一遍。
+  function scoreUnit(score, lc) {
     var smin = lc.scoreMin;
     var smax = lc.scoreMax;
-    var tMin = lc.tMin;
-    var tSpan = lc.tSpan;
-    var x0Min = lc.x0Min;
-    var x0Span = lc.x0Span;
-    var k = lc.k;
-    var maxM = lc.maxMonths;
-    if (m < 1 || (maxM != null && m > maxM)) return 0;
-    if (score == null || score === "" || isNaN(Number(score))) return 0;
     var s = Number(score);
+    var span;
     if (smin != null && s < smin) s = smin;
     if (smax != null && s > smax) s = smax;
-    var span = (smax != null && smin != null) ? (smax - smin) : 0;
-    var u = span ? (s - smin) / span : 0;
-    var t = tMin + u * tSpan;
-    var x0 = x0Min + u * x0Span;
-    var x = m - 1;
-    return t + (1 - t) / (1 + Math.exp(k * (x - x0)));
-  };
+    span = (smax != null && smin != null) ? (smax - smin) : 0;
+    return span ? (s - smin) / span : 0;
+  }
 
-  sim.lifecycleDropsOff = function (m, y, config) {
+  // Y(m) = T + (1−T)·e^(−λ·(m−1))，指数长尾。Y(1) 恒为 1，所以 baselineSales 就是首月参照。
+  // λ = lambda0 + u·lambdaSpan（lambdaSpan 为负 → 高口碑衰减更慢），T = tMin + u·tSpan 是长尾高度。
+  sim.salesFactor = function (m, score, config) {
     var lc = sim.lifecycleCfg(config);
-    if (lc.maxMonths != null && m > lc.maxMonths) return true;
-    if (m < 1) return true;
-    return y < lc.dropOffY;
+    var maxM = lc.maxMonths;
+    var u, lambda, t, x;
+    if (m < 1 || (maxM != null && m > maxM)) return 0;
+    if (score == null || score === "" || isNaN(Number(score))) return 0;
+    u = scoreUnit(score, lc);
+    lambda = lc.lambda0 + u * lc.lambdaSpan;
+    if (!(lambda > 0)) lambda = 0;
+    t = lc.tMin + u * lc.tSpan;
+    x = m - 1;
+    return t + (1 - t) * Math.exp(-lambda * x);
   };
 
-  sim.migrateBoxedLifecycle = function (st, g, config) {
-    if (!g || !sim.usesBoxedLifecycle(g)) {
-      if (g && g.onSale == null && (g.releaseType === "outsource" || g.releaseType === "liveops" || g.live)) {
-        g.onSale = false;
-      }
-      return g;
-    }
-    if (g.launchSales == null && g.sales != null) g.launchSales = g.sales;
-    if (g.baselineSales == null) {
-      g.baselineSales = g.launchSales != null ? g.launchSales : (g.sales || 0);
-    }
-    if (g.onSale != null) return g;
-    var m = sim.lifecycleMonth(st, g);
-    var base = sim.boxedBaselineOf(g);
-    g.onSale = !!base && m >= 1;
-    return g;
-  };
+  // 首周份额（salesWeek1Share / boxedWeek1Units）随「揭晓面板不再显示首周销量」于
+  // 2026-09-18 删除。面板只显示月销量 = rec.launchSales（发售当月实销）。
 
   sim.boxedMonthUnits = function (g, st, config) {
-    sim.migrateBoxedLifecycle(st, g, config);
     if (!sim.usesBoxedLifecycle(g) || !sim.boxedBaselineOf(g)) return 0;
     if (g.onSale === false) return 0;
     var score = sim.lifecycleScoreOf(g);
@@ -151,96 +103,6 @@
     var m = sim.lifecycleMonth(st, g);
     var y = sim.salesFactor(m, score, config);
     return sim.boxedActualFromY(g, y);
-  };
-
-  sim.endBoxedSales = function (g) {
-    g.onSale = false;
-    g.monthSales = 0;
-    g.tailLeft = 0;
-    sim.clearMonthSalesMods(g);
-  };
-
-  function settleBoxedMonth(st, g, config, asRival) {
-    sim.migrateBoxedLifecycle(st, g, config);
-    if (!sim.usesBoxedLifecycle(g)) return 0;
-    if (g.onSale === false) return 0;
-    if (!sim.boxedBaselineOf(g)) {
-      sim.endBoxedSales(g);
-      return 0;
-    }
-    var score = sim.lifecycleScoreOf(g);
-    var m = sim.lifecycleMonth(st, g);
-    if (score == null || !(score > 0)) {
-      if (m > 1) sim.endBoxedSales(g);
-      else {
-        g.onSale = true;
-        g.monthSales = sim.boxedActualFromY(g, 1);
-        sim.stampMonthSales(g, st);
-      }
-      sim.clearMonthSalesMods(g);
-      return 0;
-    }
-    var y = sim.salesFactor(m, score, config);
-    var amt = sim.boxedActualFromY(g, y);
-    g.onSale = true;
-    if (m <= 1) {
-      var hasMods = g.monthSalesMult != null || g.monthSalesDelta;
-      if (!hasMods) {
-        g.monthSales = g.monthSales != null ? g.monthSales : (g.launchSales || 0);
-        sim.stampMonthSales(g, st);
-        sim.clearMonthSalesMods(g);
-        return 0;
-      }
-      var prev = g.monthSales != null ? g.monthSales : (g.launchSales || 0);
-      var diff = amt - prev;
-      g.monthSales = amt;
-      g.launchSales = amt;
-      sim.stampMonthSales(g, st);
-      if (diff) {
-        g.lifetimeSales = (g.lifetimeSales || 0) + diff;
-        if (asRival) {
-          g.sales = (g.sales || 0) + diff;
-          var plat0 = sim.platformFamilyId(g.platformId, config);
-          if (!st.rivalLifetimeByPlatform) st.rivalLifetimeByPlatform = {};
-          st.rivalLifetimeByPlatform[plat0] = (st.rivalLifetimeByPlatform[plat0] || 0) + diff;
-        } else {
-          st.company.funds += diff;
-          st.monthSales += diff;
-        }
-      }
-      sim.clearMonthSalesMods(g);
-      return diff;
-    }
-    g.monthSales = amt;
-    sim.stampMonthSales(g, st);
-    g.lifetimeSales = (g.lifetimeSales || 0) + amt;
-    if (asRival) {
-      g.sales = (g.sales || 0) + amt;
-      var plat = sim.platformFamilyId(g.platformId, config);
-      if (!st.rivalLifetimeByPlatform) st.rivalLifetimeByPlatform = {};
-      st.rivalLifetimeByPlatform[plat] = (st.rivalLifetimeByPlatform[plat] || 0) + amt;
-    } else {
-      st.company.funds += amt;
-      st.monthSales += amt;
-    }
-    sim.clearMonthSalesMods(g);
-    return amt;
-  }
-
-  sim.tickLifecycle = function (st, g, config) {
-    return settleBoxedMonth(st, g, config, false);
-  };
-
-  sim.tickRivalLifecycle = function (st, g, config) {
-    return settleBoxedMonth(st, g, config, true);
-  };
-
-  sim.keepRivalOnSale = function (st, rec) {
-    if (!rec || !sim.usesBoxedLifecycle(rec)) return;
-    rec.launchSales = rec.launchSales != null ? rec.launchSales : rec.sales;
-    if (rec.baselineSales == null) rec.baselineSales = rec.launchSales != null ? rec.launchSales : rec.sales;
-    rec.onSale = rec.onSale !== false;
-    sim.keepRivalHit(st, rec);
   };
 
   sim.sortChartEntries = function (entries) {
@@ -261,91 +123,39 @@
 
   sim.chartMonthUnits = function (g, st, config) {
     if (!g) return 0;
-    if (g.liveOps && g.liveOps.active) {
-      if (sim.monthSalesStampMatches(g, st) && g.monthSales != null) return g.monthSales;
-      return sim.liveOpsRevenue ? sim.liveOpsRevenue(g, config, st) : 0;
-    }
     return sim.boxedMonthUnits(g, st, config);
   };
 
-  function chartRow(g, st, config, source) {
+  function chartRow(g, st, config) {
     var units = sim.chartMonthUnits(g, st, config);
     if (!units) return null;
     var pub = g.pub || "";
-    if (!pub && source === "world" && g.companyId && sim.careerCompany) {
+    if (!pub && g.companyId && sim.careerCompany) {
       var co = sim.careerCompany(g.companyId, config);
       if (co) pub = sim.worldLabel ? sim.worldLabel(co, config) : (co.name || co.alias || "");
     }
     return {
-      source: source,
+      source: "world",
       id: g.id || "",
       title: g.title || g.series || g.name || "",
       pub: pub,
       platformId: g.platformId || "",
       avg: sim.lifecycleScoreOf(g),
-      monthSales: units
+      monthSales: units,
+      live: !!(sim.isLiveOpsTitle && sim.isLiveOpsTitle(g))
     };
   }
 
-  sim.chartFillerUnits = function (g, config) {
-    if (!g) return 0;
-    if (g.monthSales != null && g.monthSales !== "") return Math.max(0, Math.round(Number(g.monthSales)));
-    var score = sim.lifecycleScoreOf(g);
-    var y = score != null && score > 0 ? sim.salesFactor(1, score, config) : 1;
-    return sim.boxedActualFromY(g, y);
-  };
-
-  sim.chartFillerEntries = function (config) {
-    var lc = sim.lifecycleCfg(config);
-    var list = lc.chartFillers || [];
-    var rows = [];
-    var i, g, units;
-    for (i = 0; i < list.length; i++) {
-      g = list[i];
-      if (!g) continue;
-      units = sim.chartFillerUnits(g, config);
-      if (!units) continue;
-      rows.push({
-        source: "filler",
-        id: g.id || "",
-        title: g.title || "",
-        pub: g.pub || "",
-        platformId: g.platformId || "",
-        avg: g.avg != null ? g.avg : null,
-        monthSales: units
-      });
-    }
-    return rows;
-  };
-
-  sim.chartEntries = function (st, config) {
-    var rows = [];
-    var seen = {};
-    function add(g, source) {
-      if (!g) return;
-      var key = sim.chartEntryKey(source, g);
-      if (seen[key]) return;
-      seen[key] = true;
-      var row = chartRow(g, st, config, source);
-      if (row) rows.push(row);
-    }
-    (st.released || []).forEach(function (g) { add(g, "player"); });
-    (st.rivalReleased || []).forEach(function (g) { add(g, "rival"); });
-    (st.rivalMonth || []).forEach(function (g) { add(g, "rival"); });
-    (st.rivalWindow || []).forEach(function (g) { add(g, "rival"); });
-    if (st && st.mode === "career") {
-      (st.worldReleased || []).forEach(function (g) { add(g, "world"); });
-    }
-    if (!(st && st.mode === "career")) {
-      sim.chartFillerEntries(config).forEach(function (row) { rows.push(row); });
-    }
-    return rows;
-  };
-
+  // 生涯档榜单 = 本月世界发售（worldReleased）按当月实销排。
   sim.monthlyChart = function (st, config) {
     var lc = sim.lifecycleCfg(config);
     var size = lc.chartSize;
-    var ranked = sim.sortChartEntries(sim.chartEntries(st, config));
+    var rows = [];
+    ((st && st.worldReleased) || []).forEach(function (g) {
+      var row = chartRow(g, st, config);
+      if (row) rows.push(row);
+    });
+    var ranked = sim.sortChartEntries(rows);
     if (size != null && size >= 0) ranked = ranked.slice(0, size);
     return ranked.map(function (row, i) {
       row.rank = i + 1;
@@ -353,113 +163,7 @@
     });
   };
 
-  sim.rankingCfg = function (config) {
-    return (config && config.ranking) || {};
-  };
-
-  // 月销量排行：复用 monthlyChart 的排序，按 ranking.size 截前 N（默认 10）。
   sim.monthlySalesRanking = function (st, config) {
-    var size = num(sim.rankingCfg(config).size, 10);
-    var ranked = sim.sortChartEntries(sim.chartEntries(st, config));
-    if (size > 0) ranked = ranked.slice(0, size);
-    return ranked.map(function (row, i) {
-      row.rank = i + 1;
-      return row;
-    });
-  };
-
-  // 一款游戏的当前月活。显式 mau 优先；rival 长线按 livePeak 推算；玩家长线按当月 liveOpsRevenue 推算。
-  sim.gameMau = function (g, st, config) {
-    if (!g) return 0;
-    if (g.mau && g.mau > 0) return g.mau;
-    var live = (g.liveOps && g.liveOps.active) || g.live;
-    if (!live) return 0;
-    var spec = sim.rankingCfg(config);
-    var base = 0;
-    if (g.liveOps && g.liveOps.active && sim.liveOpsRevenue) {
-      base = sim.liveOpsRevenue(g, config, st) * num(spec.mauPerRevenue, 1500);
-    } else {
-      var peak = num(g.livePeak, 0);
-      if (!peak) peak = num(g.sales, 0) * 0.12;
-      base = peak * num(spec.mauPerLivePeak, 300);
-    }
-    return Math.round(base);
-  };
-
-  // 月活跃排行：只收长线运营游戏，按 MAU 排序，前 N（默认 10）。
-  sim.monthlyActiveChart = function (st, config) {
-    var size = num(sim.rankingCfg(config).size, 10);
-    var rows = [];
-    var seen = {};
-    function add(g, source) {
-      if (!g) return;
-      var live = (g.liveOps && g.liveOps.active) || g.live;
-      if (!live) return;
-      var mau = sim.gameMau(g, st, config);
-      if (!mau) return;
-      var key = source + "\0" + (g.id || "") + "\0" + (g.title || g.series || g.name || "");
-      if (seen[key]) return;
-      seen[key] = true;
-      var pub = g.pub || "";
-      if (!pub && source === "world" && g.companyId && sim.careerCompany) {
-        var co = sim.careerCompany(g.companyId, config);
-        if (co) pub = sim.worldLabel ? sim.worldLabel(co, config) : (co.name || co.alias || "");
-      }
-      rows.push({
-        source: source,
-        id: g.id || "",
-        title: g.title || g.series || g.name || "",
-        pub: pub,
-        platformId: g.platformId || "",
-        avg: sim.lifecycleScoreOf(g),
-        mau: mau
-      });
-    }
-    (st.released || []).forEach(function (g) { add(g, "player"); });
-    (st.rivalReleased || []).forEach(function (g) { add(g, "rival"); });
-    if (st && st.mode === "career") {
-      (st.worldReleased || []).forEach(function (g) { add(g, "world"); });
-    }
-    rows.sort(function (a, b) { return (b.mau || 0) - (a.mau || 0); });
-    if (size > 0) rows = rows.slice(0, size);
-    return rows.map(function (row, i) {
-      row.rank = i + 1;
-      return row;
-    });
-  };
-
-  sim.applyChartDropOff = function (st, config, notes) {
-    if (!st || st.mode === "career") return;
-    var chart = sim.monthlyChart(st, config);
-    st.monthChart = chart;
-    var onChart = {};
-    (chart || []).forEach(function (row) {
-      if (!row || row.source === "filler") return;
-      onChart[sim.chartEntryKey(row.source, row)] = true;
-    });
-    var copy = (config && config.copy) || {};
-    var boxedNote = copy.chartDropBoxedNote || "掉出畅销榜，停止发售";
-    var liveNote = copy.chartDropLiveopsNote || "掉出畅销榜，停止运营";
-
-    function dropBoxed(list, source) {
-      (list || []).forEach(function (g) {
-        if (!sim.usesBoxedLifecycle(g) || g.onSale === false) return;
-        if (onChart[sim.chartEntryKey(source, g)]) return;
-        sim.endBoxedSales(g);
-        if (source === "player" && notes) notes.push((g.title || "") + boxedNote);
-      });
-    }
-
-    dropBoxed(st.released, "player");
-    dropBoxed(st.rivalReleased, "rival");
-    dropBoxed(st.rivalMonth, "rival");
-    dropBoxed(st.rivalWindow, "rival");
-
-    (st.released || []).forEach(function (g) {
-      if (!g || !g.liveOps || !g.liveOps.active) return;
-      if (onChart[sim.chartEntryKey("player", g)]) return;
-      sim.shutdownLive(st, g, config, notes || []);
-      if (notes) notes.push((g.title || "") + liveNote);
-    });
+    return sim.monthlyChart(st, config);
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);

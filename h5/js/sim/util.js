@@ -5,19 +5,121 @@
     return JSON.parse(JSON.stringify(st));
   };
 
-  sim.ensureGameExtras = function (st) {
-    if (!st.readyToShip) st.readyToShip = [];
-    if (!st.firedEventIds) st.firedEventIds = [];
-    if (!st.rivalReleased) st.rivalReleased = [];
-    if (!st.rivalForceSeries) st.rivalForceSeries = {};
-    if (!st.rivalPlan) st.rivalPlan = {};
-    if (!st.rivalCalendarHold) st.rivalCalendarHold = [];
-    if (!st.monthChart) st.monthChart = [];
-    return st;
+  // ── 两套维度 ────────────────────────────────────────────────────────────
+  // 人物维：员工与玩家的属性（程序/策划/美术/音乐），走 roles[].stat、jobRanks、career.stats、
+  //         inviteRoles、seniors[].tags。永远不要拿作品维去索引员工。
+  // 作品维：作品自身的质量（游戏性/趣味性/表现力/沉浸感），走 titles[].stats、peakDims、
+  //         qualityDim、liveStats、项目 stats。永远不要拿人物维去索引作品。
+  // 两套是分开的键，靠 careerWorld.quality.personToTitle 系数矩阵换算。定义在
+  // career-world.json 的 quality.dims / quality.personDims，这里只是代码侧的兜底默认值。
+  var PERSON_DIMS = ["program", "design", "art", "music"];
+  var TITLE_DIMS = ["play", "fun", "expression", "immersion"];
+
+  function num0(v) {
+    return typeof v === "number" && isFinite(v) ? v : 0;
+  }
+
+  function qualitySpec(config) {
+    return (config && config.careerWorld && config.careerWorld.quality) || {};
+  }
+
+  // 读人物某一维。design 与 script 是同一个维的两套写法（roles[].stat 用 design、
+  // 员工数据用 script），这里统一收口，别在别处再判一次。
+  function personStatVal(stats, dim) {
+    if (!stats) return 0;
+    if (dim === "design") return num0(stats.design != null ? stats.design : stats.script);
+    return num0(stats[dim]);
+  }
+  sim.personStatVal = personStatVal;
+
+  sim.personDims = function (config) {
+    var q = qualitySpec(config);
+    return (q.personDims && q.personDims.length) ? q.personDims.slice() : PERSON_DIMS.slice();
   };
 
-  sim.trendCfg = function (config) {
-    return (config.world && (config.world.trend || config.world.genreTrend)) || {};
+  sim.titleDims = function (config) {
+    var q = qualitySpec(config);
+    return (q.dims && q.dims.length) ? q.dims.slice() : TITLE_DIMS.slice();
+  };
+
+  // 维度展示名。月报（tick 的 notes）这类字符串会直接上屏，别把内部 id 漏给玩家。
+  sim.personDimLabel = function (dim, config) {
+    var c = (config && config.copy && config.copy.career) || {};
+    var map = { program: c.dimProgram, design: c.dimDesign, art: c.dimArt, music: c.dimMusic };
+    return map[dim] || dim;
+  };
+
+  sim.titleDimLabel = function (dim, config) {
+    var c = (config && config.copy && config.copy.career) || {};
+    return (c.prodDim || {})[dim] || dim;
+  };
+
+  // 作品四维的归一化克隆：只认作品维的键，缺的补 0。作品数据一律过这里。
+  sim.cloneTitleStats = function (src, config) {
+    var out = {};
+    sim.titleDims(config).forEach(function (d) {
+      out[d] = num0(src && src[d]);
+    });
+    return out;
+  };
+
+  // 作品四维合计。销量公式、最佳长线运营奖都用它，不要在各处再手写加法。
+  sim.titleQualitySum = function (stats, config) {
+    var s = 0;
+    sim.titleDims(config).forEach(function (d) {
+      s += num0(stats && stats[d]);
+    });
+    return s;
+  };
+
+  sim.titleQualityMean = function (stats, config) {
+    var dims = sim.titleDims(config);
+    return dims.length ? sim.titleQualitySum(stats, config) / dims.length : 0;
+  };
+
+  // 销量数字的中文短格式。销量改成百万级梯度后，2625727 这种裸数字既读不出来也撑爆行宽。
+  // 一万以下原样，一万到一亿用「万」（过百万转整数），一亿以上用「亿」。UI 侧一律走这里。
+  sim.formatUnits = function (n) {
+    var v = Number(n);
+    var f;
+    if (!isFinite(v)) v = 0;
+    v = Math.round(v);
+    if (v < 0) v = 0;
+    if (v >= 100000000) {
+      f = v / 100000000;
+      return (f >= 10 ? f.toFixed(1) : f.toFixed(2)) + " 亿";
+    }
+    f = v / 10000;
+    if (f >= 100) return Math.round(f) + " 万";
+    if (v >= 10000) return f.toFixed(1) + " 万";
+    return String(v);
+  };
+
+  // 把「人物四维的一坨产出」按矩阵摊到作品四维上。mult 是可选全局倍率，matrixOverride 是
+  // 可选矩阵（不传则用 quality.personToTitle）。这是人物侧与作品侧唯一的换算入口：月贡献、
+  // 立项底分都走它，不要另写换算。没配矩阵时按位置对位。
+  sim.titleStatsFromPerson = function (personStats, config, mult, matrixOverride) {
+    var q = qualitySpec(config);
+    var map = matrixOverride || q.personToTitle || {};
+    var pdims = sim.personDims(config);
+    var tdims = sim.titleDims(config);
+    var m = mult == null ? 1 : mult;
+    var out = {};
+    tdims.forEach(function (d) { out[d] = 0; });
+    pdims.forEach(function (pdim, i) {
+      var v = personStatVal(personStats, pdim);
+      if (!v) return;
+      var row = map[pdim];
+      if (row && typeof row === "object") {
+        tdims.forEach(function (tdim) {
+          var w = num0(row[tdim]);
+          if (w) out[tdim] += v * w * m;
+        });
+        return;
+      }
+      out[tdims[i % tdims.length]] += v * m;
+    });
+    return out;
   };
 
   sim.matchesTrend = function (item, trend) {
@@ -25,27 +127,6 @@
     if (trend.genreId && item.genreId === trend.genreId) return true;
     if (trend.gameplayId && item.gameplayId === trend.gameplayId) return true;
     return false;
-  };
-
-  sim.trendName = function (trend, config) {
-    if (!trend) return "";
-    if (trend.gameplayId) return sim.contentName(config.content.gameplay, trend.gameplayId);
-    if (trend.genreId) return sim.contentName(config.content.genres, trend.genreId);
-    return "";
-  };
-
-  sim.trendText = function (trend, config) {
-    if (!trend || trend.monthsLeft <= 0) return "潮流：无";
-    var prefix = (config.copy && config.copy.trendLikePrefix) || "玩家开始喜欢";
-    var name = sim.trendName(trend, config);
-    return prefix + name + "（" + trend.monthsLeft + "月）";
-  };
-
-  sim.formatMau = function (n) {
-    n = n || 0;
-    if (n >= 100000000) return (Math.round(n / 10000000) / 10) + "亿";
-    if (n >= 10000) return Math.round(n / 10000) + "万";
-    return String(n);
   };
 
   sim.fail = function (state, error) {
@@ -82,109 +163,12 @@
     return null;
   };
 
-  sim.findStaff = function (st, id) {
-    return sim.findById(st.staff || [], id);
-  };
-
-  sim.scaleLabel = function (scale, config) {
-    var labels = (config.copy && config.copy.scaleLabels) || {};
-    return labels[scale] || scale;
-  };
-
-  sim.cycleMonths = function (cycle, config, releaseType) {
-    var o = config.outsource;
-    if (releaseType === "outsource" && o && o.cycleMonths && o.cycleMonths[cycle] != null) {
-      return o.cycleMonths[cycle];
-    }
-    var d = config.development;
-    if (cycle === "short") return d.shortMonths;
-    if (cycle === "long") return d.longMonths;
-    return d.mediumMonths;
-  };
-
   sim.releaseTypeLabel = function (type, config) {
     var labels = (config.copy && config.copy.releaseTypes) || {};
     if (labels[type]) return labels[type];
-    if (type === "liveops") return "长线运营";
+    if (type === "liveops") return "长线运营（标记）";
     if (type === "outsource") return "外包接活";
     return "普通发售";
-  };
-
-  sim.platformFamilyId = function (platformId, config) {
-    var plats = (config.content && config.content.platforms) || [];
-    if (platformId && sim.findById(plats, platformId)) return platformId;
-    var fold = config.company.ownConsoleFoldIntoPlatformId || "console";
-    var own = sim.ownConsoleItem(config);
-    if (platformId === own.id || platformId === "ownConsole") return fold;
-    if (platformId === "mobile") return "mobile";
-    if (platformId === "pc") return "pc";
-    return fold;
-  };
-
-  sim.releaseShareWeight = function (g, config) {
-    if (!g) return 0;
-    var allowed = (config.marketShare && config.marketShare.includeReleaseTypes) || ["boxed", "liveops"];
-    if (g.releaseType === "outsource") {
-      var w = config.outsource && config.outsource.shareWeight;
-      return w == null ? 0 : w;
-    }
-    return allowed.indexOf(g.releaseType) >= 0 ? 1 : 0;
-  };
-
-  sim.marketShares = function (st, config) {
-    var plats = (config.content && config.content.platforms) || [];
-    var rivalLife = st.rivalLifetimeByPlatform || {};
-    return plats.map(function (p) {
-      var player = 0;
-      (st.released || []).forEach(function (g) {
-        if (sim.platformFamilyId(g.platformId, config) !== p.id) return;
-        player += Math.round((g.lifetimeSales || 0) * sim.releaseShareWeight(g, config));
-      });
-      var rival = rivalLife[p.id] || 0;
-      var denom = player + rival;
-      return {
-        id: p.id,
-        displayName: sim.displayName(p),
-        playerSales: player,
-        rivalSales: rival,
-        share: denom > 0 ? player / denom : 0
-      };
-    });
-  };
-
-  sim.formatSharePercent = function (share, config) {
-    var d = config.marketShare && config.marketShare.percentDecimals;
-    if (d == null) d = 1;
-    var f = Math.pow(10, d);
-    return Math.round(share * 100 * f) / f + "%";
-  };
-
-  sim.maxStaff = function (st, config) {
-    var scale = config.company.scales[st.company.scale];
-    return (scale && scale.maxStaff) || 4;
-  };
-
-  sim.ownConsoleItem = function (config) {
-    return (config.copy && config.copy.ownConsolePlatform) || { id: "ownConsole", displayName: "自研主机" };
-  };
-
-  sim.canUnlockOwnConsole = function (st, config) {
-    var scale = config.company.scales[st.company.scale] || {};
-    return !!(scale.unlockOwnConsole && st.company.fans >= config.company.unlockOwnConsoleMinFans);
-  };
-
-  sim.syncOwnConsole = function (state, config) {
-    if (state.company.ownConsole || !sim.canUnlockOwnConsole(state, config)) return state;
-    var st = sim.clone(state);
-    st.company.ownConsole = true;
-    return st;
-  };
-
-  sim.platformsNow = function (st, config) {
-    var own = sim.ownConsoleItem(config);
-    return sim.unlocked(config.content.platforms, st.year).filter(function (p) {
-      return p.id !== own.id;
-    });
   };
 
   sim.padMonth = function (m) {
@@ -193,5 +177,28 @@
 
   sim.dateText = function (st) {
     return st.year + "." + sim.padMonth(st.month);
+  };
+
+  // ── 天赋（config.traits）────────────────────────────────────────────────
+  // 员工特性系统已随公司档移除，生涯档「天赋」沿用同一张表（scope: career）。
+  sim.traitDef = function (id, config) {
+    return (config && config.traits && config.traits[id]) || null;
+  };
+
+  sim.traitIds = function (config, scope) {
+    var out = [];
+    var traits = (config && config.traits) || {};
+    var k, sc;
+    for (k in traits) {
+      if (!Object.prototype.hasOwnProperty.call(traits, k)) continue;
+      if (k === "comment") continue;
+      if (!traits[k] || !traits[k].displayName) continue;
+      if (scope) {
+        sc = traits[k].scope || "staff";
+        if (sc !== scope) continue;
+      }
+      out.push(k);
+    }
+    return out;
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);

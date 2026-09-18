@@ -1,6 +1,6 @@
 # 游戏开发物语
 
-虎扑活动 H5。现行页面是 **1995 生涯档**（刚毕业入职，点月打工到 2025）。2015 经营局仍在 `h5/js/sim/`，本版入口不走开公司。
+虎扑活动 H5。现行页面是 **1995 生涯档**（刚毕业入职，点月打工到 2025）。原 2015 经营局已于 2026-09 整体移除，`h5/js/sim/` 只剩生涯档一条路径（`mode=career`）。
 
 经营数字只改本目录的 `config.json`；生涯公司/作品/薪资/跳槽/职级/前辈/事件线只改 `career-world.json`。规则只在 `h5/js/sim/`（生涯事件线在 `careerLines.js`）。制作人询问次数（`become-producer.maxAsks`）、挖人能否还价（`mobility.inviteCanCounter`）也只改生涯表。
 
@@ -14,20 +14,20 @@
 
 ## 怎么改数值
 
-1. 经营平衡只改 `activity/config.json`；生涯公司/作品/薪资/跳槽/虚拟作/职级/前辈/事件线/制作人规则只改 `career-world.json`。不要把平衡数字抄进 design / HTML / sim。成为制作人询问上限、挖人还价开关也在生涯表里。
+1. 数值只改 json，不要抄进 design / HTML / sim。分工：`config.json` 放生涯仍在消费的**共享段**（`lifecycle` 生命周期曲线、`awards`、`release.media`、`traits`、`copy`、`fx`）；`career-world.json` 放**生涯表**（公司/作品/作品四维/薪资档/跳槽/虚拟作/职级门槛与成长/前辈/事件线/制作人规则/开发期成长 `development`/熟练度 `proficiency`）。成为制作人询问上限、挖人还价开关也在生涯表里。
 2. `python scripts/sync_config.py`（同步 `h5/config.json` 与 `h5/js/config.generated.js`，并并入生涯表）。Windows 若失败再试 `python3`。改公司/作品目录可先改 `scripts/build_career_world.py` 再生成 json，然后 sync。
 3. `node tests/run-sim-tests.js`，必须绿。
 
-基准销量、盒装 Logistic 生命周期（`lifecycle` 的 T / x0 / k、`dropOffY`、`maxMonths`、`chartSize`）也只改 `config.json`。
+销量基准与生命周期（`lifecycle` 的 `lambda0` / `lambdaSpan` / `tMin` / `tSpan` / `maxMonths` / `chartSize`）只改 `config.json`（首周份额 `week1Share*` 已于 2026-09-18 随「不显示首周销量」删除）；作品基准销量公式的系数（`careerWorld.launchSales`）与开发期成长权重（`careerWorld.development`）只改 `career-world.json`。
 
 ## 文档索引
 
 | 文件 | 给谁看 |
 |------|--------|
-| [design.md](design.md) | 现行玩法：生涯档（入口，含职级/事件线/制作人询问上限/挖人无还价）+ 经营局、长线/版本、TGA（年份横滑）、点月顺序 |
+| [design.md](design.md) | 现行玩法：生涯档（入口，含职级/事件线/制作人询问上限/挖人无还价）、长线/版本、TGA（年份横滑）、点月顺序 |
 | [architecture.md](architecture.md) | view / sim / config、公开接口、存档字段、测试与改数流程 |
-| [requirements.md](requirements.md) | 已拍板业务：云档、不分享、经营局公司名默认「喵扑studio」、生涯角色名默认「阿喵」 |
-| `config.json` | 经营数值唯一源；改完必须 sync + 测 |
-| `career-world.json` | 生涯公司/作品/职级/前辈/事件线表；sync 时并入 `careerWorld`。长线版本不预填目录，由 sim 按发售日推算 |
+| [requirements.md](requirements.md) | 已拍板业务：云档、不分享、生涯角色名默认「阿喵」（不要用公司名） |
+| `config.json` | 生涯仍在消费的共享数值唯一源（生命周期/奖项/媒体/天赋/文案）；改完必须 sync + 测 |
+| `career-world.json` | 生涯公司/作品/职级/前辈/事件线表；sync 时并入 `careerWorld`。标志性系列的长线版本已按 `liveTag` 规则预填目录（带 `versionOf`） |
 
 仓库根 `README.md` 是 Colorbox 通用技能包说明，不是本游戏手册。

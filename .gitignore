@@ -12,3 +12,9 @@ __pycache__/
 
 # 本地云查询快照（不是凭据，但也不入库）
 env-detail.json
+
+# WorkBuddy 智能体工作区（记忆/技能/临时产物），不入库
+.workbuddy/
+
+# 事件文案批量改写前的本地快照（还原点；历史本身已在 git 里）
+scripts/_cw_*.json

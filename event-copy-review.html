@@ -1,0 +1,575 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<title>事件文案优化对照表</title><style>
+body{font-family:-apple-system,"Segoe UI","Microsoft YaHei",sans-serif;background:#f6f7f9;color:#1b1f24;margin:0;padding:28px 20px 64px;line-height:1.6}
+h1{font-size:22px;margin:0 0 6px}.sub{color:#5b6470;font-size:13px;margin-bottom:8px}
+.lead{background:#fff;border:1px solid #e5e8ec;border-left:4px solid #e3b23c;border-radius:8px;padding:12px 16px;margin:18px 0 26px;font-size:13.5px}
+.lead b{color:#8a6116}h2{font-size:16px;margin:32px 0 4px;padding-bottom:6px;border-bottom:2px solid #e3b23c}
+.gdesc{color:#6b7480;font-size:13px;margin:0 0 12px}
+.row{background:#fff;border:1px solid #e5e8ec;border-radius:8px;padding:10px 12px;margin-bottom:8px}
+.path{font-family:Consolas,monospace;font-size:11px;color:#8a94a0;margin-bottom:6px;word-break:break-all}
+.old{color:#94504f;font-size:13.5px;padding-left:18px;position:relative}
+.new{color:#1d6b3f;font-size:13.5px;padding-left:18px;position:relative;font-weight:500}
+.old:before{content:"原";position:absolute;left:0;color:#cda6a5;font-size:11px;top:3px}
+.new:before{content:"改";position:absolute;left:0;color:#93c2a7;font-size:11px;top:3px}
+.badge{display:inline-block;background:#e3b23c;color:#3a2c05;font-size:11px;border-radius:10px;padding:1px 8px;margin-left:8px;vertical-align:2px}
+code{background:#eef1f4;border-radius:3px;padding:1px 5px;font-size:12px}
+</style></head><body>
+<h1>游戏内事件文案优化对照表</h1>
+<div class="sub">共 <b>181</b> 处文案改动 · 源文件 <code>activity/career-world.json</code></div>
+<div class="lead">本轮修的三类问题：一是<b>标题与正文脱节</b>（标题说东、正文写西）；二是<b>句子本身不通</b>（如「拆小勤进」「好玩被写明白了」「气氛垫底」）；三是<b>出戏表达</b>（内部术语、年代违和的网络词、与选项说法不一致）。<br>另外修掉一个渲染层的表达错误：带说话人的剧情拍会渲染成「<code>名字：「正文」</code>」，而这些拍的正文原先写的是第三人称旁白，读起来等于「大伟：『例会上他当着全组改你的方案』」，已把 9 处正文改写成该角色真正的台词。</div>
+<h2>A · 开发事件<span class="badge">126 处</span></h2>
+<p class="gdesc">106 条：叙述型（改质量）与抉择型（三选一）</p>
+<div class="row"><div class="path">devEvents.list.id=engineBreakthrough.text</div>
+<div class="old">加载快了一截，制作人在群里夸了程序一句。</div>
+<div class="new">底层跑通后，加载快了一截，制作人在群里夸了程序这边一句。</div></div>
+<div class="row"><div class="path">devEvents.list.id=fatalBug.text</div>
+<div class="old">填充期存档坏了、还会闪退，程序这边被当面打回。</div>
+<div class="new">填充期存档坏了，还时不时闪退，程序这边的方案被当面打回。</div></div>
+<div class="row"><div class="path">devEvents.list.id=netcodeCrunch.text</div>
+<div class="old">联机终于稳住了，但只修了程序这边，别的没跟着涨。</div>
+<div class="new">联机终于稳住了，但这一项只补了程序这边，别的没跟上。</div></div>
+<div class="row"><div class="path">devEvents.list.id=screeningWow.text</div>
+<div class="old">内部试映时过场和场景把制作人看愣了，画面被当场加码。</div>
+<div class="new">内部试映时，过场和场景把制作人看得愣住，画面当场被加码。</div></div>
+<div class="row"><div class="path">devEvents.list.id=styleCut.text</div>
+<div class="old">老板说这套太贵或太怪，视觉方向收了，画面先掉一档。</div>
+<div class="new">老板嫌这套又贵又怪，视觉方向收紧，画面先掉一档。</div></div>
+<div class="row"><div class="path">devEvents.list.id=shaderPass.text</div>
+<div class="old">打磨期补上材质和灯光，画面好看了一截。</div>
+<div class="new">打磨期把终章的材质和灯光补上，整部作品的观感上了一档。</div></div>
+<div class="row"><div class="path">devEvents.list.id=levelInspiration.text</div>
+<div class="old">一条能教会再考的关卡链跑通了，好玩被写明白了。</div>
+<div class="new">一条教会再考的关卡链跑通了，好玩这块终于立住。</div></div>
+<div class="row"><div class="path">devEvents.list.id=featureCut.text</div>
+<div class="old">核心系统被制作人砍掉一块，设计稿对不上现成关卡，策划这边下滑。</div>
+<div class="new">核心系统被制作人砍掉一块，设计稿对不上现成关卡，好玩这块跟着塌了一块。</div></div>
+<div class="row"><div class="path">devEvents.list.id=sysDocLock.text</div>
+<div class="old">前期把循环和数字框架钉死，后面返工变少，策划这边先立住。</div>
+<div class="new">前期把循环和数值框架钉死，后面返工变少，好玩这块先站稳了。</div></div>
+<div class="row"><div class="path">devEvents.list.id=themeLock.text</div>
+<div class="old">主题旋律定稿后，整部作品的情绪被配乐拽着走。</div>
+<div class="new">主题旋律定稿后，整部作品的情绪都跟着配乐走。</div></div>
+<div class="row"><div class="path">devEvents.list.id=scoreShrink.text</div>
+<div class="old">外包预算被抽走，歌用循环垫乐顶上，音乐这边明显空了。</div>
+<div class="new">外包预算被抽走，曲子只能用循环垫乐顶上，音乐这块明显空了一截。</div></div>
+<div class="row"><div class="path">devEvents.list.id=mixPass.text</div>
+<div class="old">打磨期把说话、效果和主旋律的层次拉开，音乐这边回了一截。</div>
+<div class="new">打磨期把对白、音效和主旋律的层次拉开，声音这关算是过了。</div></div>
+<div class="row"><div class="path">devEvents.list.id=blankStart.text</div>
+<div class="old">电脑里还是空白。制作人问你：从零写，还是拿以前的改。</div>
+<div class="new">电脑里还是一片空白。制作人问你：从零写，还是拿以前的改？</div></div>
+<div class="row"><div class="path">devEvents.list.id=blankStart.choices.id=levelTool.label</div>
+<div class="old">先做摆关</div>
+<div class="new">先做关卡工具</div></div>
+<div class="row"><div class="path">devEvents.list.id=demoDontCrash.text</div>
+<div class="old">下周给老板看，存档还不灵。群里有人问：演示那天别崩就行吧？</div>
+<div class="new">下周就要给老板看，存档还不灵。群里有人问：演示那天别崩就行吧？</div></div>
+<div class="row"><div class="path">devEvents.list.id=goOnline.text</div>
+<div class="old">群里说不联网不时髦。制作人让你拍板。</div>
+<div class="new">群里说不联网就落伍了。制作人让你拍板。</div></div>
+<div class="row"><div class="path">devEvents.list.id=stylePushedBack.text</div>
+<div class="old">老板说太素，商店没人点。制作人把图打回来了。</div>
+<div class="new">老板说太素，摆在商店没人点。制作人把图打回来了。</div></div>
+<div class="row"><div class="path">devEvents.list.id=charOrWorld.displayName</div>
+<div class="old">先画人还是地</div>
+<div class="new">画人还是画景</div></div>
+<div class="row"><div class="path">devEvents.list.id=refFight.text</div>
+<div class="old">策划丢来截图，要做成那样。群里吵开了。</div>
+<div class="new">策划丢来一堆截图，说要做成那样。群里吵开了。</div></div>
+<div class="row"><div class="path">devEvents.list.id=whatIsTheGame.text</div>
+<div class="old">制作人问：这游戏到底在玩什么？动作还是解谜。</div>
+<div class="new">制作人问：这游戏到底在玩什么？走动作，还是走解谜。</div></div>
+<div class="row"><div class="path">devEvents.list.id=oneLevelPlaytest.text</div>
+<div class="old">要不要先做一关给人试？群里有人说开会用嘴讲也行。</div>
+<div class="new">要不要先做一关给人试？群里有人说，开会用嘴讲也一样。</div></div>
+<div class="row"><div class="path">devEvents.list.id=storyDepth.text</div>
+<div class="old">故事压短让玩法先爽，还是写满，还是做成能跳过的过场？</div>
+<div class="new">故事压短给玩法让路，还是写满，或者干脆做成能跳过的过场？</div></div>
+<div class="row"><div class="path">devEvents.list.id=themeNow.text</div>
+<div class="old">制作人问：现在就要主题曲吗？群里有人说等能看见再写。</div>
+<div class="new">制作人问：现在就要主题曲吗？群里有人说，等能看见画面再写。</div></div>
+<div class="row"><div class="path">devEvents.list.id=songOrAmbience.text</div>
+<div class="old">要能哼的歌，还是气氛垫底？两首都浅浅做也行。</div>
+<div class="new">要能让人哼出来的歌，还是铺底的气氛乐？两首都浅浅做也行。</div></div>
+<div class="row"><div class="path">devEvents.list.id=songOrAmbience.choices.id=pad.label</div>
+<div class="old">气氛垫底</div>
+<div class="new">铺底的气氛</div></div>
+<div class="row"><div class="path">devEvents.list.id=outsourceTheme.text</div>
+<div class="old">请人做主题，还是自己写、钱留给画面？免费的也能顶上。</div>
+<div class="new">主题请人做，还是自己写、把钱留给画面？用免费素材顶上也不是不行。</div></div>
+<div class="row"><div class="path">devEvents.list.id=outsourceTheme.choices.id=freePack.label</div>
+<div class="old">免费的顶上</div>
+<div class="new">用免费素材</div></div>
+<div class="row"><div class="path">devEvents.list.id=saveBrokeAgain.choices.id=fixSave.label</div>
+<div class="old">这周只修</div>
+<div class="new">这周只修存档</div></div>
+<div class="row"><div class="path">devEvents.list.id=netMismatch.text</div>
+<div class="old">联网对不上，有人能穿墙。先修这个，还是先让单机好玩？</div>
+<div class="new">联网对不上，有人能穿墙。先修这个，还是先把单机做扎实？</div></div>
+<div class="row"><div class="path">devEvents.list.id=reskinLook.choices.id=posterMoney.label</div>
+<div class="old">钱花大海报</div>
+<div class="new">钱花在大海报</div></div>
+<div class="row"><div class="path">devEvents.list.id=prettyCutscene.text</div>
+<div class="old">过场要不要做漂亮？做会动的贵，漫画翻页和纯文字便宜。</div>
+<div class="new">过场要不要做漂亮？做成动画贵，漫画翻页和纯文字便宜。</div></div>
+<div class="row"><div class="path">devEvents.list.id=prettyCutscene.choices.id=animate.label</div>
+<div class="old">做会动的</div>
+<div class="new">做成动画</div></div>
+<div class="row"><div class="path">devEvents.list.id=colorFight.text</div>
+<div class="old">颜色吵起来了。加饱和，保持灰再加亮道具，还是听策划改亮？</div>
+<div class="new">颜色吵起来了。加饱和度，保持灰底再加亮道具，还是听策划的改亮？</div></div>
+<div class="row"><div class="path">devEvents.list.id=colorFight.choices.id=moreSat.label</div>
+<div class="old">加饱和</div>
+<div class="new">加饱和度</div></div>
+<div class="row"><div class="path">devEvents.list.id=colorFight.choices.id=followLead.label</div>
+<div class="old">改亮听策划</div>
+<div class="new">听策划改亮</div></div>
+<div class="row"><div class="path">devEvents.list.id=tooHardPlaytest.text</div>
+<div class="old">太难了，试玩卡住。填坑加提示，加跳过这关，还是不改？</div>
+<div class="new">太难了，试玩全卡住。补难度曲线加提示，加个跳过，还是不改？</div></div>
+<div class="row"><div class="path">devEvents.list.id=tooHardPlaytest.choices.id=hints.label</div>
+<div class="old">填坑加提示</div>
+<div class="new">补曲线加提示</div></div>
+<div class="row"><div class="path">devEvents.list.id=moreFeaturesWeek.text</div>
+<div class="old">这周又要加功能。顶回去，接进来，还是做成可关的隐藏？</div>
+<div class="new">这周又要加功能。顶回去，接进来，还是做成能关掉的隐藏项？</div></div>
+<div class="row"><div class="path">devEvents.list.id=copyPasteLevels.text</div>
+<div class="old">关卡在复制粘贴。砍重复留少而精，继续铺量，还是每关一个小花招？</div>
+<div class="new">关卡全在复制粘贴。砍重复留少而精，继续铺量，还是每关塞一个小花招？</div></div>
+<div class="row"><div class="path">devEvents.list.id=copyPasteLevels.choices.id=cutDupes.label</div>
+<div class="old">砍重复留精</div>
+<div class="new">砍重复留精华</div></div>
+<div class="row"><div class="path">devEvents.list.id=tutorialOrNot.text</div>
+<div class="old">要不要做教程？做一关慢慢教，弹窗说明，还是不教自己摸？</div>
+<div class="new">要不要做教程？做一关慢慢教，弹窗说明，还是干脆不教、让人自己摸？</div></div>
+<div class="row"><div class="path">devEvents.list.id=tutorialOrNot.choices.id=noTeach.label</div>
+<div class="old">不教自己摸</div>
+<div class="new">不教，自己摸</div></div>
+<div class="row"><div class="path">devEvents.list.id=tempSfxStill.text</div>
+<div class="old">临时音效还在。这周全换，只换主角几下，还是先不管？</div>
+<div class="new">临时音效还在。这周全部换掉，只换主角的几个，还是先不管？</div></div>
+<div class="row"><div class="path">devEvents.list.id=tempSfxStill.choices.id=replaceAll.label</div>
+<div class="old">这周全换</div>
+<div class="new">这周全部换掉</div></div>
+<div class="row"><div class="path">devEvents.list.id=cutsceneChopsSong.text</div>
+<div class="old">过场把歌切碎了。求镜头拉长，改成短小段，还是歌只放菜单片尾？</div>
+<div class="new">过场把歌切碎了。去求他们把镜头拉长，改成短小的分段，还是干脆只放菜单和片尾？</div></div>
+<div class="row"><div class="path">devEvents.list.id=hireSinger.text</div>
+<div class="old">要不要请人唱歌？请人唱主题，自己哼，还是钱给画面做预告？</div>
+<div class="new">要不要请人唱歌？请人唱主题，自己哼，还是把钱给画面做预告？</div></div>
+<div class="row"><div class="path">devEvents.list.id=allRedList.text</div>
+<div class="old">列表上全是红的。先修会让人重来的，还是先让新关能进？</div>
+<div class="new">缺陷列表上全是红的。先修会让人重来的，还是先让新关能进？</div></div>
+<div class="row"><div class="path">devEvents.list.id=allRedList.choices.id=fixRetry.label</div>
+<div class="old">先修会重来的</div>
+<div class="new">先修会让人重来的</div></div>
+<div class="row"><div class="path">devEvents.list.id=allRedList.choices.id=hideUgly.label</div>
+<div class="old">把明显的藏起</div>
+<div class="new">把明显的藏起来</div></div>
+<div class="row"><div class="path">devEvents.list.id=downloadTooLong.text</div>
+<div class="old">游戏太大，下载要很久。贴图压小，语音拿掉留歌，还是不管、先求装得下？</div>
+<div class="new">游戏包太大，下载要很久。贴图压小，语音拿掉留歌，还是先不管、只求装得下？</div></div>
+<div class="row"><div class="path">devEvents.list.id=downloadTooLong.choices.id=ignoreSize.label</div>
+<div class="old">不管</div>
+<div class="new">不管，先装下</div></div>
+<div class="row"><div class="path">devEvents.list.id=buildLeaked.choices.id=rushFix.label</div>
+<div class="old">赶紧修能看</div>
+<div class="new">赶紧修到能看</div></div>
+<div class="row"><div class="path">devEvents.list.id=clothesMismatch.text</div>
+<div class="old">衣服和关卡对不上。补一套衣服，改关卡天气迁就，还是加一件披风？</div>
+<div class="new">衣服和关卡对不上。补一套衣服，改关卡天气迁就，还是干脆加一件披风？</div></div>
+<div class="row"><div class="path">devEvents.list.id=feetFloat.text</div>
+<div class="old">走路脚不沾地。重做走路，加快镜头，还是加尘土和声音遮丑？</div>
+<div class="new">走路脚不沾地。重做走路，加快镜头切走，还是加尘土和音效遮丑？</div></div>
+<div class="row"><div class="path">devEvents.list.id=feetFloat.choices.id=dustSfx.label</div>
+<div class="old">尘土声音遮丑</div>
+<div class="new">尘土音效遮丑</div></div>
+<div class="row"><div class="path">devEvents.list.id=posterVsGame.text</div>
+<div class="old">海报和游戏里不像。游戏往海报靠，海报画真实点，还是各管各的？</div>
+<div class="new">海报和游戏里差太多。让游戏往海报靠，海报画真实点，还是各管各的？</div></div>
+<div class="row"><div class="path">devEvents.list.id=twiceWrittenHalfDone.text</div>
+<div class="old">内容写了两倍，做完一半。砍支线保主线，支线全留用过场粘，还是支线改成再打一次？</div>
+<div class="new">内容写了两倍，只做完一半。砍支线保主线，支线全留、用过场串起来，还是把支线改成再打一次？</div></div>
+<div class="row"><div class="path">devEvents.list.id=twiceWrittenHalfDone.choices.id=keepSideCutscene.label</div>
+<div class="old">支线用过场粘</div>
+<div class="new">支线用过场串</div></div>
+<div class="row"><div class="path">devEvents.list.id=numbersExploded.choices.id=callHard.label</div>
+<div class="old">不调说很难</div>
+<div class="new">不调，说很难</div></div>
+<div class="row"><div class="path">devEvents.list.id=oneSongFortyMin.displayName</div>
+<div class="old">一首歌转四十分钟</div>
+<div class="new">一首歌撑四十分钟</div></div>
+<div class="row"><div class="path">devEvents.list.id=oneSongFortyMin.text</div>
+<div class="old">同一首曲子循环四十分钟。每区换新歌，同一首变奏，还是人力去补小声音？</div>
+<div class="new">同一首曲子循环了四十分钟。每区换新歌，同一首做变奏，还是把人力投到小音效上？</div></div>
+<div class="row"><div class="path">devEvents.list.id=oneSongFortyMin.choices.id=moreSfx.label</div>
+<div class="old">去补小声音</div>
+<div class="new">补小音效</div></div>
+<div class="row"><div class="path">devEvents.list.id=voiceVsMusic.displayName</div>
+<div class="old">说话和歌曲抢</div>
+<div class="new">对白和配乐抢</div></div>
+<div class="row"><div class="path">devEvents.list.id=voiceVsMusic.text</div>
+<div class="old">对白和音乐抢音量。说话时把歌拧小，歌保持大声，还是少说话多靠画面？</div>
+<div class="new">对白和配乐在抢音量。说话时把歌压下去，歌保持大声，还是少说话、多靠画面？</div></div>
+<div class="row"><div class="path">devEvents.list.id=voiceVsMusic.choices.id=duckSong.label</div>
+<div class="old">说话时拧小</div>
+<div class="new">说话时把歌拧小</div></div>
+<div class="row"><div class="path">devEvents.list.id=shortVideoHook.text</div>
+<div class="old">要不要做能发短视频的歌？做抓耳副歌，服务游戏气氛，还是另做三十秒预告？</div>
+<div class="new">要不要做一段能当预告的歌？做抓耳的副歌，服务游戏气氛，还是另做三十秒的片子？</div></div>
+<div class="row"><div class="path">devEvents.list.id=crashStillThere.text</div>
+<div class="old">闪退还在。这周只修闪退，先调手感，还是画面差一点但更稳？</div>
+<div class="new">闪退还在。这周只修闪退，先调手感，还是画面差一点、但更稳？</div></div>
+<div class="row"><div class="path">devEvents.list.id=crashStillThere.choices.id=uglierStable.label</div>
+<div class="old">差一点更稳</div>
+<div class="new">画面差一点更稳</div></div>
+<div class="row"><div class="path">devEvents.list.id=loadTooLong.text</div>
+<div class="old">加载太久。拆小勤进，一次加载完，还是加载时放笑话？</div>
+<div class="new">加载太久。拆成小块勤加载，一次读完，还是加载时放点笑话？</div></div>
+<div class="row"><div class="path">devEvents.list.id=loadTooLong.choices.id=splitLoads.label</div>
+<div class="old">拆小勤进</div>
+<div class="new">拆成小块勤加载</div></div>
+<div class="row"><div class="path">devEvents.list.id=loadTooLong.choices.id=jokeLoad.label</div>
+<div class="old">加载放笑话</div>
+<div class="new">加载时放笑话</div></div>
+<div class="row"><div class="path">devEvents.list.id=controlsFloat.text</div>
+<div class="old">操作发飘。整周调手感，加大判定更好过，还是加辅助？</div>
+<div class="new">操作发飘。整周调手感，加大判定让人好过点，还是加辅助？</div></div>
+<div class="row"><div class="path">devEvents.list.id=menuIsBoxes.text</div>
+<div class="old">菜单还是方块。菜单做漂亮，字看清按钮好按，还是套个皮肤？</div>
+<div class="new">菜单还是方块。把菜单做漂亮，还是先保证字看得清、按钮好按，或者直接套个皮肤？</div></div>
+<div class="row"><div class="path">devEvents.list.id=menuIsBoxes.choices.id=prettyMenu.label</div>
+<div class="old">菜单做漂亮</div>
+<div class="new">把菜单做漂亮</div></div>
+<div class="row"><div class="path">devEvents.list.id=menuIsBoxes.choices.id=readable.label</div>
+<div class="old">字清按钮好按</div>
+<div class="new">字清、按钮好按</div></div>
+<div class="row"><div class="path">devEvents.list.id=nightTooDark.text</div>
+<div class="old">晚上什么都看不清。加灯，保持暗加小地图，还是不改就是吓人？</div>
+<div class="new">晚上什么都看不清。加灯，保持暗、加个小地图，还是不改、就是这么吓人？</div></div>
+<div class="row"><div class="path">devEvents.list.id=nightTooDark.choices.id=darkPlusMap.label</div>
+<div class="old">暗加小地图</div>
+<div class="new">保持暗加小地图</div></div>
+<div class="row"><div class="path">devEvents.list.id=nightTooDark.choices.id=keepScary.label</div>
+<div class="old">不改就吓人</div>
+<div class="new">不改，就吓人</div></div>
+<div class="row"><div class="path">devEvents.list.id=trailerTooPretty.text</div>
+<div class="old">预告片太美，游戏跟不上。游戏往片子靠，预告用游戏里能见到的，还是预告继续美？</div>
+<div class="new">预告片太美，游戏跟不上。让游戏往片子靠，预告改用实机画面，还是预告继续美？</div></div>
+<div class="row"><div class="path">devEvents.list.id=trailerTooPretty.choices.id=honestTrailer.label</div>
+<div class="old">预告用实机</div>
+<div class="new">预告用实机画面</div></div>
+<div class="row"><div class="path">devEvents.list.id=deadFaces.text</div>
+<div class="old">表情是死的。补表情，多用镜头切，还是加配音遮丑？</div>
+<div class="new">表情是死的。补表情，多用镜头切换，还是加配音遮丑？</div></div>
+<div class="row"><div class="path">devEvents.list.id=deadFaces.choices.id=moreCuts.label</div>
+<div class="old">多用镜头切</div>
+<div class="new">多用镜头切换</div></div>
+<div class="row"><div class="path">devEvents.list.id=endingRushed.text</div>
+<div class="old">结尾太赶。砍前面把时间给结尾，加一章，还是用过场讲完？</div>
+<div class="new">结尾太赶。砍前面、把时间挪给结尾，加一章，还是用过场讲完？</div></div>
+<div class="row"><div class="path">devEvents.list.id=tooManyHints.text</div>
+<div class="old">提示太多了。清掉一半，做成可关，还是再加？</div>
+<div class="new">提示太多了。清掉一半，做成能关的，还是再加？</div></div>
+<div class="row"><div class="path">devEvents.list.id=achievementsNoise.displayName</div>
+<div class="old">成就在刷存在</div>
+<div class="new">成就在刷存在感</div></div>
+<div class="row"><div class="path">devEvents.list.id=achievementsNoise.text</div>
+<div class="old">成就和收集在刷存在感。砍收集保手感，按表堆满，还是宝箱只放路上？</div>
+<div class="new">成就和收集在刷存在感。砍收集保手感，照表堆满，还是让宝箱只出现在路上？</div></div>
+<div class="row"><div class="path">devEvents.list.id=achievementsNoise.choices.id=fillTable.label</div>
+<div class="old">按表堆满</div>
+<div class="new">照表堆满</div></div>
+<div class="row"><div class="path">devEvents.list.id=lastNewMode.text</div>
+<div class="old">最后要不要加新模式？加，不加把现在打磨完，还是简单计时挑战？</div>
+<div class="new">最后要不要加新模式？加，还是不加、先把现有的打磨完，或者只做个计时挑战？</div></div>
+<div class="row"><div class="path">devEvents.list.id=lastNewMode.choices.id=polishNow.label</div>
+<div class="old">不加先打磨</div>
+<div class="new">不加，先打磨</div></div>
+<div class="row"><div class="path">devEvents.list.id=headphonesPain.text</div>
+<div class="old">耳机里全是吵。说话时歌要让，保持热闹，还是战斗里把歌拿掉只留打击？</div>
+<div class="new">耳机里全是吵。说话时让歌退一步，保持热闹，还是战斗里把歌拿掉、只留打击音？</div></div>
+<div class="row"><div class="path">devEvents.list.id=headphonesPain.choices.id=duckTalk.label</div>
+<div class="old">说话时歌让</div>
+<div class="new">说话时歌先让</div></div>
+<div class="row"><div class="path">devEvents.list.id=noCreditsSong.text</div>
+<div class="old">片尾曲还没有。这周只写片尾，主题曲放慢当片尾，还是片尾静音？</div>
+<div class="new">片尾曲还没有。这周只写片尾，把主题曲放慢当片尾，还是片尾干脆静音？</div></div>
+<div class="row"><div class="path">devEvents.list.id=uglyStretch.text</div>
+<div class="old">有一段被说难听。换掉，做成可关音乐，还是改更安静？</div>
+<div class="new">有一段被说难听。换掉，做成能关的音乐，还是把这段改安静？</div></div>
+<div class="row"><div class="path">devEvents.list.id=uglyStretch.choices.id=quieter.label</div>
+<div class="old">改更安静</div>
+<div class="new">改得更安静</div></div>
+<div class="row"><div class="path">devEvents.list.id=cheapSfx.text</div>
+<div class="old">音效听起来廉价。全换，只换常见十个，还是加大歌盖住？</div>
+<div class="new">音效听着廉价。全换，只换最常见的十个，还是把歌加大盖住？</div></div>
+<div class="row"><div class="path">devEvents.list.id=cheapSfx.choices.id=loudSong.label</div>
+<div class="old">加大歌盖住</div>
+<div class="new">把歌加大盖住</div></div>
+<div class="row"><div class="path">devEvents.list.id=storeTooBig.text</div>
+<div class="old">商店说文件太大过不了。画面压糊一点，语音拿掉，还是勉强塞进去？</div>
+<div class="new">商店说文件太大过不了。画面压糊一点，语音拿掉，还是硬塞进去？</div></div>
+<div class="row"><div class="path">devEvents.list.id=storeTooBig.choices.id=squeezeIn.label</div>
+<div class="old">勉强塞进去</div>
+<div class="new">硬塞进去</div></div>
+<div class="row"><div class="path">devEvents.list.id=lastChange.text</div>
+<div class="old">马上要上架了。最后还能改什么？修还会闪退的，按键再调一下，还是别动了？</div>
+<div class="new">马上要上架了，最后还能改什么？修还会闪退的，按键再调一下，还是干脆别动了？</div></div>
+<div class="row"><div class="path">devEvents.list.id=lastChange.choices.id=freeze.label</div>
+<div class="old">别动了</div>
+<div class="new">都别动了</div></div>
+<div class="row"><div class="path">devEvents.list.id=reviewEarly.text</div>
+<div class="old">评测要提前进游戏。给他们能跑的版本，求晚一周，还是派人盯着别走到坏掉的地方？</div>
+<div class="new">评测要提前进游戏。给他们能跑的版本，求晚一周，还是派人盯着、别让他们走到会崩的地方？</div></div>
+<div class="row"><div class="path">devEvents.list.id=reviewEarly.choices.id=giveRunnable.label</div>
+<div class="old">给能跑的</div>
+<div class="new">给能跑的版本</div></div>
+<div class="row"><div class="path">devEvents.list.id=eightShots.text</div>
+<div class="old">官方要八张图。通宵做八张好看的，截实机有啥算啥，还是用过场顶上？</div>
+<div class="new">官方要八张图。通宵做八张好看的，截实机、有什么算什么，还是用过场截图顶上？</div></div>
+<div class="row"><div class="path">devEvents.list.id=reviewThreeHours.text</div>
+<div class="old">评测只要三小时能看懂。标准路线，让他们自己逛，还是做个快速看完模式？</div>
+<div class="new">评测只给三小时，得让人看懂。给条标准路线，让他们自己逛，还是做个快速看完模式？</div></div>
+<div class="row"><div class="path">devEvents.list.id=hideEaster.text</div>
+<div class="old">要不要藏彩蛋？藏，不藏，还是只在标题画面藏一句？</div>
+<div class="new">要不要藏彩蛋？藏，不藏，还是只在标题画面塞一句？</div></div>
+<div class="row"><div class="path">devEvents.list.id=hideEaster.choices.id=titleGag.label</div>
+<div class="old">标题藏一句</div>
+<div class="new">标题画面藏一句</div></div>
+<div class="row"><div class="path">devEvents.list.id=whoWritesManual.text</div>
+<div class="old">说明书谁写？你写清楚，游戏里弹窗，还是不写做视频？</div>
+<div class="new">说明书谁来写？你写清楚，游戏里弹窗，还是不写、改做视频？</div></div>
+<div class="row"><div class="path">devEvents.list.id=whoWritesManual.choices.id=video.label</div>
+<div class="old">不写做视频</div>
+<div class="new">不写，做视频</div></div>
+<div class="row"><div class="path">devEvents.list.id=onlyOneSong.text</div>
+<div class="old">只能完成一首。片尾，标题画面每次打开听到，还是战斗那首？</div>
+<div class="new">只能完成一首。放片尾，放标题画面，还是放战斗？</div></div>
+<div class="row"><div class="path">devEvents.list.id=onlyOneSong.choices.id=titleLoop.label</div>
+<div class="old">标题每次听到</div>
+<div class="new">放标题画面</div></div>
+<div class="row"><div class="path">devEvents.list.id=trailerNeedsSong.text</div>
+<div class="old">预告片要歌。最好的那首给他们，另做三十秒，还是旧素材顶？</div>
+<div class="new">预告片要歌。把最好的那首给他们，另做三十秒，还是拿旧素材顶上？</div></div>
+<div class="row"><div class="path">devEvents.list.id=trailerNeedsSong.choices.id=bestOne.label</div>
+<div class="old">最好的给他们</div>
+<div class="new">把最好的给他们</div></div>
+<div class="row"><div class="path">devEvents.list.id=trailerNeedsSong.choices.id=oldPack.label</div>
+<div class="old">旧素材顶</div>
+<div class="new">旧素材顶上</div></div>
+<div class="row"><div class="path">devEvents.list.id=placeholderAudio.text</div>
+<div class="old">上架前还有占位音。连夜换最丢人的几个，全听一遍换掉，还是赌没人注意？</div>
+<div class="new">上架前还有占位音。连夜换掉最丢人的几个，全听一遍再换，还是赌没人注意？</div></div>
+<div class="row"><div class="path">devEvents.list.id=placeholderAudio.choices.id=shameFirst.label</div>
+<div class="old">连夜换丢人的</div>
+<div class="new">连夜换掉最丢人的</div></div>
+<div class="row"><div class="path">devEvents.list.id=ff7PreRenderLock.text</div>
+<div class="old">预渲染过场的光影和运镜被制作人拍板，画面完成度明显上了一个台阶。</div>
+<div class="new">预渲染过场的光影和运镜被制作人拍板，画面明显上了一个台阶。</div></div>
+<div class="row"><div class="path">devEvents.list.id=ff7ThemeLock.text</div>
+<div class="old">主题旋律写进过场后，整部都市故事的情绪被配乐托住。</div>
+<div class="new">主题旋律写进过场后，整部都市故事的情绪，都被配乐托了起来。</div></div>
+<div class="row"><div class="path">devEvents.list.id=portalPuzzleClick.text</div>
+<div class="old">教-练-考的谜题链跑通，关卡策划把一句话玩法写成可以自学的课。</div>
+<div class="new">教会、练习、考核的谜题链跑通，一句话的玩法被写成了能自学的课。</div></div>
+<div class="row"><div class="path">devEvents.list.id=botwPhysicsClick.text</div>
+<div class="old">攀爬、攀附物和化学引擎开始互相咬合，程序维把开放高原撑起来。</div>
+<div class="new">攀爬、抓取和化学引擎开始互相咬合，程序这边把开放世界的骨架撑了起来。</div></div>
+<div class="row"><div class="path">devEvents.list.id=playRefClear.text</div>
+<div class="old">晚上把同玩法的旧作过了一遍，核心循环写到本子上。</div>
+<div class="new">晚上把同玩法的旧作通关了一遍，核心循环抄在本子上。</div></div>
+<div class="row"><div class="path">devEvents.list.id=goldGenrePass.text</div>
+<div class="old">商店页文案要过，你把这部的题材口径又过了一遍。</div>
+<div class="new">商店页文案要定稿，你把这部的题材口径又对了一遍。</div></div>
+<div class="row"><div class="path">devEvents.list.id=artMoodBoard.text</div>
+<div class="old">你给这部题材做了情绪板，色彩和道具口径一下子齐了。</div>
+<div class="new">你给这部做了题材情绪板，色彩和道具的调子一下子齐了。</div></div>
+<div class="row"><div class="path">devEvents.list.id=musicGenreListen.displayName</div>
+<div class="old">同题材听课</div>
+<div class="new">同题材听曲</div></div>
+<div class="row"><div class="path">devEvents.list.id=musicGenreListen.text</div>
+<div class="old">你把同题材的配乐循环听了一夜，进场第一句就对上了。</div>
+<div class="new">你把同题材的配乐循环听了一夜，进场的第一个音符就对上了。</div></div>
+<div class="row"><div class="path">devEvents.list.id=polishGenreLock.text</div>
+<div class="old">宣发把题材关键词钉死了，你把这部的味道又过了一遍。</div>
+<div class="new">宣发把题材关键词钉死了，你把这部的味道又对了一遍。</div></div>
+<div class="row"><div class="path">devEvents.list.id=musicThemeLock.text</div>
+<div class="old">打磨期主题曲要定调，你把这部题材的听感又听实了。</div>
+<div class="new">打磨期主题曲要定调，你把这部题材的听感又听扎实了。</div></div>
+<h2>B · 发售后续事件<span class="badge">8 处</span></h2>
+<p class="gdesc">15 条：上架后的热修、差评与玩家反馈</p>
+<div class="row"><div class="path">postLaunch.events.id=hotfixCrash.text</div>
+<div class="old">已经上架了，集中修了几处必现闪退，程序这边补了一点。</div>
+<div class="new">已经上架了，集中修了几处必现闪退，玩起来稳了一点。</div></div>
+<div class="row"><div class="path">postLaunch.events.id=patchNotes.text</div>
+<div class="old">发了热修说明，口碑没立刻变，组里还在守这部。</div>
+<div class="new">发了热修说明，口碑没立刻变，组里继续守着这部。</div></div>
+<div class="row"><div class="path">postLaunch.events.id=reviewHotfix.text</div>
+<div class="old">差评点名的系统被补了一刀，好玩轻轻回了一点。</div>
+<div class="new">差评点名的系统补了一刀，好玩轻轻回了一点。</div></div>
+<div class="row"><div class="path">postLaunch.events.id=audioGlitch.text</div>
+<div class="old">有人把占位音效漏进游戏里，热修时清掉了。</div>
+<div class="new">占位音效混进了正式版，热修时清掉了。</div></div>
+<div class="row"><div class="path">postLaunch.events.id=cheatTool.text</div>
+<div class="old">群里说有人开挂。赶紧堵，先发公告，还是装死？</div>
+<div class="new">玩家说有人开挂。赶紧堵，先发公告，还是装死？</div></div>
+<div class="row"><div class="path">postLaunch.events.id=notLikeTrailer.text</div>
+<div class="old">已经上架了，有人说和预告不像。补画面，承认滤镜，还是先发说明？</div>
+<div class="new">已经上架了，有人说和预告不像。补画面，承认用了滤镜，还是先发个说明？</div></div>
+<div class="row"><div class="path">postLaunch.events.id=memeSong.displayName</div>
+<div class="old">被做成鬼畜</div>
+<div class="new">被剪成搞笑视频</div></div>
+<div class="row"><div class="path">postLaunch.events.id=memeSong.text</div>
+<div class="old">某首被做成鬼畜。顺着热度，不管，还是要求别乱剪？</div>
+<div class="new">有段配乐被玩家剪成了搞笑视频。顺着热度，不管，还是要求别乱剪？</div></div>
+<h2>C · 制作人事件<span class="badge">3 处</span></h2>
+<p class="gdesc">5 条：转制作人之后的拍板</p>
+<div class="row"><div class="path">producerEvents.list.id=prodScopeCut.text</div>
+<div class="old">你拍板砍掉一块外围系统，工期挤回来了，但各维都薄了一点。</div>
+<div class="new">节点压到头了，你只能二选一：砍掉一块外围系统把工期挤回来，还是硬扛原案。</div></div>
+<div class="row"><div class="path">producerEvents.list.id=prodMarketLean.text</div>
+<div class="old">发行希望发售口径更讨喜。你可以让一点口碑偏置，或守住完成度。</div>
+<div class="new">发行希望发售口径更讨喜。你可以往讨喜那边靠一点，也可以守住完成度。</div></div>
+<div class="row"><div class="path">producerEvents.list.id=prodAllHands.text</div>
+<div class="old">你把四职目标对齐了一轮，各维都抬了一点。</div>
+<div class="new">你把四个岗位的目标对齐了一轮，各维都抬了一点。</div></div>
+<h2>D · 空窗抉择<span class="badge">2 处</span></h2>
+<p class="gdesc">1 条：没有在研项目时，整段空窗怎么安排</p>
+<div class="row"><div class="path">idleGap.text</div>
+<div class="old">离下一部目录作还不到半年，组里不新开虚拟作。选一次，这段空窗都按这个来。</div>
+<div class="new">离下一部正式作品还有不到半年，组里不会为此新开临时项目。选一次，整段空窗都按这个来。</div></div>
+<div class="row"><div class="path">idleGap.choices.id=crossTrain.label</div>
+<div class="old">多多学习领域外的知识</div>
+<div class="new">多学点领域外的东西</div></div>
+<h2>E · 职业分叉<span class="badge">1 处</span></h2>
+<p class="gdesc">1 条：晋升与转制作人的二选一</p>
+<div class="row"><div class="path">eventLines.pathFork.body</div>
+<div class="old">你已经够格走专家晋升，也可以争取转制作人。两条线本版不能并行，先选一条。</div>
+<div class="new">你已经够格走专家晋升，也可以争取转制作人。两条路暂时只能选一条。</div></div>
+<h2>F · 事件线（多拍剧情）<span class="badge">41 处</span></h2>
+<p class="gdesc">9 条线：前辈 / 同事 / 后辈 / 合并 / 晋升 / 制作人 / 史诗作 / 回国</p>
+<div class="row"><div class="path">eventLines.lines.id=company-merger.beats.id=merge.body</div>
+<div class="old">{companyName} 已经并进 {companySuccessor}。编制跟着走，还是趁机离开？</div>
+<div class="new">{companyName} 已经并进 {companySuccessor}。你跟着转过去，还是趁机离开？</div></div>
+<div class="row"><div class="path">eventLines.lines.id=promo-to-director.beats.id=offer.body</div>
+<div class="old">上面想把你推上总监。要走正式评审吗？升职仍要等最后一拍。</div>
+<div class="new">上面想把你推上总监。要走正式评审吗？走完流程才会正式任命。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=become-producer.beats.id=invite.body</div>
+<div class="old">公司缺人扛项目。转制作人后你仍是这家的员工，但不再走 T/D/A/M 职称展示。</div>
+<div class="new">公司缺人扛项目。转制作人后你仍是这家的员工，只是不再挂具体岗位职称。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=take-in.body</div>
+<div class="old">把你叫到工位旁：这行不能只靠自己摸。要不要跟一段时间？</div>
+<div class="new">这行不能只靠自己摸。要不要跟我一段时间？</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=drill.body</div>
+<div class="old">连续几周，评审意见一条条拆给你听。主职手感稳了一点。</div>
+<div class="new">接下来几周，我一条条给你拆评审意见。手感先稳住了。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=drill.bodyRemote</div>
+<div class="old">隔着时差，评审意见一条条拆给你听。主职手感稳了一点。</div>
+<div class="new">隔着时差，我一条条给你拆评审意见。手感先稳住了。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=rebuke.body</div>
+<div class="old">例会上当着全组改你的方案。难堪，但你把改法记下了。</div>
+<div class="new">例会上我当着全组改了你的方案。难堪归难堪，改法你记下了吧。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=own-voice.body</div>
+<div class="old">把一版成稿丢给你：按他的骨架铺，还是改成你的说法？</div>
+<div class="new">这是我的一版成稿。你按我的骨架铺，还是改成你自己的说法？</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=own-voice.bodyRemote</div>
+<div class="old">把一版成稿发过来：按他的骨架铺，还是改成你的说法？</div>
+<div class="new">一版成稿发给你了。按我的骨架铺，还是改成你自己的说法？</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=voice-echo-mirror.body</div>
+<div class="old">评审时有人说了一句：这股味道眼熟。你照着 {mentorName} 的骨架铺得太久，已经分不清哪一笔是自己的。</div>
+<div class="new">评审时有人说了一句：这股味道眼熟。你照着我的骨架铺得太久，快分不清哪一笔是自己的了。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=voice-echo-mirror.bodyRemote</div>
+<div class="old">评审记录传到 {mentorName} 手上，他回了一句：像我的手笔。你不知道该高兴还是不该。</div>
+<div class="new">评审记录传到我手上，我回了一句：像我的手笔。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=voice-echo-own.body</div>
+<div class="old">有人把你的稿子和 {mentorName} 的旧作摆在一起：不像同一个人的路子。{mentorName} 没反驳，只批了两个字——再想。</div>
+<div class="new">有人把你的稿子和我的旧作摆在一起，说这不像同一个人的路子。我没反驳，只批了两个字——再想。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=voice-echo-own.bodyRemote</div>
+<div class="old">有人在会上提到你的名字，说这不是 {mentorName} 那一派的做法。你听出来了，这是在夸你。</div>
+<div class="new">有人在会上提到你的名字，说这不是我那一派的做法。这是夸你。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=stand.body</div>
+<div class="old">看完只点头：这版你自己扛。工位边不再逐句改。</div>
+<div class="new">这版你自己扛。后面我不再逐句改了。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=stand.bodyRemote</div>
+<div class="old">回了一句：这版你自己扛。邮件里不再逐句改。</div>
+<div class="new">这版你自己扛。邮件里我就不逐句改了。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=nominate.body</div>
+<div class="old">把你的名字递进了公司。</div>
+<div class="new">我把你的名字递进了公司。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=nominate.bodyRemote</div>
+<div class="old">给新东家写了推荐信。</div>
+<div class="new">我给新东家写了一封推荐信。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-mentor.beats.id=leave.body</div>
+<div class="old">要去 {successorCompany}。位子给你留了一格，跟不跟？不跟也没事。</div>
+<div class="new">我要去 {successorCompany} 了。位子给你留了一格，跟不跟？不跟也没事。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-peer.beats.id=rival.body</div>
+<div class="old">和你抢同一块交付。要硬刚一轮，还是把节奏对齐？</div>
+<div class="new">{peerName} 和你抢同一块交付。要硬刚一轮，还是把节奏对齐？</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-peer.beats.id=credit.body</div>
+<div class="old">这块交付要写名字。摊开和 {peerName} 一起，还是这份算你的？</div>
+<div class="new">这块交付要署名。和 {peerName} 一起摊开写，还是这份算你的？</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-peer.beats.id=forced-coop.body</div>
+<div class="old">一个卡了很久的模块把你和 {peerName} 分到了同一组。要各做各的，还是把方案摊开？</div>
+<div class="new">有个卡了很久的模块，把我和你分到同一组了。各做各的，还是把方案摊开？</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-peer.beats.id=forced-coop.bodyRemote</div>
+<div class="old">一个跨公司的坑把你们又扯到一起——线上会议里，{peerName} 的头像亮着。要各做各的，还是把方案摊开？</div>
+<div class="new">这个跨公司的坑，又把我俩扯到一起了。各做各的，还是把方案摊开？</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-peer.beats.id=respect.body</div>
+<div class="old">把一份自己写的方案扔给你：你上次那个思路我抄了一半，剩下的你看看还能不能用。</div>
+<div class="new">这是我写的一份方案。你上次那个思路我抄了一半，剩下的你看看还能不能用。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-peer.beats.id=respect.bodyRemote</div>
+<div class="old">发来一份文档，说抄了你一半思路。隔着公司，谁也没再提当年抢交付的事。</div>
+<div class="new">发了份文档给你，里面抄了你一半的思路。当年抢交付的事，谁也没再提。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-peer.beats.id=finale-relation.body</div>
+<div class="old">观察期结束。你和 {peerName} 之间，总得有个说法。</div>
+<div class="new">你和 {peerName} 的这段较劲，总得有个说法。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-junior.beats.id=meet.body</div>
+<div class="old">组里来了个新人，说自己叫{juniorName}，总往你工位这边看。要不要教两手？</div>
+<div class="new">组里来了个新人，说自己叫{juniorName}，总往你工位这边瞟。要不要教两手？</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-junior.beats.id=copy.body</div>
+<div class="old">把你写的清单抄走了，连坏习惯也一起抄。</div>
+<div class="new">我把你写的那份清单整套抄了去，连坏习惯也一起抄。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-junior.beats.id=copy.bodyRemote</div>
+<div class="old">还在按你发过去的清单做，连坏习惯也一起抄。</div>
+<div class="new">我还在按你发过来的清单做，连坏习惯也一起抄。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-junior.beats.id=blame.body</div>
+<div class="old">一次回滚本来该写你的名。{juniorName} 先认了。</div>
+<div class="new">一次回滚本来该记在你名下，{juniorName} 先认了。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-junior.beats.id=first-ship.body</div>
+<div class="old">跟着这作过了发售。清单上的名字他记住了。</div>
+<div class="new">我跟着这作走完了发售。清单上那几个名字，我都记住了。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-junior.beats.id=teach-echo-well.body</div>
+<div class="old">把你给的那版清单改了一版，批注比你的还密。他说这是跟你学的。</div>
+<div class="new">我把你给的那版清单改了一遍，批注比你的还密。这是跟你学的。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-junior.beats.id=teach-echo-well.bodyRemote</div>
+<div class="old">发来一版他自己整理的清单，说底子是你给的。</div>
+<div class="new">我自己整理了一版清单，底子是你给的。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-junior.beats.id=finale.body</div>
+<div class="old">观察期过了。留在组里、推荐去别的工作室，还是有人来挖？</div>
+<div class="new">该给他一个去处了。留在组里、推荐去别的工作室，还是让他被人挖走？</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-junior.beats.id=call.body</div>
+<div class="old">他后来还是走了。某天深夜，一个陌生号码打来——接起来，对面沉默了两秒：「……是我。」号码陌生，声音一下就熟了。</div>
+<div class="new">他后来还是走了。某天深夜，一个陌生号码打来——接起来，对面沉默了两秒：「……是我。」声音一下就熟了。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-junior.beats.id=call.bodyRemote</div>
+<div class="old">某天深夜，一个陌生号码打来。你接起来，对面沉默了两秒：「……是我。」号码陌生，声音一下就熟了。</div>
+<div class="new">某天深夜，一个陌生号码打来——接起来，对面沉默了两秒：「……是我。」声音一下就熟了。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=bond-junior.beats.id=reveal.body</div>
+<div class="old">他说了个名字——{juniorName}。这名字你最近老在榜单上看见。他笑了一声：当年工位旁边那个总来问问题的人，就是他。</div>
+<div class="new">他说了个名字——{juniorName}。这名字你最近老在榜单上看见。他笑了一声，说当年工位旁边那个总来问问题的，就是他。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=epic-title.beats.id=weight.body</div>
+<div class="old">组里把《{titleName}》按里程碑在盯。你是顶住，还是觉得要翻车？翻车只会让你离开这家，世界不会改写。</div>
+<div class="new">组里把《{titleName}》当成里程碑在盯。你顶得住，还是觉得要翻车？翻车只会让你离开这家，世界不会改写。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=epic-title.beats.id=land.body</div>
+<div class="old">《{titleName}》按目录该有的样子落地。你没改写它的史，只是把自己推过了一截。</div>
+<div class="new">《{titleName}》照着它本该有的样子落地了。你没改写它的历史，只是把自己往前推了一截。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=era-return-china.beats.id=letter.body</div>
+<div class="old">2010 年后国内厂商开始起量。一封旧签名的信问你要不要回来做目录里的那几作。</div>
+<div class="new">2010 年之后，国内厂商真的起来了。那几部作品已经在排，你要不要回来做？</div></div>
+<div class="row"><div class="path">eventLines.lines.id=era-return-china.beats.id=reveal.body</div>
+<div class="old">署名摊开：当年的小满，原来是 {juniorName}。人还在国内厂。</div>
+<div class="new">信封上的署名是当年的小满——原来是 {juniorName}。人还在国内的厂里。</div></div>
+<div class="row"><div class="path">eventLines.lines.id=era-return-china.beats.id=invite.body</div>
+<div class="old">米哈游、鹰角、叠纸这类表内公司在招人，目录作已经排好。你仍是员工，不招人、不开公司。制作人岗接了也只是现公司员工。</div>
+<div class="new">米哈游、鹰角、叠纸都在招人，项目也已经排好。去的话你还是员工：不招人，也不开公司，接制作人岗也一样。</div></div>
+</body></html>

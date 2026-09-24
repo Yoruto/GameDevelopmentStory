@@ -36,7 +36,7 @@ grid-template-rows: auto minmax(0, 1fr) auto;
 
 | 区 | 高度预算 | 内容 |
 |---|---|---|
-| 顶部状态区 | ≤ 88px | KPI 行（年月/积蓄/声望）48px + 规模/岗位/阶段 chips 28px + padding |
+| 顶部状态区 | ≤ 88px | KPI 行（年月/声望 2 格，P4b 补健康为 3 格）48px + 规模/岗位/阶段 chips 28px + padding |
 | 内容区 | ≥ 467px | 2×2 卡片网格（见 1.3） |
 | 操作坞 | ≤ 96px | 常驻动作行 36px + 主按钮行 44px + padding（含 safe-area-inset-bottom） |
 

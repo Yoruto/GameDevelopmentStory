@@ -127,6 +127,101 @@
     return (config && config.copy && config.copy.career) || {};
   };
 
+
+  // ── P4b 健康：只在事件落地时变动（±1，钳在 min..max），绝不随时间自动衰减 ──
+  sim.applyCareerHealthDelta = function (st, delta, config) {
+    var spec, v;
+    if (!st || !st.career || !num(delta, 0)) return st;
+    spec = sim.careerWorld(config).careerHealth || {};
+    v = num(st.career.health == null ? num(spec.init, 4) : st.career.health, 4) + num(delta, 0);
+    if (spec.min != null && v < spec.min) v = spec.min;
+    if (spec.max != null && v > spec.max) v = spec.max;
+    st.career.health = v;
+    return st;
+  };
+
+
+  // flags 点路径（P4a）：只支持以 "career." 开头，如 "career.awardStory.goty"。
+  // P6：主职维突破晋升硬门槛刻度 → 「被世界承认」里程碑拍（每档一次，flag 落
+  // st.career.statMilestones；at 值必须与 jobRanks.promotion.requirements[].mainStat 对齐）。
+  sim.checkStatMilestones = function (st, config, queue) {
+    var list, main, cur, flags, i, m;
+    if (!st || !st.career || !queue) return;
+    main = (sim.careerRole(st.career.roleId, config) || {}).stat;
+    if (!main) return;
+    cur = num(st.career.stats && st.career.stats[main], 0);
+    list = (sim.careerWorld(config).statMilestones || {}).list || [];
+    flags = st.career.statMilestones || (st.career.statMilestones = {});
+    for (i = 0; i < list.length; i++) {
+      m = list[i];
+      if (!m || flags[m.at] || cur < num(m.at, 0)) continue;
+      flags[m.at] = true;
+      queue.push({
+        type: "milestone",
+        kind: "event",
+        presentation: "notice",
+        at: m.at,
+        kicker: "被世界承认",
+        title: m.title,
+        body: m.body
+      });
+    }
+  };
+
+
+  // flags 点路径（P4a）：只支持以 "career." 开头，如 "career.awardStory.goty"。
+  function careerFlagHit(st, path) {
+    var parts = String(path || "").split(".");
+    var node, i;
+    if (parts[0] !== "career") return false;
+    node = st && st.career;
+    for (i = 1; i < parts.length; i++) {
+      if (node == null || typeof node !== "object") return false;
+      node = node[parts[i]];
+    }
+    return !!node;
+  }
+
+
+  // ── P4a 选项门禁判据：RNG-free（skipIf/渲染层都会反复求值，绝不许掷骰）──
+  // 不满足返回一行解锁提示（置灰显示用），满足返回 null。
+  sim.careerOptionLockHint = function (st, config, req) {
+    var copy, bits, renown;
+    if (!req || typeof req !== "object") return null;
+    copy = sim.careerCopy(config);
+    bits = [];
+    if (req.minStat) {
+      Object.keys(req.minStat).forEach(function (dim) {
+        var have = st && st.career && st.career.stats ? num(st.career.stats[dim], 0) : 0;
+        if (have < num(req.minStat[dim], 0)) {
+          bits.push((copy["dim" + dim.charAt(0).toUpperCase() + dim.slice(1)] || dim) + " ≥ " + num(req.minStat[dim], 0));
+        }
+      });
+    }
+    (req.flags || []).forEach(function (p) {
+      if (!careerFlagHit(st, p)) bits.push(p.indexOf("career.awardStory") === 0 ? "拿过奖" : "解锁前情");
+    });
+    if (req.rank != null) {
+      if (!st || !st.career || num(st.career.jobRank, 1) < num(req.rank, 0)) {
+        bits.push("职级 ≥ " + num(req.rank, 0));
+      }
+    }
+    if (req.health != null) {
+      if (!st || !st.career || num(st.career.health == null ? 4 : st.career.health, 4) < num(req.health, 0)) {
+        bits.push((copy.healthLabel || "健康") + " ≥ " + num(req.health, 0));
+      }
+    }
+    if (req.renown != null) {
+      renown = sim.careerRenownView ? sim.careerRenownView(st, config) : null;
+      if (!renown || num(renown.tier, 1) < num(req.renown, 0)) {
+        bits.push((copy.renownLabel || "声望") + "达到「" +
+          (sim.careerRenownTierLabel ? sim.careerRenownTierLabel(config, req.renown) : "") + "」");
+      }
+    }
+    if (!bits.length) return null;
+    return (copy.lockPrefix || "需要：") + bits.join("、");
+  };
+
   sim.worldLabel = function (row, config) {
     var world, useAlias;
     if (!row) return "";
@@ -139,6 +234,12 @@
 
   sim.monthIndex = function (year, month) {
     return year * 12 + (month || 1);
+  };
+
+  // monthIndex 的逆运算（cycleMult 换算后要把开工月写成 year/month 存进 state）。
+  sim.monthFromIndex = function (idx) {
+    var y = Math.floor((idx - 1) / 12);
+    return { year: y, month: idx - y * 12 };
   };
 
   sim.careerRole = function (roleId, config) {
@@ -167,10 +268,39 @@
     return rank;
   }
 
+  // career 相关 API 既接受 state，也接受 career 子对象（历史两种调用都有），统一在这里收口。
+  function careerArg(career) {
+    if (!career) return null;
+    return career.career ? career.career : career;
+  }
+
   sim.careerJobRank = function (career, config) {
     var cr = careerArg(career);
     var spec = jobRankSpec(config);
     return clampJobRank(cr && cr.jobRank, config) || (spec.start != null ? spec.start : 1);
+  };
+
+  // 「光看属性够到哪一级」：从 rank 1 起逐级看 mainStat 门槛，够得到的最大职级。
+  // 晋升门槛唯一看属性（见 promotionGaps），所以这个值就是「能力对应的位置」——
+  // 挖人/跳槽给什么职级用它（外面只认能力，不认你在这家公司熬的资历）。
+  // roleId 与当前职级无关：换岗后主维会变，按新岗的属性和门槛表重算。
+  sim.careerStatRank = function (state, config) {
+    var st = state && state.career ? state : { career: state };
+    var cr = st && st.career;
+    var spec = jobRankSpec(config);
+    var reqs = (spec.promotion || {}).requirements || [];
+    var max = spec.max != null ? spec.max : 6;
+    var stat = mainStatValue(st, config);
+    var rank = 1;
+    var i, need;
+    if (!cr) return 1;
+    for (i = 1; i < reqs.length && i < max; i++) {
+      if (!reqs[i]) break;
+      need = num(reqs[i].mainStat, 0);
+      if (!(need > 0) || stat < need) break;
+      rank = i + 1;
+    }
+    return clampJobRank(rank, config);
   };
 
   sim.careerJobTitleDef = function (roleId, rank, config) {
@@ -248,14 +378,47 @@
 
   sim.careerSeniors = function (company, config) {
     var co = typeof company === "string" ? sim.careerCompany(company, config) : company;
-    return (co && co.seniors) || [];
+    var list, extra, out, seen, i, p, c0;
+    if (!co) return [];
+    list = co.seniors || [];
+    if (!sim.castRoster) return list;
+    // 内嵌 seniors 优先（字段完整：tags / departYear / successor*）；cast 补上「只存在于 cast」的
+    // 驻员（阶段 3 批量新增的人），并转成 seniors 形状，HQ 面板与事件线因此自动认得他们。
+    extra = sim.castRoster({ companyId: co.id }, config);
+    if (!extra.length) return list;
+    out = [];
+    seen = {};
+    for (i = 0; i < list.length; i++) {
+      out.push(list[i]);
+      if (list[i] && list[i].id) seen[list[i].id] = 1;
+    }
+    for (i = 0; i < extra.length; i++) {
+      p = extra[i];
+      if (!p || seen[p.id]) continue;
+      seen[p.id] = 1;
+      c0 = (p.career && p.career[0]) || null;
+      out.push({
+        id: p.id,
+        name: p.name,
+        alias: p.alias,
+        title: p.title || "",
+        bio: p.bio || "",
+        tags: p.roles || [],
+        departYear: c0 ? c0.toYear : null,
+        successorCompanyId: null,
+        successorSeniorId: null
+      });
+    }
+    return out;
   };
 
   sim.careerSeniorLabel = function (senior, config) {
-    var name, title;
+    var name, title, cast;
     if (!senior) return "";
-    name = sim.worldLabel(senior, config);
-    title = senior.title || senior.role || "";
+    // 人物姓名走 cast 双模式（careerWorld.nameMode）；cast 未覆盖的人回落 worldLabel 旧行为。
+    cast = senior.id && sim.castFind ? sim.castFind(senior.id, config) : null;
+    name = cast ? sim.castName(cast, config) : sim.worldLabel(senior, config);
+    title = (cast && cast.title) || senior.title || senior.role || "";
     if (name && title) return name + " · " + title;
     return name || title;
   };
@@ -277,14 +440,19 @@
   sim.careerSeniorLine = function (company, config) {
     var list = sim.careerSeniors(company, config);
     var copy = sim.careerCopy(config);
+    // 一屏约束：邀请文案里最多列 2 位前辈，其余折成「等N位」。
+    // （P1 厂商合并会把被砍公司的前辈并入目标公司，单公司前辈数可达两位数。）
+    var max = 2;
     var bits = [];
     var i, lab;
     for (i = 0; i < list.length; i++) {
+      if (bits.length >= max) break;
       lab = sim.careerSeniorLabel(list[i], config);
       if (lab) bits.push(lab);
     }
     if (!bits.length) return "";
-    return (copy.seniorLabel || "前辈") + "：" + bits.join("、");
+    var tail = list.length > bits.length ? ("等" + list.length + "位") : "";
+    return (copy.seniorLabel || "前辈") + "：" + bits.join("、") + tail;
   };
 
   function rankTableVal(table, rank, fallback) {
@@ -346,7 +514,7 @@
     var max = spec.max != null ? spec.max : 6;
     var req = promotionReq(st, config);
     var gaps = [];
-    var main, jobXp, creditW, fameHonor, months, need;
+    var main, creditW, fameHonor, months, need;
     if (!cr) return [{ id: "noCareer", label: "还没有入职" }];
     if (rank >= max) return [];
     if (num(cr.promotionsThisYear, 0) >= maxPer) {
@@ -354,22 +522,15 @@
     }
     if (!req) return gaps;
     main = mainStatValue(st, config);
-    jobXp = num(cr.jobXp, 0);
+    // 晋升只看属性：mainStat 是唯一的能力门槛。
+    // （2026-09-22 移除原 mainStatOrJobXp「主职维或职级经验二选一」：jobXp 每开发月 +1、
+    //   生涯能到 400+，那条永远满足，既不拦人也不赋能。jobXp 现在只是展示/人设素材。）
     need = num(req.mainStat, 0);
     if (need && main < need) {
       gaps.push({
         id: "stat",
         label: "主职能力",
         have: main,
-        need: need
-      });
-    }
-    need = num(req.mainStatOrJobXp, 0);
-    if (need && main < need && jobXp < need) {
-      gaps.push({
-        id: "main",
-        label: "主职维或职级经验",
-        have: Math.max(main, jobXp),
         need: need
       });
     }
@@ -420,7 +581,6 @@
         g = gaps[i];
         if (g.id === "year") lines.push(copy.gapYear || g.label);
         else if (g.id === "stat") lines.push((copy.gapStat || "主职能力还差") + " " + Math.ceil(g.need - g.have));
-        else if (g.id === "main") lines.push((copy.gapMain || "主职维/职级经验还差") + " " + Math.ceil(g.need - g.have));
         else if (g.id === "credits") lines.push((copy.gapCredits || "署名作品还差") + " " + (Math.round((g.need - g.have) * 10) / 10));
         else if (g.id === "fame") lines.push((copy.gapFame || "声望或荣誉还差") + " " + Math.ceil(g.need - g.have));
         else if (g.id === "months") lines.push((copy.gapMonths || "任现职还差") + " " + Math.ceil(g.need - g.have) + " 个月");
@@ -450,7 +610,6 @@
     if (!last || last.endYear != null) return;
     last.endYear = st.year;
     last.endMonth = st.month;
-    last.endSalary = st.career.salary;
   }
 
   function openTenure(st, source, config) {
@@ -469,8 +628,6 @@
       startMonth: st.month,
       endYear: null,
       endMonth: null,
-      startSalary: cr.salary || 0,
-      endSalary: null,
       source: source || "opening"
     });
   }
@@ -478,7 +635,7 @@
   function applyPromotion(st, config) {
     var spec = jobRankSpec(config);
     var next = sim.careerJobRank(st.career, config) + 1;
-    var co, title;
+    var title;
     closeTenure(st);
     st.career.jobRank = clampJobRank(next, config);
     st.career.monthsInRank = 0;
@@ -489,8 +646,6 @@
     }
     title = sim.careerJobTitle(st, config);
     st.career.jobTitleId = title && title.id;
-    co = sim.careerCompany(st.career.companyId, config);
-    if (co) st.career.salary = sim.careerSalaryFor(co, st.year, config, st.career);
     openTenure(st, "promotion", config);
     void spec;
   }
@@ -508,15 +663,22 @@
     }
   }
 
+  // 晋升的唯一落地点。门槛必须在**这里**兜一次：旧实现只靠调用点自觉先问 canPromoteCareer，
+  // 于是任何漏判的新调用点都能白送职级（实测挖人带级那条把 T6 送到主职维 46.7 的人身上）。
+  // story/sponsored 是「剧情破格」的显式出口，受 promotion.storyBypass 控制；opts.force 是给
+  // 已自查过门槛的调用方（promoteCareer / yearEndSlot）用的短路。
   sim.applyCareerPromotion = function (st, config, opts) {
-    var spec, max, rank, maxPer, story;
+    var spec, max, rank, maxPer, story, promo;
     if (!st || !st.career) return;
     opts = opts || {};
     story = !!(opts.story || opts.sponsored);
     spec = jobRankSpec(config);
+    promo = spec.promotion || {};
     rank = sim.careerJobRank(st.career, config);
     max = spec.max != null ? spec.max : 6;
     if (rank >= max) return;
+    if (!opts.force && promo.gateInFunction !== false &&
+        !(story && promo.storyBypass !== false) && !sim.canPromoteCareer(st, config)) return;
     maxPer = maxPromotionsPerYear(config);
     if (story && num(st.career.promotionsThisYear, 0) >= maxPer) {
       st.career.pendingStoryPromos = num(st.career.pendingStoryPromos, 0) + 1;
@@ -545,7 +707,7 @@
   };
 
   sim.applyCareerBecomeProducer = function (st, config) {
-    var co, role, copy;
+    var role, copy;
     if (!st || !st.career) return;
     if (sim.isGrowthStageLocked("founder", config) && st.career.growthStage === "founder") {
       st.career.growthStage = "employee";
@@ -556,8 +718,6 @@
     st.career.growthStage = "producer";
     st.career.jobTitleId = "producer";
     role = sim.careerRole("producer", config);
-    co = sim.careerCompany(st.career.companyId, config);
-    if (co) st.career.salary = sim.careerSalaryFor(co, st.year, config, st.career);
     openTenure(st, "producer", config);
     copy = sim.careerCopy(config);
     if (copy.becomeProducerOk) st.career.hopNotice = copy.becomeProducerOk;
@@ -578,7 +738,7 @@
     studioId = defaultStudioForCompany(companyId, config);
     preferred = preferredId ? sim.careerTitle(preferredId, config, st) : null;
     det = preferredId ? sim.careerTitleDetail(preferredId, config, st) : null;
-    if (preferred && det && sim.titleCoversMonth && sim.titleCoversMonth(preferred, det, st.year, st.month)) {
+    if (preferred && det && sim.titleCoversMonth && sim.titleCoversMonth(preferred, det, st.year, st.month, config)) {
       return preferredId;
     }
     // 先看玩家会进的那个工作室，再看全公司（有些在研作挂在别的工作室）。
@@ -624,14 +784,6 @@
     return bond.homeCompanyId || bond.companyId || null;
   }
 
-  function companyOrSuccessorMatch(homeId, playerCoId, config) {
-    var home;
-    if (!homeId || !playerCoId) return false;
-    if (homeId === playerCoId) return true;
-    home = sim.careerCompany(homeId, config);
-    return !!(home && home.successorId && home.successorId === playerCoId);
-  }
-
   function bondRoleForLine(def) {
     if (!def) return null;
     if (def.bond) return def.bond;
@@ -642,130 +794,6 @@
     if (def.id === "bond-junior") return "junior";
     return null;
   }
-
-  function noteBondRemoteFlip(st, role, wasColocated, nowColocated, config) {
-    var list, i, def, prog;
-    if (!wasColocated || nowColocated) return;
-    if (!st.career.lines) return;
-    list = (sim.eventLineDefs && config) ? sim.eventLineDefs(config) : [];
-    for (i = 0; i < list.length; i++) {
-      def = list[i];
-      if (!def || def.kind !== "bond") continue;
-      if (bondRoleForLine(def) !== role) continue;
-      prog = st.career.lines[def.id];
-      if (prog && prog.status === "active") prog.remotePending = true;
-    }
-  }
-
-  sim.refreshCareerBondColocation = function (st, config) {
-    var b, keys, i, k, bond, home, now, was, playerCo;
-    if (!st || !st.career) return st;
-    b = st.career.bonds;
-    if (!b) return st;
-    playerCo = st.career.companyId || null;
-    keys = ["mentor", "peer", "junior"];
-    for (i = 0; i < keys.length; i++) {
-      k = keys[i];
-      bond = b[k];
-      if (!bond) continue;
-      home = bondHomeCompanyId(bond);
-      was = bond.colocated !== false;
-      // bond.departed：剧情已经把这个人判成"离队"（如后辈线 juniorLeave）。
-      // 离队是既成事实，不因为玩家还留在原公司就被重算拉回"坐在旁边"。
-      now = bond.departed ? false : companyOrSuccessorMatch(home, playerCo, config);
-      bond.colocated = now;
-      noteBondRemoteFlip(st, k, was, now, config);
-    }
-    return st;
-  };
-
-  function stampBondHome(bond, st) {
-    if (!bond || !st || !st.career) return bond;
-    if (!bond.homeCompanyId) bond.homeCompanyId = st.career.companyId || bond.companyId || null;
-    if (!bond.homeStudioId) bond.homeStudioId = st.career.studioId || null;
-    if (bond.companyId == null) bond.companyId = bond.homeCompanyId;
-    if (bond.colocated == null) bond.colocated = true;
-    if (bond.monthsTogether == null) bond.monthsTogether = 0;
-    if (bond.monthsApart == null) bond.monthsApart = 0;
-    return bond;
-  }
-
-  sim.pinCareerBonds = function (st, config) {
-    var co, seniors, senior, pool, mate, i;
-    if (!st || !st.career) return st;
-    if (!st.career.bonds) st.career.bonds = { mentor: null, peer: null, junior: null };
-    co = sim.careerCompany(st.career.companyId, config);
-    seniors = sim.careerSeniors(co, config);
-    if (!st.career.bonds.mentor) {
-      // 公司可无前辈：无前辈时建立“占位导师”（以公司名指代），保证师徒玩法不崩
-      senior = seniors[0] || { id: null, name: (co && co.name) || "公司", alias: (co && co.alias) || (co && co.name) || "公司", title: "", departYear: null, successorCompanyId: null, successorSeniorId: null };
-      st.career.bonds.mentor = stampBondHome({
-        seniorId: senior.id,
-        companyId: st.career.companyId,
-        name: senior.name,
-        alias: senior.alias || senior.name,
-        title: senior.title || "",
-        departYear: senior.departYear != null ? senior.departYear : null,
-        successorCompanyId: senior.successorCompanyId || null,
-        successorSeniorId: senior.successorSeniorId || null,
-        monthsTogether: 0,
-        monthsApart: 0,
-        colocated: true
-      }, st);
-    }
-    if (!st.career.bonds.peer) {
-      pool = st.career.colleagues || [];
-      mate = null;
-      for (i = 0; i < pool.length; i++) {
-        if (pool[i] && pool[i].roleId !== "producer" && pool[i].roleId !== st.career.roleId) {
-          mate = pool[i];
-          break;
-        }
-      }
-      if (mate) {
-        st.career.bonds.peer = stampBondHome({
-          id: mate.id,
-          name: mate.n,
-          roleId: mate.roleId,
-          jobRank: mate.jobRank,
-          companyId: st.career.companyId,
-          monthsTogether: 0,
-          monthsApart: 0,
-          colocated: true,
-          epicTitleId: null,
-          epicCompanyId: null
-        }, st);
-      }
-    }
-    if (st.career.bonds.mentor) stampBondHome(st.career.bonds.mentor, st);
-    if (st.career.bonds.peer) stampBondHome(st.career.bonds.peer, st);
-    if (st.career.bonds.junior) stampBondHome(st.career.bonds.junior, st);
-    sim.refreshCareerBondColocation(st, config);
-    return st;
-  };
-
-  sim.tickCareerBonds = function (st, config) {
-    var b, keys, i, k, bond;
-    if (!st || !st.career) return;
-    if (config) sim.refreshCareerBondColocation(st, config);
-    b = st.career.bonds;
-    if (!b) return;
-    keys = ["mentor", "peer", "junior"];
-    for (i = 0; i < keys.length; i++) {
-      k = keys[i];
-      bond = b[k];
-      if (!bond) continue;
-      if (bond.colocated && st.career.companyId) {
-        bond.monthsTogether = num(bond.monthsTogether, 0) +
-          Math.max(0, 1 + sim.careerTraitSum(st, "bondTogetherBonus", config));
-      } else {
-        // bondApartDelta：分离月数增量的通用钩子（-1 即冻结）。当前没有天赋用它——
-        // monthsApart 全仓还没有读取点，写进天赋等于白写（见 tests 的 careerTraitsStayOnLiveKeys）。
-        bond.monthsApart = num(bond.monthsApart, 0) +
-          Math.max(0, 1 + sim.careerTraitSum(st, "bondApartDelta", config));
-      }
-    }
-  };
 
   function careerTraits(st) {
     if (!st || !st.career) return [];
@@ -967,61 +995,6 @@
     }).filter(Boolean).join(" ");
   };
 
-  sim.ensureCareerJuniorBond = function (st, config) {
-    var spec = ((sim.careerWorld(config).eventLines) || {}).bonds || {};
-    var pool = spec.juniorRevealPool || [];
-    var hit, senior;
-    if (!st || !st.career) return null;
-    if (!st.career.bonds) st.career.bonds = { mentor: null, peer: null, junior: null };
-    if (st.career.bonds.junior) return st.career.bonds.junior;
-    hit = pool.length ? sim.pick(st, pool) : null;
-    senior = hit ? sim.findCareerSeniorById(hit.seniorId, config) : null;
-    st.career.bonds.junior = stampBondHome({
-      id: "bond-junior",
-      aliasThen: spec.juniorAliasThen || "小T",
-      aliasNow: senior ? (senior.alias || senior.name) : null,
-      revealSeniorId: hit && hit.seniorId,
-      revealCompanyId: hit && hit.companyId,
-      revealTitleId: hit && hit.titleId,
-      monthsTogether: 0,
-      monthsApart: 0,
-      revealed: false,
-      companyId: st.career.companyId || null
-    }, st);
-    sim.refreshCareerBondColocation(st, config);
-    return st.career.bonds.junior;
-  };
-
-  sim.revealCareerJunior = function (st, config) {
-    var junior, senior;
-    if (!st || !st.career) return;
-    junior = st.career.bonds && st.career.bonds.junior;
-    if (!junior) sim.ensureCareerJuniorBond(st, config);
-    junior = st.career.bonds && st.career.bonds.junior;
-    if (!junior) return;
-    senior = sim.findCareerSeniorById(junior.revealSeniorId, config);
-    if (senior) junior.aliasNow = senior.alias || senior.name;
-    junior.revealed = true;
-  };
-
-  sim.kickOutOfCareerCompany = function (st, config) {
-    var copy;
-    if (!st || !st.career) return st;
-    sim.ensureCareerExtras(st, config);
-    detachFromProject(st, config);
-    closeTenure(st);
-    st.career.companyId = null;
-    st.career.studioId = null;
-    st.career.salary = 0;
-    st.career.colleagues = [];
-    st.career.invites = [];
-    st.career.yearEndOffers = [];
-    copy = sim.careerCopy(config);
-    st.career.hopNotice = copy.kickOutNotice || "被请出当前公司，先找下一份工作。";
-    sim.refreshCareerBondColocation(st, config);
-    return st;
-  };
-
   function eventLinesBonds(config) {
     return ((sim.careerWorld(config).eventLines) || {}).bonds || {};
   }
@@ -1047,7 +1020,7 @@
       if (!sim.companyJoinable(co, st.year)) continue;
       if (needsWork) {
         det = sim.careerTitleDetail(t.id, config, st);
-        if (!det || !sim.titleCoversMonth(t, det, st.year, st.month)) continue;
+        if (!det || !sim.titleCoversMonth(t, det, st.year, st.month, config)) continue;
       } else if (t.releaseYear != null && t.releaseYear < st.year) {
         continue;
       }
@@ -1063,14 +1036,6 @@
   }
 
   // RNG-free：只回答"有没有这样的史诗作"。给选项 skipIf 用。
-  sim.hasPeerEpicTarget = function (st, config) {
-    return peerEpicPool(st, config).length > 0;
-  };
-
-  // 回国线的落点。只有"当月真的在研一部目录作"的公司接得住这名回国的员工：
-  // 挂进一家当月空着的公司，玩家过月就被判空窗，一两个月后被自动塞一部虚拟作
-  // （"我明明在做暖暖环游世界，过月怎么变成一个没听过的游戏了"）。
-  // 小T 所在的那家不成立就返回 null（回国线靠 when.requireInDevTarget 等它成立）。
   function pickReturnInviteTarget(st, config) {
     var spec = eventLinesBonds(config).returnInvite || {};
     var junior = st.career && st.career.bonds && st.career.bonds.junior;
@@ -1098,10 +1063,6 @@
     }
     return null;
   }
-
-  sim.hasCareerReturnTarget = function (st, config) {
-    return !!pickReturnInviteTarget(st, config);
-  };
 
   sim.applyScriptedCareerInvite = function (st, kind, config) {
     var co, companyId, titleId, roleId, studioId, late, target, title, peer;
@@ -1152,7 +1113,7 @@
     title = titleId ? sim.careerTitle(titleId, config, st) : null;
     studioId = (title && title.studioId) || defaultStudioForCompany(companyId, config);
     detachFromProject(st, config);
-    joinCompany(st, companyId, roleId, null, titleId, config, studioId, "invite", null);
+    joinCompany(st, companyId, roleId, titleId, config, studioId, "invite", null);
     if (late && titleId) {
       (function markUnsigned() {
         var cred = findCredit(st, titleId);
@@ -1258,7 +1219,7 @@
     oldId = co.id;
     succId = co.successorId;
     detachFromProject(st, config);
-    joinCompany(st, succId, st.career.roleId, null, null, config, null, "merger", null);
+    joinCompany(st, succId, st.career.roleId, null, config, null, "merger", null);
     keys = ["mentor", "peer", "junior"];
     for (i = 0; i < keys.length; i++) {
       k = keys[i];
@@ -1353,74 +1314,6 @@
     return st;
   };
 
-  sim.applyCareerPromotePeer = function (st, config) {
-    var peer, spec, max, next, pool, k, mate;
-    if (!st || !st.career || !st.career.bonds || !st.career.bonds.peer) return st;
-    peer = st.career.bonds.peer;
-    spec = jobRankSpec(config);
-    max = spec.max != null ? spec.max : 6;
-    next = num(peer.jobRank, sim.careerJobRank(st.career, config)) + 1;
-    if (next > max) next = max;
-    peer.jobRank = next;
-    mate = null;
-    (st.career.colleagues || []).forEach(function (c) {
-      if (c && (c.id === peer.id || c.n === peer.name)) mate = c;
-    });
-    if (mate) mate.jobRank = next;
-    pool = st.career.colleaguePool || {};
-    for (k in pool) {
-      if (!Object.prototype.hasOwnProperty.call(pool, k)) continue;
-      (function bump(companyPool) {
-        var rid, row;
-        if (!companyPool) return;
-        for (rid in companyPool) {
-          if (!Object.prototype.hasOwnProperty.call(companyPool, rid)) continue;
-          row = companyPool[rid];
-          if (row && (row.id === peer.id || row.n === peer.name)) row.jobRank = next;
-        }
-      })(pool[k]);
-    }
-    return st;
-  };
-
-  sim.applyCareerInvitePeer = function (st, config) {
-    var peer, pool, row;
-    if (!st || !st.career || !st.career.companyId) return st;
-    peer = st.career.bonds && st.career.bonds.peer;
-    if (!peer) return st;
-    peer.homeCompanyId = st.career.companyId;
-    peer.companyId = st.career.companyId;
-    peer.homeStudioId = st.career.studioId || null;
-    peer.colocated = true;
-    if (!st.career.colleaguePool) st.career.colleaguePool = {};
-    pool = st.career.colleaguePool[st.career.companyId] || {};
-    row = {
-      id: peer.id || ("col-peer-" + st.career.companyId),
-      n: peer.name,
-      roleId: peer.roleId || "programmer",
-      jobRank: peer.jobRank != null ? peer.jobRank : sim.careerJobRank(st.career, config),
-      stats: null
-    };
-    pool[row.roleId] = row;
-    st.career.colleaguePool[st.career.companyId] = pool;
-    sim.ensureCareerColleagues(st, config);
-    if ((st.career.colleagues || []).every(function (c) { return c.id !== row.id; })) {
-      st.career.colleagues.push(row);
-    }
-    return st;
-  };
-
-  sim.applyCareerJuniorLeave = function (st, config) {
-    var junior = st && st.career && st.career.bonds && st.career.bonds.junior;
-    if (!junior) return st;
-    // 必须落一个持久标记：refreshCareerBondColocation 每回合按"老家公司 == 现公司"重算
-    // colocated，只设 colocated=false 会在下一回合被拉回 true（人走了又坐回旁边）。
-    junior.departed = true;
-    junior.colocated = false;
-    void config;
-    return st;
-  };
-
   sim.promoteCareer = function (state, config) {
     var st;
     if (!sim.isCareerMode(state)) return sim.fail(state, sim.ERR.CAREER_NOT_CAREER);
@@ -1441,6 +1334,10 @@
     var copy = sim.careerCopy(config);
     var tenures = [];
     var credits = [];
+    // P2-fix-b：履历页要把「署名作品」和「过渡项目」拆开显示——玩家该看得见
+    // 自己有多少时间花在了目录真作上，又有多少是顶空档的过渡项目。
+    var signedCount = 0;
+    var virtualCount = 0;
     sim.ensureCareerExtras(state);
     ((cr && cr.tenures) || []).forEach(function (t) {
       var co = sim.careerCompany(t.companyId, config);
@@ -1459,8 +1356,6 @@
         startMonth: t.startMonth,
         endYear: t.endYear,
         endMonth: t.endMonth,
-        startSalary: t.startSalary,
-        endSalary: t.endSalary,
         source: t.source
       });
     });
@@ -1470,6 +1365,12 @@
       // 履历的「作品总销量」：首发簿记（stampCareerLaunchSales）盖的是 lifetimeSales，
       // 目录作 / 后期加入的作品只有 launchSales，兜底读它；两条都缺（没发售过）就不显示。
       var sales = rec ? num(rec.lifetimeSales != null ? rec.lifetimeSales : rec.launchSales, null) : null;
+      var virtual = !!c.virtual;
+      // P2-fix-b：过渡项目不再是「履历上的一行污点」，按落盘分数给一句专属评语。
+      if (c.shipped) {
+        if (virtual) virtualCount += 1;
+        else signedCount += 1;
+      }
       credits.push({
         titleId: c.titleId,
         titleLabel: title ? sim.worldLabel(title, config) : c.titleId,
@@ -1483,14 +1384,15 @@
         leftMonth: c.leftMonth,
         shipped: !!c.shipped,
         supported: !!c.supported,
-        virtual: !!c.virtual,
+        virtual: virtual,
         unsigned: !c.shipped,
         score: c.score,
         sales: sales,
         mainStatDelta: c.mainStatDelta,
         awards: c.awards || [],
+        poolNote: (virtual && c.shipped) ? sim.titlePoolNote(c.titleId, c.score, config) : "",
         statusLabel: c.shipped
-          ? (copy.resumeShipped || "署名发售")
+          ? (virtual ? (copy.resumeVirtual || "过渡项目") : (copy.resumeShipped || "署名发售"))
           : (copy.resumeUnsigned || "参与过、未署名发售")
       });
     });
@@ -1499,7 +1401,9 @@
       jobTitle: sim.careerJobTitle(state, config),
       jobLabel: sim.careerJobTitleDisplay(state, config),
       tenures: tenures,
-      credits: credits
+      credits: credits,
+      signedCount: signedCount,
+      transitionCount: virtualCount
     };
   };
 
@@ -1507,8 +1411,11 @@
     var cr = state && state.career;
     var co = cr ? sim.careerCompany(cr.companyId, config) : null;
     var signed = 0;
+    var transitions = 0;
     ((cr && cr.credits) || []).forEach(function (c) {
-      if (creditIsSigned(c)) signed += 1;
+      if (!creditIsSigned(c)) return;
+      if (c.virtual) transitions += 1;
+      else signed += 1;
     });
     if (!co && cr && cr.tenures && cr.tenures.length) {
       co = sim.careerCompany(cr.tenures[cr.tenures.length - 1].companyId, config);
@@ -1520,7 +1427,7 @@
       fame: num(cr && cr.fame, 0),
       honor: num(cr && cr.honor, 0),
       creditedCount: signed,
-      savings: num(cr && cr.savings, 0),
+      transitionCount: transitions,
       employer: co ? sim.worldLabel(co, config) : "",
       growthStage: (cr && cr.growthStage) || "employee"
     };
@@ -1537,13 +1444,17 @@
     var virtual = !!(title && title.virtual);
     var statAmt = 0;
     var xpAmt = 0;
-    var rankBonus, rk, offAmt, pdims, pi, dk;
+    var rankBonus, rk, offAmt, pdims, pi, dk, poolSpec;
     var rec;
     if (!st || !st.career) return;
     phaseMult = num(phaseMult, 1);
     if (kind === "dev") {
-      statAmt = num(statGain.perDevMonth, 0);
-      xpAmt = num(xpGain.perDevMonth, 0);
+      // P2-fix-b：过渡项目（池作）的开发月成长略高——小项目什么都得自己上手，
+      // 这是它相对目录作唯一的收益来源。旋钮在 titlePool.devStatMult / devJobXpMult；
+      // 发售那一笔仍按 jobRanks.*.virtualScale 折价（署名作的分量还是在发售时体现）。
+      poolSpec = virtual ? titlePoolSpec(config) : null;
+      statAmt = num(statGain.perDevMonth, 0) * (virtual ? num(poolSpec.devStatMult, 1) : 1);
+      xpAmt = num(xpGain.perDevMonth, 0) * (virtual ? num(poolSpec.devJobXpMult, 1) : 1);
     } else if (kind === "release") {
       statAmt = num(statGain.perRelease, 0) * (virtual ? num(statGain.virtualReleaseScale, 1) : 1);
       xpAmt = num(xpGain.perRelease, 0) * (virtual ? num(xpGain.virtualScale, 1) : 1);
@@ -1582,25 +1493,6 @@
     if (xpAmt) st.career.jobXp = num(st.career.jobXp, 0) + xpAmt;
     rec = findCredit(st, st.career.titleId);
     if (rec && key && statAmt) rec.mainStatDelta = num(rec.mainStatDelta, 0) + statAmt;
-  }
-
-  function eventFitsRank(ev, rank) {
-    if (!ev) return false;
-    if (ev.minRank != null && rank < ev.minRank) return false;
-    if (ev.maxRank != null && rank > ev.maxRank) return false;
-    return true;
-  }
-
-  function eventIsNegative(ev) {
-    var d;
-    if (!ev) return false;
-    if (ev.negative) return true;
-    d = ev.qualityDelta;
-    if (typeof d === "number") return d < 0;
-    if (isArr(d)) {
-      return d.some(function (x) { return x < 0; });
-    }
-    return false;
   }
 
   sim.careerCompany = function (companyId, config) {
@@ -1672,6 +1564,49 @@
     return (sim.careerWorld(config) || {}).development || {};
   }
 
+  // 派工偏好（development.assignment 段）：玩家接手新作时「挑哪部」。
+  function assignmentSpec(config) {
+    return careerDevSpec(config).assignment || {};
+  }
+
+  // 进度分桶：0~1 的进度按 freshBucket 切段，用于「先比新鲜度、再比 prestige」的两级排序。
+  // freshBucket 配 0 或负数 = 不分桶，排序退回纯 prestige（旧行为）。
+  function freshBucket(progress, spec) {
+    var b = num(spec.freshBucket, 0);
+    var v;
+    if (!(b > 0)) return 0;
+    v = Math.floor(num(progress, 0) / b);
+    return v > 0 ? v : 0;
+  }
+
+  // A：该不该拒绝一个「已经做得很深」的候选。三条任一条不成立就照收——
+  // 宁可让人去收尾，也不许把玩家锁死在空窗里（死锁守卫）。
+  function deepCandidateRejected(title, st, config) {
+    var spec = assignmentSpec(config);
+    var maxP = spec.maxProgress;
+    var detail, next, gap;
+    if (maxP == null || !title || !st || !st.career) return false;
+    detail = sim.careerTitleDetail(title.id, config, st);
+    if (!detail) return false;
+    if (sim.titleProgress(title, detail, st.year, st.month, config) <= num(maxP, 0)) return false;
+    if (num(st.career.idleMonths, 0) >= num(spec.waitMaxMonths, 8)) return false;
+    if (!sim.nextCatalogTitle(st, config, st.career.companyId, st.career.studioId)) return false;
+    gap = sim.catalogGapMonths(st, config, st.career.companyId, st.career.studioId);
+    if (gap == null) return false;
+    return true;
+  }
+
+  // 「在等下一部新作开工」的记录：UI 靠它把空窗文案从「组里没活」换成「等立项」。
+  function waitingForStartOf(st, config, title) {
+    var idx = sim.titleDevStart(title, sim.careerTitleDetail(title.id, config, st), config);
+    var parts = idx == null ? null : sim.monthFromIndex(idx);
+    return {
+      titleId: title.id,
+      startYear: parts ? parts.year : null,
+      startMonth: parts ? parts.month : null
+    };
+  }
+
   // 阶段权重：按项目所处阶段缩放「开发月的属性成长 + 作品贡献」。
   // 立项期在摸需求、学得慢；填充与打磨期反复调优、学得最快；金盘期只等压盘，无实质产出（0）。
   // 参数是阶段 id 而不是 state：调用方（tick）手上已经有 projectView.phase，不必再算一次。
@@ -1694,19 +1629,19 @@
     return v == null ? num(spec.powerContribDefault, 1) : num(v, 1);
   };
 
-  sim.titleCoversMonth = function (title, detail, year, month) {
+  sim.titleCoversMonth = function (title, detail, year, month, config) {
     var start, end, now;
     if (!title || !detail) return false;
-    start = sim.monthIndex(detail.devStartYear, detail.devStartMonth);
+    start = sim.titleDevStart(title, detail, config);
     end = sim.monthIndex(title.releaseYear, title.releaseMonth);
     now = sim.monthIndex(year, month);
     return now >= start && now <= end;
   };
 
-  sim.titleProgress = function (title, detail, year, month) {
+  sim.titleProgress = function (title, detail, year, month, config) {
     var start, end, now, span;
     if (!title || !detail) return 0;
-    start = sim.monthIndex(detail.devStartYear, detail.devStartMonth);
+    start = sim.titleDevStart(title, detail, config);
     end = sim.monthIndex(title.releaseYear, title.releaseMonth);
     now = sim.monthIndex(year, month);
     span = Math.max(1, end - start);
@@ -1727,7 +1662,7 @@
     var spec = lateJoinSpec(config);
     var progress, remain, end;
     if (!title || title.virtual || !detail) return false;
-    progress = sim.titleProgress(title, detail, year, month);
+    progress = sim.titleProgress(title, detail, year, month, config);
     if (spec.progressMin != null && progress >= spec.progressMin) return true;
     if (spec.remainingMonthsMax != null) {
       end = sim.monthIndex(title.releaseYear, title.releaseMonth);
@@ -1737,13 +1672,17 @@
     return false;
   };
 
-  sim.nextCatalogTitle = function (st, config, companyId, studioId) {
+  // atYear/atMonth 可省略（默认取 st 的当月）：池作兜底要按「假想的当月」问
+  // 「这家公司下一档真作什么时候开工」，不能只看玩家此刻站在哪个月。
+  sim.nextCatalogTitle = function (st, config, companyId, studioId, atYear, atMonth) {
     var world = sim.careerWorld(config);
     var titles = world.titles || [];
     var details = world.titleDetails || [];
     var detailMap = {};
     var shipped = st ? shippedSet(st) : {};
-    var now = sim.monthIndex(st && st.year, st && st.month);
+    var yAt = atYear != null ? atYear : (st && st.year);
+    var mAt = atMonth != null ? atMonth : (st && st.month);
+    var now = sim.monthIndex(yAt, mAt);
     var studioHits = [];
     var companyHits = [];
     var i, t, d, start, pool, row;
@@ -1755,8 +1694,8 @@
       if (shipped[t.id]) continue;
       d = detailMap[t.id];
       if (!d) continue;
-      if (sim.titleCoversMonth(t, d, st.year, st.month)) continue;
-      start = sim.monthIndex(d.devStartYear, d.devStartMonth);
+      if (sim.titleCoversMonth(t, d, yAt, mAt, config)) continue;
+      start = sim.titleDevStart(t, d, config);
       if (start <= now) continue;
       row = { title: t, detail: d, start: start };
       if (studioId && t.studioId === studioId) studioHits.push(row);
@@ -1777,25 +1716,88 @@
     if (!next) return null;
     d = sim.careerTitleDetail(next.id, config, st);
     if (!d) return null;
-    start = sim.monthIndex(d.devStartYear, d.devStartMonth);
+    start = sim.titleDevStart(next, d, config);
     return start - sim.monthIndex(st.year, st.month);
   };
 
+  // ── 游戏池（titlePool；P2-fix 从 virtualPool 改名并重新启用）────────────────
+  // 池里的作品不属于任何公司，谁缺作品就分给谁：
+  //   ① 覆盖补全——某公司某月排不出目录真作时抽一部顶上（titlePool.coverage）；
+  //   ② 入职/在岗兜底——当月没活就直接抽（titlePool.fallback），不再弹空窗抉择。
+  // 名字里的 virtual 仍指「非目录真作」，别当成「已下线」。
+  function titlePoolSpec(config) {
+    return (sim.careerWorld(config).titlePool) || {};
+  }
+  sim.titlePoolSpec = titlePoolSpec;
+
+  function titlePoolEnabled(config) {
+    return titlePoolSpec(config).enabled === true;
+  }
+  sim.titlePoolEnabled = titlePoolEnabled;
+
+  // 池能不能用：总开关开着，且 coverage / fallback 至少开一个。
+  function titlePoolUsable(config) {
+    var spec = titlePoolSpec(config);
+    var cov, fb;
+    if (spec.enabled !== true) return false;
+    cov = spec.coverage || {};
+    fb = spec.fallback || {};
+    return cov.enabled === true || fb.enabled === true;
+  }
+  sim.titlePoolUsable = titlePoolUsable;
+
+  // 「值得为它开一部池作」的最小空窗。比它短的洞交给推进吸收
+  // → 允许的空窗 = 它 − 1 个月（覆盖保证的验收口径）。
+  function poolMinFillMonths(config) {
+    var spec = titlePoolSpec(config);
+    var cov = spec.coverage || {};
+    return num(cov.minFillMonths, num(idleGapSpec(config).minDevMonths, virtualMinDevMonths(config)));
+  }
+  sim.poolMinFillMonths = poolMinFillMonths;
+
+  // 过渡项目的专属评语（P2-fix-b）。档位与媒体评语同源（config.release.media 的
+  // topScore/highScore/lowScore），缺档按就近回退（与 media.js 的 BAND_CHAIN 同序）。
+  // 选条用 titleId 的稳定哈希 —— **不消费 RNG**，履历页每次重绘拿到的都是同一句，
+  // 读档后也不会漂（这条和池作工期/命名同一条纪律）。
+  sim.titlePoolNote = function (titleId, score, config) {
+    var pools = ((sim.careerCopy(config) || {}).poolNotes) || {};
+    var band, chain, list = null, h = 0, i, id;
+    if (score == null) return "";
+    band = sim.mediaQuoteBand ? sim.mediaQuoteBand(score, config) : "mid";
+    chain = {
+      top: ["top", "high", "mid", "low"],
+      high: ["high", "top", "mid", "low"],
+      mid: ["mid", "high", "low", "top"],
+      low: ["low", "mid", "high", "top"]
+    }[band] || ["mid", "high", "low", "top"];
+    for (i = 0; i < chain.length; i++) {
+      if (pools[chain[i]] && pools[chain[i]].length) { list = pools[chain[i]]; break; }
+    }
+    if (!list) return "";
+    id = String(titleId || "");
+    for (i = 0; i < id.length; i++) h = ((h * 31) + id.charCodeAt(i)) >>> 0;
+    return list[h % list.length];
+  };
+
   function virtualMinDevMonths(config) {
-    var pool = (sim.careerWorld(config).virtualPool) || {};
+    var pool = titlePoolSpec(config);
     var gap = idleGapSpec(config);
     if (pool.devMonthsMin != null) return num(pool.devMonthsMin, 0);
     return num(gap.minDevMonths, 0);
   }
 
+  // 当前公司当月够不够开一部池作：池得能用，且到下一档目录真作的空窗 ≥ poolMinFillMonths
+  // （gap == null 表示本公司已经排不出真作，池作可以一直顶下去）。
   function canStartCareerVirtual(st, config) {
     var gap, minDev;
     if (!st || !st.career || !st.career.companyId) return false;
-    minDev = num(idleGapSpec(config).minDevMonths, virtualMinDevMonths(config));
+    if (!titlePoolUsable(config)) return false;
+    minDev = poolMinFillMonths(config);
     gap = sim.catalogGapMonths(st, config, st.career.companyId, st.career.studioId);
     if (gap == null) return true;
     return gap >= minDev;
   }
+  sim.canStartPoolProject = canStartCareerVirtual;
 
   function shippedSet(st) {
     var set = {};
@@ -1805,29 +1807,47 @@
     return set;
   }
 
-  sim.titlesInDevAt = function (companyId, year, month, config, st, studioId) {
+  // titlesInDevAt 的带详情版本：pickCareerAssignment 要算进度，别再自己建一遍详情索引。
+  function titlesInDevAtDetail(companyId, year, month, config, st, studioId) {
     var titles = sim.allCareerTitles(config, st);
     var details = (sim.careerWorld(config).titleDetails || []).concat(virtualList(st, "virtualDetails"));
     var detailMap = {};
     var shipped = st ? shippedSet(st) : {};
     details.forEach(function (d) { detailMap[d.id] = d; });
-    return titles.filter(function (t) {
-      if (companyId && t.companyId !== companyId) return false;
-      if (studioId && t.studioId && t.studioId !== studioId) return false;
-      if (shipped[t.id]) return false;
-      return sim.titleCoversMonth(t, detailMap[t.id], year, month);
-    });
+    return {
+      detailMap: detailMap,
+      list: titles.filter(function (t) {
+        if (companyId && t.companyId !== companyId) return false;
+        if (studioId && t.studioId && t.studioId !== studioId) return false;
+        if (shipped[t.id]) return false;
+        return sim.titleCoversMonth(t, detailMap[t.id], year, month, config);
+      })
+    };
+  }
+
+  sim.titlesInDevAt = function (companyId, year, month, config, st, studioId) {
+    return titlesInDevAtDetail(companyId, year, month, config, st, studioId).list;
   };
 
+  // 招牌作（landmark）优先这条不变——它是「重点作品优先」的产品语义。
+  // 新鲜度只在招牌作池内部起作用：同池里优先把玩家放进刚开工的作。
   sim.pickCareerAssignment = function (companyId, year, month, config, st, studioId) {
-    var list = sim.titlesInDevAt(companyId, year, month, config, st, studioId);
+    var hit = titlesInDevAtDetail(companyId, year, month, config, st, studioId);
+    var list = hit.list;
+    var spec = assignmentSpec(config);
     var landmarks, pool;
     if (!list.length) return null;
     landmarks = list.filter(function (t) { return t.landmark && !t.virtual; });
     pool = landmarks.length ? landmarks : list.filter(function (t) { return !t.virtual; });
     if (!pool.length) pool = list;
     pool = pool.slice().sort(function (a, b) {
-      var pd = num(b.prestige, 0) - num(a.prestige, 0);
+      var pd, fa, fb;
+      if (spec.preferFresh === true) {
+        fa = freshBucket(sim.titleProgress(a, hit.detailMap[a.id], year, month, config), spec);
+        fb = freshBucket(sim.titleProgress(b, hit.detailMap[b.id], year, month, config), spec);
+        if (fa !== fb) return fa - fb;
+      }
+      pd = num(b.prestige, 0) - num(a.prestige, 0);
       if (pd) return pd;
       if (a.releaseYear !== b.releaseYear) return a.releaseYear - b.releaseYear;
       return (a.releaseMonth || 1) - (b.releaseMonth || 1);
@@ -1846,138 +1866,74 @@
     return (hit && !hit.virtual) ? hit : null;
   };
 
-  function salarySpec(config) {
-    var eco = (sim.careerWorld(config).personalEconomy) || {};
-    return eco.salary || {};
+  // P2c 开发周期拉长：目录作的档期是硬数据（releaseYear/Month 钉死），所以只能改开工那一端——
+  // 发售日不动，开工月 = 发售月 − 原时长 × development.cycleMult。虚拟作不走这条（它自己从当前月往后算）。
+  // 所有「这部作覆盖哪几个月」「现在做到几成」的判定都必须走这里，否则进度与拍档期会分叉。
+  sim.careerCycleMult = function (config) {
+    return num(careerDevSpec(config).cycleMult, 1);
+  };
+
+  // D：开工窗口规则（development.devWindow）。默认 stretch = 与 P2c 完全一致的旧口径。
+  function devWindowSpec(config) {
+    return careerDevSpec(config).devWindow || {};
   }
 
-  function salarySteps(config) {
-    return salarySpec(config).steps || [];
-  }
-
-  function careerArg(career) {
-    if (!career) return null;
-    return career.career ? career.career : career;
-  }
-
-  function stepIndexOf(value, steps) {
-    var i, best = 0;
-    if (!steps.length) return 0;
-    for (i = 0; i < steps.length; i++) {
-      if (steps[i] === value) return i;
-      if (steps[i] <= value) best = i;
+  // 「本公司上一作的发售月」索引（titleId → 上一作发售月序）。只在 mode=cadence 时才建，
+  // 且按 config 记忆化——否则 hot path（titleCoversMonth/titleProgress）每次都要扫 975 部作。
+  var devPrevMemo = [];
+  function devPrevRelease(config) {
+    var i, map, byCo, titles, det, spec;
+    for (i = 0; i < devPrevMemo.length; i++) {
+      if (devPrevMemo[i].cfg === config) return devPrevMemo[i].map;
     }
-    return best;
+    spec = sim.careerWorld(config);
+    titles = spec.titles || [];
+    det = {};
+    (spec.titleDetails || []).forEach(function (d) { det[d.id] = d; });
+    byCo = {};
+    titles.forEach(function (t) {
+      if (!t || t.virtual || !det[t.id]) return;
+      (byCo[t.companyId] = byCo[t.companyId] || []).push({
+        id: t.id,
+        rel: sim.monthIndex(t.releaseYear, t.releaseMonth)
+      });
+    });
+    map = {};
+    Object.keys(byCo).forEach(function (cid) {
+      var list = byCo[cid].sort(function (a, b) { return a.rel - b.rel; });
+      for (var k = 0; k < list.length; k++) map[list[k].id] = k > 0 ? list[k - 1].rel : null;
+    });
+    devPrevMemo.push({ cfg: config, map: map });
+    if (devPrevMemo.length > 4) devPrevMemo.shift();
+    return map;
   }
 
-  sim.snapCareerSalary = function (raw, config) {
-    var spec = salarySpec(config);
-    var steps = spec.steps || [];
-    var mode = spec.snap || "floor";
-    var i, best, dist, d;
-    if (!steps.length) return 0;
-    if (raw <= steps[0]) return steps[0];
-    if (raw >= steps[steps.length - 1]) return steps[steps.length - 1];
-    if (mode === "nearest") {
-      best = steps[0];
-      dist = Math.abs(raw - best);
-      for (i = 1; i < steps.length; i++) {
-        d = Math.abs(raw - steps[i]);
-        if (d < dist) {
-          dist = d;
-          best = steps[i];
-        }
+  function applyDevWindow(title, start, end, config) {
+    var spec = devWindowSpec(config);
+    var cap = num(spec.capMonths, 0);
+    var floor, prev;
+    if (spec.mode !== "cadence" && !(cap > 0)) return start;
+    if (cap > 0 && end - start > cap) start = end - cap;
+    if (spec.mode === "cadence") {
+      prev = devPrevRelease(config)[title.id];
+      if (prev != null) {
+        floor = prev + num(spec.minGapMonths, 1);
+        if (floor > start) start = floor;
       }
-      return best;
+      if (start > end) start = end;
     }
-    best = steps[0];
-    for (i = 0; i < steps.length; i++) {
-      if (steps[i] <= raw) best = steps[i];
-      else break;
-    }
-    return best;
-  };
+    return start;
+  }
 
-  sim.careerSalaryStepUp = function (current, config, n) {
-    var spec = salarySpec(config);
-    var steps = spec.steps || [];
-    var bump = n != null ? n : num(spec.counterSteps, 1);
-    var idx;
-    if (!steps.length) return current || 0;
-    idx = stepIndexOf(current, steps) + bump;
-    if (idx < 0) idx = 0;
-    if (idx >= steps.length) idx = steps.length - 1;
-    return steps[idx];
-  };
-
-  sim.careerSalaryFor = function (company, year, config, career) {
-    var spec = salarySpec(config);
-    var world = sim.careerWorld(config);
-    var steps = spec.steps || [];
-    var start = (world.timeline && world.timeline.startYear) || year;
-    var years = Math.max(0, (year || start) - start);
-    var cr = careerArg(career);
-    var player = world.player || {};
-    var stats = (cr && cr.stats) || player.startingStats || {};
-    var role = sim.careerRole(cr && cr.roleId, config);
-    var mainKey = (role && role.stat) || "program";
-    var mainStat = num(stats[mainKey], 0);
-    var avg = 0;
-    var n = 0;
-    var i, k, skill, inflation, raw, snapped, idx, power, powerShift, mult, multRef, per, multShift, stage, stageBonus, skillMin;
-    for (i = 0; i < DIMS.length; i++) {
-      k = DIMS[i];
-      avg += num(stats[k], 0);
-      n += 1;
-    }
-    avg = n ? avg / n : 0;
-    stage = (cr && cr.growthStage) || "employee";
-    stageBonus = (spec.stageBonus && spec.stageBonus[stage]) || 0;
-    skill = 1
-      + (mainStat - num(spec.statRef, 0)) * num(spec.mainStatPer, 0)
-      + (avg - num(spec.avgRef, 0)) * num(spec.avgStatPer, 0)
-      + num(cr && cr.fame, 0) * num(spec.famePer, 0)
-      + num(cr && cr.honor, 0) * num(spec.honorPer, 0)
-      + years * num(spec.yearsPer, 0)
-      + stageBonus;
-    skillMin = spec.skillMin;
-    if (skillMin != null && skill < skillMin) skill = skillMin;
-    inflation = Math.pow(1 + num(spec.yearInflation, 0), years);
-    raw = num(spec.base, 0) * skill * inflation;
-    snapped = sim.snapCareerSalary(raw, config);
-    idx = stepIndexOf(snapped, steps);
-    power = company && company.power != null ? String(company.power) : "2";
-    powerShift = (spec.powerShift && spec.powerShift[power]) || 0;
-    mult = (company && company.salaryMult != null) ? company.salaryMult : 1;
-    multRef = spec.salaryMultRef != null ? spec.salaryMultRef : 1;
-    per = spec.salaryMultPerStep;
-    multShift = per ? Math.round((mult - multRef) / per) : 0;
-    idx = idx + powerShift + multShift;
-    if (idx < 0) idx = 0;
-    if (idx >= steps.length) idx = steps.length - 1;
-    (function applyRankFloor() {
-      var floor = rankTableVal(jobRankSpec(config).salaryFloor, sim.careerJobRank(cr, config), 0);
-      var floorIdx, i;
-      if (!floor || !steps.length) return;
-      floorIdx = 0;
-      for (i = 0; i < steps.length; i++) {
-        if (steps[i] >= floor) {
-          floorIdx = i;
-          break;
-        }
-        floorIdx = i;
-      }
-      if (idx < floorIdx) idx = floorIdx;
-    })();
-    return steps.length ? steps[idx] : 0;
-  };
-
-  sim.careerLivingCost = function (year, config) {
-    var world = sim.careerWorld(config);
-    var eco = world.personalEconomy || {};
-    var start = (world.timeline && world.timeline.startYear) || year;
-    var years = Math.max(0, year - start);
-    return Math.round((eco.livingCostPerMonth || 0) * Math.pow(1 + (eco.livingCostYearGrowth || 0), years));
+  sim.titleDevStart = function (title, detail, config) {
+    var start, end, mult;
+    if (!title || !detail) return null;
+    start = sim.monthIndex(detail.devStartYear, detail.devStartMonth);
+    if (title.virtual || detail.virtual) return start;
+    end = sim.monthIndex(title.releaseYear, title.releaseMonth);
+    mult = sim.careerCycleMult(config);
+    if (mult && mult !== 1 && end > start) start = end - Math.round((end - start) * mult);
+    return applyDevWindow(title, start, end, config);
   };
 
   function scoreFromLiveSpec(config) {
@@ -2057,7 +2013,7 @@
   }
 
   function craftSpec(config) {
-    return (sim.careerWorld(config).virtualPool || {}).craft || {};
+    return titlePoolSpec(config).craft || {};
   }
 
   function proficiencySpec(config) {
@@ -2174,10 +2130,10 @@
     return Math.round(score * f) / f;
   };
 
-  // 新作立项基础分：全员四维各取 virtualPool.teamStatShare（默认 10%）相加后向下取整，
+  // 新作立项基础分：全员四维各取 titlePool.teamStatShare（默认 10%）相加后向下取整，
   // 再乘工作室对题材 + 玩法的熟练度加成。玩家个人熟练度不进这里，改走开发月贡献。
   sim.careerCraftLiveStats = function (st, months, teamN, config, genreId, gameplayId) {
-    var pool = sim.careerWorld(config).virtualPool || {};
+    var pool = titlePoolSpec(config);
     var members = sim.careerTeamMembers(st, config);
     var n = teamN != null ? num(teamN, 0) : members.length;
     var share = pool.teamStatShare != null ? num(pool.teamStatShare, 0.1) : 0.1;
@@ -2351,22 +2307,6 @@
     st.career.liveStats[key] = next;
   };
 
-  function applyDimDeltas(st, dims, deltas, config) {
-    var i, dim, delta;
-    if (dims == null) return;
-    if (!isArr(dims)) {
-      dims = [dims];
-      deltas = [deltas];
-    }
-    if (!isArr(deltas)) deltas = [deltas];
-    for (i = 0; i < dims.length; i++) {
-      dim = dims[i];
-      if (!dim) continue;
-      delta = i < deltas.length ? deltas[i] : 0;
-      sim.applyCareerLiveDelta(st, dim, delta, config);
-    }
-  }
-
   function scaleQualityAmount(st, amount, config, unscaled) {
     var f, i, k, out, posM, negM;
     if (unscaled || amount == null) return amount;
@@ -2411,8 +2351,8 @@
     if (!st.career.colleagues) st.career.colleagues = [];
     if (!st.career.firedTitleEvents) st.career.firedTitleEvents = [];
     if (st.career.idleMonths == null) st.career.idleMonths = 0;
+    if (st.career.waitingForStart === undefined) st.career.waitingForStart = null;
     if (st.career.virtualSeq == null) st.career.virtualSeq = 0;
-    if (st.career.lastPay == null) st.career.lastPay = 0;
     if (st.career.inviteYearStamp == null) st.career.inviteYearStamp = 0;
     if (st.career.invitesRolledThisYear == null) st.career.invitesRolledThisYear = 0;
     if (st.career.inviteYearHit == null) st.career.inviteYearHit = false;
@@ -2427,6 +2367,10 @@
     if (st.career.promotionsThisYear == null) st.career.promotionsThisYear = 0;
     if (st.career.lastPromotionYear == null) st.career.lastPromotionYear = null;
     if (!st.career.lines) st.career.lines = {};
+    if (st.career.health == null) {
+      // P4b：健康初始 4/5；老存档补字段走这里，绝不随时间衰减。
+      st.career.health = num((sim.careerWorld(config || {}).careerHealth || {}).init, 4);
+    }
     if (!st.career.bonds) st.career.bonds = { mentor: null, peer: null, junior: null };
     if (!st.career.lineStartRolls) st.career.lineStartRolls = {};
     if (st.career.pendingStoryPromos == null) st.career.pendingStoryPromos = 0;
@@ -2536,43 +2480,6 @@
     if (gameplayId) st.career.gameplayXp[gameplayId] = num(st.career.gameplayXp[gameplayId], 0) + amt;
   };
 
-  function currentSkillTitle(st, config) {
-    if (!st || !st.career || !st.career.titleId) return null;
-    return sim.careerTitle(st.career.titleId, config, st);
-  }
-
-  function skillFxAmounts(fx, config) {
-    var spec = (sim.careerWorld(config).playerXp) || {};
-    var grant = fx && fx.skillGrant;
-    var g = fx && fx.genreXpDelta;
-    var p = fx && fx.gameplayXpDelta;
-    if (grant === "genre") {
-      if (g == null) g = spec.eventGenreXp;
-    } else if (grant === "gameplay") {
-      if (p == null) p = spec.eventGameplayXp;
-    } else if (grant === "both") {
-      if (g == null) g = spec.eventSplitXp;
-      if (p == null) p = spec.eventSplitXp;
-    } else if (grant === "genreFocus") {
-      if (g == null) g = spec.eventFocusXp;
-    } else if (grant === "playFocus") {
-      if (p == null) p = spec.eventFocusXp;
-    }
-    return { genre: num(g, 0), play: num(p, 0) };
-  }
-
-  function applyPlayerSkillFx(st, fx, config, title) {
-    var amt;
-    if (!fx) return;
-    title = title || currentSkillTitle(st, config);
-    if (!title) return;
-    amt = skillFxAmounts(fx, config);
-    if (amt.genre) sim.addPlayerXp(st, title.genreId, null, amt.genre);
-    if (amt.play) sim.addPlayerXp(st, null, title.gameplayId, amt.play);
-  }
-
-  // 玩家熟练度只作用在开发月贡献上：档位加成乘全部四个维（制作人同样吃）。
-  // 顺 / 逆潮流的特性倍率仍只放大「熟练度带来的那部分」。
   function playerSkillContribMult(st, title, config) {
     var pct = sim.playerProficiencyBonusPct(st, title && title.genreId, title && title.gameplayId, config);
     if (!pct) return 1;
@@ -2643,41 +2550,6 @@
 
   // mult：外部传入的成长倍率（开发月 = 阶段权重 × 体量阻尼）。0 表示这个月没有实质产出，
   // 四维一律不加；缺省 1（长线运营月与旧调用点）。
-  function applyMonthlyLiveContribution(st, config, mult) {
-    var by = sim.careerMonthlyContributionByDim(st, config);
-    var m = sim.careerTraitMult(st, "monthContributionMult", config, 1);
-    var extra = num(mult, 1);
-    var role = sim.careerRole(st && st.career && st.career.roleId, config);
-    var mainDim = role && role.stat;
-    var mainM = sim.careerTraitMult(st, "mainDimContributionMult", config, 1);
-    var offM = sim.careerTraitMult(st, "offDimContributionMult", config, 1);
-    var grindM = sim.careerGrindMult(st, config);
-    var personGain = {};
-    // by 是人物维的产出（主职维倍率已经算在里面），整块过 personToTitle 落到作品维。
-    DIMS.forEach(function (dim) {
-      personGain[dim] = num(by[dim], 0) * m * extra * grindM * (mainDim && dim === mainDim ? mainM : offM);
-    });
-    var titleGain = sim.titleStatsFromPerson(personGain, config);
-    sim.titleDims(config).forEach(function (dim) {
-      if (!titleGain[dim]) return;
-      sim.applyCareerLiveDelta(st, dim, titleGain[dim], config);
-    });
-  }
-
-  function rollInspirationMonth(st, config, notes) {
-    var rate, bonus, dim;
-    if (!st || !st.career) return;
-    rate = sim.careerTraitMult(st, "inspirationRate", config, 0);
-    bonus = sim.careerTraitSum(st, "inspirationDimBonus", config);
-    if (rate <= 0 || bonus <= 0) return;
-    if (sim.rand(st) >= rate) return;
-    dim = sim.pick(st, sim.titleDims(config));
-    sim.applyCareerLiveDelta(st, dim, bonus, config);
-    st.career.inspirationMonth = true;
-    st.career.inspirationCount = num(st.career.inspirationCount, 0) + 1;
-    notes.push("灵感爆发：" + sim.titleDimLabel(dim, config) + " +" + bonus + "，但这个月学不进东西");
-  }
-
   sim.xpTierLabel = function (xp, config) {
     return sim.worldLabel(sim.xpTierFor(xp, config), config) || "";
   };
@@ -2884,7 +2756,6 @@
         companyId: co.id,
         studioId: sim.defaultStudioId(co),
         roleId: role.id,
-        salary: sim.careerSalaryFor(co, st.year, config, st.career),
         risk: risk
       });
     }
@@ -2896,7 +2767,6 @@
     var world = sim.careerWorld(config);
     var cal = world.timeline || {};
     var player = world.player || {};
-    var eco = world.personalEconomy || {};
     var copy = sim.careerCopy(config);
     var name = characterName && String(characterName).replace(/^\s+|\s+$/g, "");
     var playable = sim.careerPlayableRoles(config);
@@ -2915,7 +2785,6 @@
       month: cal.startMonth,
       company: {
         name: name,
-        funds: eco.startingSavings || 0,
         scale: (config.company && config.company.startingScale) || "small",
         fans: player.startingFame || 0,
         adOn: false,
@@ -2953,7 +2822,6 @@
         roleId: role ? role.id : null,
         companyId: null,
         studioId: null,
-        savings: eco.startingSavings || 0,
         fame: player.startingFame || 0,
         honor: player.startingHonor || 0,
         growthStage: "employee",
@@ -2964,8 +2832,6 @@
         monthsInRank: 0,
         promotionsThisYear: 0,
         lastPromotionYear: null,
-        salary: 0,
-        lastPay: 0,
         titleId: null,
         liveStats: null,
         stats: start.stats ? cloneStats(start.stats) : initPlayerStats(role, player),
@@ -3065,284 +2931,24 @@
     return rec;
   }
 
-  function landmarkMonthBlocked(st, companyId, year, month, config) {
-    var spec = sim.careerWorld(config).virtualPool || {};
-    var titles, i, t;
-    if (spec.landmarkBlockSameMonth === false) return false;
-    titles = sim.careerWorld(config).titles || [];
-    for (i = 0; i < titles.length; i++) {
-      t = titles[i];
-      if (t.companyId === companyId && t.landmark && t.releaseYear === year && t.releaseMonth === month) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function usedVirtualNames(st, config) {
-    var used = {};
-    var world = sim.careerWorld(config);
-    var i, t, list;
-    function mark(n) {
-      if (n) used[String(n)] = true;
-    }
-    list = (world && world.titles) || [];
-    for (i = 0; i < list.length; i++) {
-      t = list[i];
-      mark(t.name);
-      mark(t.alias);
-    }
-    list = (st && st.career && st.career.virtualProjects) || [];
-    for (i = 0; i < list.length; i++) {
-      t = list[i];
-      mark(t.name);
-      mark(t.alias);
-    }
-    list = (st && st.worldReleased) || [];
-    for (i = 0; i < list.length; i++) {
-      t = list[i];
-      mark(t.name);
-      mark(t.alias);
-      mark(t.title);
-    }
-    return used;
-  }
-
-  function collectGenreTitles(pool, genreId) {
-    var byGenre = (pool && pool.titlesByGenre) || {};
-    var out = [];
-    var key, i, names;
-    if (genreId && byGenre[genreId] && byGenre[genreId].length) {
-      return byGenre[genreId].slice();
-    }
-    for (key in byGenre) {
-      if (!Object.prototype.hasOwnProperty.call(byGenre, key)) continue;
-      names = byGenre[key] || [];
-      for (i = 0; i < names.length; i++) out.push(names[i]);
-    }
-    return out;
-  }
-
-  function pickVirtualTitle(st, genreId, config) {
-    var pool = sim.careerWorld(config).virtualPool || {};
-    var used = usedVirtualNames(st, config);
-    var names = collectGenreTitles(pool, genreId);
-    var free = [];
-    var i, all, name;
-    for (i = 0; i < names.length; i++) {
-      if (!used[names[i]]) free.push(names[i]);
-    }
-    if (!free.length) {
-      all = collectGenreTitles(pool, null);
-      for (i = 0; i < all.length; i++) {
-        if (!used[all[i]]) free.push(all[i]);
-      }
-    }
-    if (free.length) {
-      name = sim.pick(st, free);
-      return { name: name, alias: name };
-    }
-    name = (pool.fallbackName || "未名计划") + (st.career && st.career.virtualSeq ? st.career.virtualSeq : 1);
-    return { name: name, alias: name };
-  }
-
-  function pickWeightedId(st, weights, fallbackList) {
-    var hit;
-    if (weights && weights.length) {
-      hit = sim.pickWeighted(st, weights);
-      if (hit) return hit.id || hit;
-    }
-    if (fallbackList && fallbackList.length) return sim.pick(st, fallbackList).id;
-    return null;
-  }
-
-  function pickStudioContentId(st, ids, weights, fallbackList) {
-    var weighted, i;
-    if (ids && ids.length) {
-      weighted = [];
-      for (i = 0; i < ids.length; i++) weighted.push({ id: ids[i], weight: 3 });
-      return pickWeightedId(st, weighted, ids.map(function (id) { return { id: id }; }));
-    }
-    return pickWeightedId(st, weights, fallbackList);
-  }
-
-  sim.startVirtualProject = function (st, config, opts) {
-    var world = sim.careerWorld(config);
-    var pool = world.virtualPool || {};
-    var companyId = st.career && st.career.companyId;
-    var studio = sim.careerStudio(companyId, st.career && st.career.studioId, config);
-    var studioId = studio && studio.id;
-    var content = config.content || {};
-    var genreId, gameplayId, months, relY, relM, tries, title, detail, seq, pickedName;
-    var base, n, minM, maxM, next, nextDet, nextStart, gap, cap, relIndex;
-    opts = opts || {};
-    var isProd = !!(sim.isCareerProducer && sim.isCareerProducer(st));
-    if (!companyId) return null;
-    // 制作人可自定向下虚拟项目（无在制作品时）；职员仍受目录空窗约束。
-    if (!sim.isCareerProducer(st) && !canStartCareerVirtual(st, config)) return null;
-    sim.ensureCareerExtras(st);
-    genreId = opts.genreId || pickStudioContentId(st, studio && studio.genreIds, pool.genreWeights, content.genres);
-    gameplayId = opts.gameplayId || pickStudioContentId(st, studio && studio.gameplayIds, pool.gameplayWeights, content.gameplay);
-    minM = num(pool.devMonthsMin, virtualMinDevMonths(config));
-    maxM = num(pool.devMonthsMax, minM);
-    next = sim.nextCatalogTitle(st, config, companyId, studioId);
-    nextDet = next ? sim.careerTitleDetail(next.id, config, st) : null;
-    nextStart = nextDet ? sim.monthIndex(nextDet.devStartYear, nextDet.devStartMonth) : null;
-    if (nextStart != null) {
-      gap = nextStart - sim.monthIndex(st.year, st.month);
-      cap = Math.min(maxM, gap);
-      if (cap < minM) return null;
-      maxM = cap;
-    }
-    if (maxM < minM) return null;
-    // devMonthsDelta：只用来拉长「空窗虚拟作」的周期——玩家在研目录作的档期由目录表钉死，
-    // 改不到这里。事件选项可以传它；天赋侧已不使用（只影响虚拟作，作代价太弱）。
-    months = sim.irand(st, minM, maxM) + Math.round(sim.careerTraitSum(st, "devMonthsDelta", config));
-    if (months < 1) months = 1;
-    relY = st.year;
-    relM = st.month + months;
-    while (relM > 12) { relM -= 12; relY += 1; }
-    tries = 0;
-    while (landmarkMonthBlocked(st, companyId, relY, relM, config) && tries < 12) {
-      relIndex = sim.monthIndex(relY, relM) + 1;
-      if (nextStart != null && relIndex >= nextStart) break;
-      relM += 1;
-      if (relM > 12) { relM = 1; relY += 1; }
-      months += 1;
-      tries += 1;
-    }
-    relIndex = sim.monthIndex(relY, relM);
-    if (nextStart != null && !isProd && relIndex > nextStart) {
-      months = nextStart - sim.monthIndex(st.year, st.month);
-      if (months < minM) return null;
-      relY = st.year;
-      relM = st.month + months;
-      while (relM > 12) { relM -= 12; relY += 1; }
-    }
-    st.career.virtualSeq = (st.career.virtualSeq || 0) + 1;
-    seq = st.career.virtualSeq;
-    pickedName = pickVirtualTitle(st, genreId, config);
-    sim.ensureCareerColleagues(st, config);
-    n = sim.careerTeamMembers(st, config).length;
-    base = sim.careerCraftLiveStats(st, months, n, config, genreId, gameplayId);
-    title = {
-      id: "virt-" + companyId + "-" + st.year + "-" + st.month + "-" + seq,
-      companyId: companyId,
-      publisherId: companyId,
-      studioId: studioId || null,
-      name: pickedName.name,
-      alias: pickedName.alias,
-      releaseYear: relY,
-      releaseMonth: relM,
-      score: sim.careerCraftPublicScore(sim.titleQualityMean(base, config), config),
-      platforms: ["pc"],
-      genreId: genreId,
-      gameplayId: gameplayId,
-      releaseType: "boxed",
-      landmark: false,
-      prestige: num(pool.prestige, 2),
-      stats: base,
-      virtual: true
-    };
-    detail = {
-      id: title.id,
-      blurb: "",
-      careerNote: "",
-      devStartYear: st.year,
-      devStartMonth: st.month,
-      devMonths: months,
-      inviteWindow: {
-        startYear: st.year,
-        startMonth: st.month,
-        endYear: relY,
-        endMonth: relM
-      },
-      inviteRoles: PLAYABLE.slice(),
-      inviteMinFame: 0,
-      inviteEligible: false,
-      teamSize: 5,
-      awards: [],
-      liveAfterRelease: false,
-      virtual: true
-    };
-    st.career.virtualProjects.push(title);
-    st.career.virtualDetails.push(detail);
-    return title;
-  };
-
-  sim.queueProducerVirtualPitch = function (st, config, queue) {
-    var world, content, genres, gameplay, pairs, opts, i, j;
-    if (!st || !st.career) return false;
-    if (!(sim.isCareerProducer && sim.isCareerProducer(st))) return false;
-    if (st.career.titleId) {
-      var cur = sim.careerTitle(st.career.titleId, config, st);
-      if (cur && !cur.virtual) return false;
-    }
-    world = sim.careerWorld(config);
-    content = config.content || {};
-    genres = (content.genres || []).slice();
-    gameplay = (content.gameplay || []).slice();
-    if (!genres.length || !gameplay.length) return false;
-    pairs = [];
-    for (i = 0; i < genres.length && pairs.length < 4; i++) {
-      for (j = 0; j < gameplay.length && pairs.length < 4; j++) {
-        pairs.push({ genre: genres[i], gameplay: gameplay[j] });
-      }
-    }
-    if (!pairs.length) return false;
-    opts = pairs.map(function (p, idx) {
-      return { id: "pitch-" + idx, genreId: p.genre.id, gameplayId: p.gameplay.id };
-    });
-    st.career.producerPitchOptions = opts;
-    st.career.awaitingProducerPitch = true;
-    if (queue) {
-      queue.push({
-        type: "producerPitch",
-        kind: "event",
-        id: "producerPitch",
-        options: opts,
-        kicker: (world.producerCareer && world.producerCareer.pitchKicker) || "制作人企划",
-        title: (world.producerCareer && world.producerCareer.pitchTitle) || "下一部作品方向",
-        body: ""
-      });
-    }
-    return true;
-  };
-
-  sim.resolveProducerPitch = function (st, optId, config) {
-    var opts, chosen, title;
-    if (!st || !st.career) return { ok: false };
-    if (!(sim.isCareerProducer && sim.isCareerProducer(st))) return { ok: false };
-    if (!st.career.awaitingProducerPitch) return { ok: false };
-    opts = st.career.producerPitchOptions || [];
-    chosen = null;
-    for (var i = 0; i < opts.length; i++) { if (opts[i].id === optId) { chosen = opts[i]; break; } }
-    if (!chosen) return { ok: false };
-    title = sim.startVirtualProject(st, config, { genreId: chosen.genreId, gameplayId: chosen.gameplayId });
-    if (!title || !title.virtual) return { ok: false };
-    st.career.titleId = title.id;
-    st.career.liveStats = liveFromTitle(st, title, config);
-    st.career.awaitingProducerPitch = false;
-    st.career.producerPitchOptions = null;
-    st.career.idleMonths = 0;
-    return { ok: true, virtual: true, state: st, titleId: title.id };
-  };
-
   function queueIdleGapChoice(st, config, queue, next) {
     var spec = idleGapSpec(config);
     var copy = sim.careerCopy(config);
-    var nextDet, eventId;
+    var nextDet, eventId, startIdx, startParts;
     if (!st.career) return;
     if (st.career.idleGap && st.career.idleGap.prompted) return;
     nextDet = next ? sim.careerTitleDetail(next.id, config, st) : null;
+    // 开工月走 cycleMult 换算（P2c）：空窗到哪天结束以「实际开工月」为准。
+    startIdx = next ? sim.titleDevStart(next, nextDet, config) : null;
+    startParts = startIdx == null ? null : sim.monthFromIndex(startIdx);
     st.career.idleGap = {
       prompted: true,
       settled: false,
       choiceId: null,
       companyId: st.career.companyId,
       nextTitleId: next && next.id,
-      untilYear: nextDet && nextDet.devStartYear,
-      untilMonth: nextDet && nextDet.devStartMonth
+      untilYear: startParts ? startParts.year : null,
+      untilMonth: startParts ? startParts.month : null
     };
     if (!queue) return;
     eventId = spec.eventId || "idle-gap";
@@ -3360,36 +2966,8 @@
     });
   }
 
-  function applyIdleGapChoice(st, opt, config) {
-    var role, main, i, k, nextTitle, gap;
-    if (!st.career || !opt) return;
-    if (!st.career.stats) st.career.stats = cloneStats();
-    role = sim.careerRole(st.career.roleId, config);
-    main = role && role.stat;
-    if (opt.stats) {
-      for (k in opt.stats) {
-        if (Object.prototype.hasOwnProperty.call(opt.stats, k)) {
-          st.career.stats[k] = num(st.career.stats[k], 0) + num(opt.stats[k], 0);
-        }
-      }
-    }
-    if (opt.mainStatDelta && main) {
-      st.career.stats[main] = num(st.career.stats[main], 0) + num(opt.mainStatDelta, 0);
-    }
-    if (opt.offStatDelta) {
-      for (i = 0; i < DIMS.length; i++) {
-        k = DIMS[i];
-        if (k !== main) st.career.stats[k] = num(st.career.stats[k], 0) + num(opt.offStatDelta, 0);
-      }
-    }
-    if (opt.jobXpDelta) st.career.jobXp = num(st.career.jobXp, 0) + num(opt.jobXpDelta, 0);
-    gap = st.career.idleGap || {};
-    nextTitle = gap.nextTitleId ? sim.careerTitle(gap.nextTitleId, config, st) : sim.nextCatalogTitle(st, config, st.career.companyId, st.career.studioId);
-    applyPlayerSkillFx(st, opt, config, nextTitle);
-  }
-
   sim.assignCareerProject = function (st, config, queue) {
-    var picked, pool, idleMax, cur, det, next, gap, minDev;
+    var picked, pool, idleMax, cur, det, next, gap, minDev, cand, prodSpec;
     sim.ensureCareerExtras(st);
     if (sim.careerPostLaunch(st)) return st;
     if (!st.career || !st.career.companyId) {
@@ -3411,48 +2989,62 @@
     }
     picked = sim.pickCareerAssignment(st.career.companyId, st.year, st.month, config, st, st.career.studioId);
     // 玩家正在做一部"本公司当年月还在开发"的目录作时，不要因为同公司别部开工（prestige 更高
-    // 的 landmark 排前面）就把人静默顶走。只有目录作受保护：虚拟作本来就是填空窗的，按设计
-    // 让位给下一档真作（virtualPool.comment：发售不得压过下一档真作开工月）。
+    // 的 landmark 排前面）就把人静默顶走。只有目录作受保护：池作本来就是填空窗的，按设计
+    // 让位给下一档真作（titlePool.comment：发售不得压过下一档真作开工月）。
     if (picked) {
       cur = sim.careerTitle(st.career.titleId, config, st);
       det = sim.careerTitleDetail(st.career.titleId, config, st);
       if (cur && !cur.virtual && cur.id !== picked.id &&
           cur.companyId === st.career.companyId &&
-          det && sim.titleCoversMonth(cur, det, st.year, st.month) &&
+          det && sim.titleCoversMonth(cur, det, st.year, st.month, config) &&
           !findWorldReleased(st, cur.id)) {
         picked = cur;
       }
     }
-    pool = sim.careerWorld(config).virtualPool || {};
+    // A（节奏修复）：不接「别人快做完了」的候选——宁可等下一部新作开工，也别去给人收尾。
+    // 手上那部不算候选（picked.id === titleId 是「继续做」，不是换档）。拒收后由下面的
+    // 池作 / 空窗分支兜底：池作天然从当月 0% 开始，空窗则等到下一部目录作开工。
+    if (picked && picked.id !== st.career.titleId && deepCandidateRejected(picked, st, config)) {
+      picked = null;
+    }
+    pool = titlePoolSpec(config);
     idleMax = num(pool.idleMaxMonths, 1);
-    minDev = num(idleGapSpec(config).minDevMonths, virtualMinDevMonths(config));
+    minDev = poolMinFillMonths(config);
     if (!picked) {
       if (st.career.titleId && sim.careerTitle(st.career.titleId, config, st)) {
         cur = sim.careerTitle(st.career.titleId, config, st);
         det = sim.careerTitleDetail(st.career.titleId, config, st);
-        if (cur && det && sim.titleCoversMonth(cur, det, st.year, st.month) && !findWorldReleased(st, cur.id)) {
+        if (cur && det && sim.titleCoversMonth(cur, det, st.year, st.month, config) && !findWorldReleased(st, cur.id)) {
+          st.career.waitingForStart = null;
           return st;
         }
       }
       next = sim.nextCatalogTitle(st, config, st.career.companyId, st.career.studioId);
       gap = sim.catalogGapMonths(st, config, st.career.companyId, st.career.studioId);
-      if (next && gap != null && gap < minDev) {
-        queueIdleGapChoice(st, config, queue, next);
-        st.career.titleId = null;
-        st.career.liveStats = null;
-        return st;
-      }
-      if (st.career.idleGap) st.career.idleGap = null;
-      if (num(st.career.idleMonths, 0) >= idleMax) {
-        if (sim.isCareerProducer && sim.isCareerProducer(st) &&
-            sim.queueProducerVirtualPitch &&
-            ((sim.careerWorld(config).producerCareer) || {}).canPickVirtualGenreGameplay &&
-            canStartCareerVirtual(st, config)) {
-          sim.queueProducerVirtualPitch(st, config, queue);
-          return st;
+      // P2-fix：游戏池优先。公司某月排不出目录真作时，直接从池里抽一部顶上——
+      // 新入职当月也走这条（R2 入职兜底），不再先站着等 idleMaxMonths。
+      if (canStartCareerVirtual(st, config)) {
+        cand = sim.poolCandidateAt(st, config, st.career.companyId, st.career.studioId, st.year, st.month);
+        if (cand) {
+          prodSpec = sim.careerWorld(config).producerCareer || {};
+          if (sim.isCareerProducer && sim.isCareerProducer(st) &&
+              sim.queueProducerVirtualPitch && prodSpec.canPickVirtualGenreGameplay &&
+              num(cand.detail.devMonths, 0) >= num(prodSpec.pitchMinFillMonths, 18)) {
+            // 顶的是一段长空窗，让制作人自己挑题材/玩法（等于立项会）；短的直接开，不打扰。
+            sim.queueProducerVirtualPitch(st, config, queue);
+            return st;
+          }
+          picked = sim.startPoolProject(st, config);
         }
-        picked = sim.startVirtualProject(st, config);
-      } else {
+      }
+      if (!picked) {
+        // 池不可用，或空窗太短抽不出池作（gap < minDev，开了也会被下一档真作开工月截断）。
+        // 短空窗交给推进吸收，静默过月；长空窗、或本公司已排不出下一档（gap == null，
+        // 该考虑跳槽了）才弹一次抉择覆盖整段空窗。idleGap 一旦 prompted 就留着，
+        // 别在这里清掉，否则每月都会重弹。
+        if (gap == null || gap >= minDev) queueIdleGapChoice(st, config, queue, next);
+        // 空窗也分两种：公司还有下一部要开工 = 等立项；公司排不出下一部 = 真没活。
+        st.career.waitingForStart = next ? waitingForStartOf(st, config, next) : null;
         st.career.titleId = null;
         st.career.liveStats = null;
         return st;
@@ -3461,6 +3053,7 @@
     if (picked) {
       st.career.idleMonths = 0;
       st.career.idleGap = null;
+      st.career.waitingForStart = null;
     }
     if (!picked) {
       st.career.titleId = null;
@@ -3473,110 +3066,6 @@
       addCredit(st, picked.id, config, true);
     }
     if (!st.career.liveStats) st.career.liveStats = liveFromTitle(st, picked, config);
-    return st;
-  };
-
-  function colleagueBand(config, power) {
-    var spec = (sim.careerWorld(config).colleagues) || {};
-    var by = spec.byPower || {};
-    var key = power != null ? String(power) : "2";
-    return by[key] || by["2"] || {};
-  }
-
-  function colleaguePoolStale(pool) {
-    var k;
-    if (!pool) return true;
-    for (k in pool) {
-      if (Object.prototype.hasOwnProperty.call(pool, k)) {
-        if (!pool[k] || pool[k].jobRank == null || !pool[k].stats) return true;
-      }
-    }
-    return false;
-  }
-
-  function makeColleagueStats(st, roleId, band, config) {
-    var q = (sim.careerWorld(config).quality) || {};
-    var role = sim.careerRole(roleId, config);
-    var dim = role && role.stat;
-    var stats = cloneStats();
-    var i, k, bonusMin, bonusMax, cap;
-    var min = num(band.statMin, 0);
-    var max = num(band.statMax, min);
-    if (min > max) {
-      cap = min;
-      min = max;
-      max = cap;
-    }
-    cap = q.statMax;
-    for (i = 0; i < DIMS.length; i++) {
-      k = DIMS[i];
-      stats[k] = sim.irand(st, min, max);
-    }
-    if (dim) {
-      bonusMin = num(band.specialtyBonusMin, 0);
-      bonusMax = num(band.specialtyBonusMax, bonusMin);
-      if (bonusMin > bonusMax) {
-        k = bonusMin;
-        bonusMin = bonusMax;
-        bonusMax = k;
-      }
-      stats[dim] = num(stats[dim], 0) + sim.irand(st, bonusMin, bonusMax);
-    }
-    for (i = 0; i < DIMS.length; i++) {
-      k = DIMS[i];
-      if (stats[k] < 0) stats[k] = 0;
-      if (cap != null && stats[k] > cap) stats[k] = cap;
-    }
-    return stats;
-  }
-
-  function makeColleagueRank(st, roleId, band, config) {
-    var isProd = roleId === "producer";
-    var min = isProd ? num(band.producerRankMin, band.specialistRankMin) : num(band.specialistRankMin, 1);
-    var max = isProd ? num(band.producerRankMax, band.specialistRankMax) : num(band.specialistRankMax, min);
-    if (min > max) {
-      var tmp = min;
-      min = max;
-      max = tmp;
-    }
-    return clampJobRank(sim.irand(st, min, max), config);
-  }
-
-  sim.ensureCareerColleagues = function (st, config) {
-    var names = (config.copy && config.copy.staffNamePool) || ["同事"];
-    var companyId = st.career && st.career.companyId;
-    var roleIds = ["producer", "programmer", "art", "design", "music"];
-    var pool, co, band, i, rid, stats, mate;
-    if (!st.career || !companyId) {
-      if (st.career) st.career.colleagues = [];
-      return st;
-    }
-    if (!st.career.colleaguePool) st.career.colleaguePool = {};
-    pool = st.career.colleaguePool[companyId];
-    co = sim.careerCompany(companyId, config);
-    band = colleagueBand(config, co && co.power);
-    if (colleaguePoolStale(pool)) {
-      pool = {};
-      for (i = 0; i < roleIds.length; i++) {
-        rid = roleIds[i];
-        stats = makeColleagueStats(st, rid, band, config);
-        pool[rid] = {
-          id: "col-" + companyId + "-" + rid,
-          n: sim.pick(st, names),
-          roleId: rid,
-          jobRank: makeColleagueRank(st, rid, band, config),
-          stats: stats
-        };
-      }
-      st.career.colleaguePool[companyId] = pool;
-    }
-    st.career.colleagues = [];
-    for (i = 0; i < roleIds.length; i++) {
-      rid = roleIds[i];
-      if (rid === st.career.roleId) continue;
-      mate = pool[rid];
-      if (mate) st.career.colleagues.push(mate);
-    }
     return st;
   };
 
@@ -3614,7 +3103,7 @@
     st.career.idleGap = null;
   }
 
-  function joinCompany(st, companyId, roleId, salary, titleId, config, studioId, source, offeredRank) {
+  function joinCompany(st, companyId, roleId, titleId, config, studioId, source, offeredRank) {
     var co = sim.careerCompany(companyId, config);
     var studio = sim.careerStudio(companyId, studioId, config);
     var prevRank = sim.careerJobRank(st.career, config);
@@ -3633,10 +3122,6 @@
     else st.career.growthStage = "employee";
     titleDef = sim.careerJobTitle(st, config);
     st.career.jobTitleId = titleDef && titleDef.id;
-    st.career.salary = salary != null ? salary : sim.careerSalaryFor(co, st.year, config, st.career);
-    if (offeredRank != null && offeredRank > prevRank) {
-      st.career.salary = sim.careerSalaryFor(co, st.year, config, st.career);
-    }
     st.career.yearEndOffers = [];
     st.career.invites = [];
     st.career.hopNotice = "";
@@ -3674,7 +3159,7 @@
     st = sim.clone(state);
     sim.ensureCareerExtras(st);
     st.phase = "PLAYING";
-    joinCompany(st, offer.companyId, offer.roleId, offer.salary, null, config, offer.studioId, "opening");
+    joinCompany(st, offer.companyId, offer.roleId, null, config, offer.studioId, "opening");
     return sim.ok(st);
   };
 
@@ -3693,28 +3178,33 @@
   };
 
   sim.careerProjectView = function (state, config) {
-    var title, detail, progress, phase, copy, idleMax, preparing, pl, plSpec;
+    var title, detail, progress, phase, copy, idleMax, preparing, waiting, pl, plSpec;
     var genreXp, playXp, playerGenreXp, playerPlayXp;
     sim.ensureCareerExtras(state);
     copy = sim.careerCopy(config);
-    idleMax = num((sim.careerWorld(config).virtualPool || {}).idleMaxMonths, 1);
+    idleMax = num(titlePoolSpec(config).idleMaxMonths, 1);
     pl = sim.careerPostLaunch(state);
     if (!state || !state.career || !state.career.titleId) {
       preparing = num(state && state.career && state.career.idleMonths, 0) < idleMax;
+      // 等下一部新作开工的空窗要跟「组里真没活」分开说：前者是蓄势，后者是凉了。
+      waiting = !!(state && state.career && state.career.waitingForStart);
       return {
         title: null,
         phase: null,
         progress: 0,
         idle: true,
-        preparing: preparing,
+        preparing: preparing || waiting,
+        waitingForStart: waiting ? state.career.waitingForStart : null,
         postLaunch: false,
         liveStats: null,
-        idleLabel: preparing ? (copy.preparingHint || copy.idleHint || "筹备") : (copy.idleHint || "待命")
+        idleLabel: waiting
+          ? (copy.waitingHint || copy.preparingHint || copy.idleHint || "筹备")
+          : (preparing ? (copy.preparingHint || copy.idleHint || "筹备") : (copy.idleHint || "待命"))
       };
     }
     title = sim.careerTitle(state.career.titleId, config, state);
     detail = sim.careerTitleDetail(state.career.titleId, config, state);
-    progress = sim.titleProgress(title, detail, state.year, state.month);
+    progress = sim.titleProgress(title, detail, state.year, state.month, config);
     phase = sim.careerPhaseAt(progress, config);
     if (pl) {
       plSpec = sim.careerWorld(config).postLaunch || {};
@@ -3732,6 +3222,7 @@
       progress: progress,
       idle: false,
       preparing: false,
+      waitingForStart: null,
       postLaunch: !!pl,
       monthsLeft: pl ? pl.monthsLeft : 0,
       liveStats: state.career.liveStats,
@@ -3817,621 +3308,6 @@
       genres: rows(content.genres, "genre"),
       gameplay: rows(content.gameplay, "gameplay")
     };
-  };
-
-  function currentPhase(st, config) {
-    var view = sim.careerProjectView(st, config);
-    return view.phase;
-  }
-
-  sim.findCareerEventDef = function (config, eventId) {
-    var world = sim.careerWorld(config);
-    var list = ((world.devEvents) || {}).list || [];
-    var hit = sim.findById(list, eventId);
-    var parts, lineDef, beats, i, gap;
-    gap = idleGapSpec(config);
-    if (eventId && gap && (eventId === (gap.eventId || "idle-gap"))) {
-      return {
-        id: eventId,
-        presentation: "choice",
-        choices: gap.choices || [],
-        displayName: gap.title,
-        text: gap.text,
-        idleGap: true
-      };
-    }
-    if (hit) return hit;
-    hit = sim.findById(((world.postLaunch) || {}).events || [], eventId);
-    if (hit) return hit;
-    hit = sim.findById(((world.producerEvents) || {}).list || [], eventId);
-    if (hit) return hit;
-    if (eventId && String(eventId).indexOf("line:") === 0) {
-      parts = String(eventId).split(":");
-      lineDef = sim.findEventLineDef && sim.findEventLineDef(config, parts[1]);
-      beats = (lineDef && lineDef.beats) || [];
-      for (i = 0; i < beats.length; i++) {
-        if (beats[i].id === parts[2]) {
-          return {
-            id: eventId,
-            lineId: parts[1],
-            beatId: parts[2],
-            presentation: beats[i].presentation || "notice",
-            choices: beats[i].options || [],
-            displayName: beats[i].title,
-            text: beats[i].body,
-            careerLine: true
-          };
-        }
-      }
-    }
-    return null;
-  };
-
-  function applyQualityDimsMap(st, dimsMap, config, unscaled) {
-    var k, scaled;
-    if (!dimsMap) return;
-    scaled = scaleQualityAmount(st, dimsMap, config, unscaled);
-    for (k in scaled) {
-      if (Object.prototype.hasOwnProperty.call(scaled, k)) {
-        sim.applyCareerLiveDelta(st, k, scaled[k], config);
-      }
-    }
-  }
-
-  function applyProducerEventSideEffects(st, opt, config, unscaled) {
-    var title, detail, detList, i;
-    if (!opt) return;
-    applyQualityDimsMap(st, opt.qualityDims, config, unscaled);
-    if (opt.qualityDim) applyDimDeltas(st, opt.qualityDim, scaleQualityAmount(st, opt.qualityDelta, config, unscaled), config);
-    if (opt.devMonthsDelta && st.career && st.career.titleId) {
-      title = sim.careerTitle(st.career.titleId, config, st);
-      detail = sim.careerTitleDetail(st.career.titleId, config, st);
-      if (title && title.virtual && detail) {
-        detail.devMonths = num(detail.devMonths, 0) + num(opt.devMonthsDelta, 0);
-        if (detail.devMonths < 1) detail.devMonths = 1;
-        (function shiftRelease() {
-          var y = detail.devStartYear;
-          var m = detail.devStartMonth + detail.devMonths;
-          while (m > 12) { m -= 12; y += 1; }
-          title.releaseYear = y;
-          title.releaseMonth = m;
-          if (detail.inviteWindow) {
-            detail.inviteWindow.endYear = y;
-            detail.inviteWindow.endMonth = m;
-          }
-        })();
-      }
-    }
-    if (opt.releaseBiasDelta) {
-      st.career.producerReleaseBias = num(st.career.producerReleaseBias, 0) + num(opt.releaseBiasDelta, 0);
-    }
-    if (opt.virtualGenreId || opt.virtualGameplayId || opt.virtualName) {
-      title = sim.careerTitle(st.career.titleId, config, st);
-      if (title && title.virtual) {
-        if (opt.virtualGenreId) title.genreId = opt.virtualGenreId;
-        if (opt.virtualGameplayId) title.gameplayId = opt.virtualGameplayId;
-        if (opt.virtualName) {
-          title.name = opt.virtualName;
-          title.alias = opt.virtualName;
-        }
-      }
-    }
-    void detList; void i;
-  }
-
-  function devEventCadence(spec, world) {
-    var base = (world && world.devEvents) || {};
-    spec = spec || {};
-    return {
-      chance: spec.chance != null ? spec.chance : base.chance,
-      minGapMonths: spec.minGapMonths != null ? spec.minGapMonths : num(base.minGapMonths, 0),
-      pityMonths: spec.pityMonths != null ? spec.pityMonths : base.pityMonths,
-      maxPerYear: spec.maxPerYear != null ? spec.maxPerYear : base.maxPerYear
-    };
-  }
-
-  function monthsSinceLastDevEvent(st) {
-    var last = st.career && st.career.lastDevEventYm;
-    if (last == null) return 9999;
-    return sim.monthIndex(st.year, st.month) - last;
-  }
-
-  function devEventsThisYear(st) {
-    if (!st.career) return 0;
-    if (st.career.devEventYear !== st.year) return 0;
-    return num(st.career.devEventsThisYear, 0);
-  }
-
-  function stampCareerDevEvent(st) {
-    if (!st || !st.career) return;
-    st.career.lastDevEventYm = sim.monthIndex(st.year, st.month);
-    if (st.career.devEventYear !== st.year) {
-      st.career.devEventYear = st.year;
-      st.career.devEventsThisYear = 0;
-    }
-    st.career.devEventsThisYear = num(st.career.devEventsThisYear, 0) + 1;
-  }
-
-  function cadenceAllowsDevEvent(st, cadence) {
-    var gap, count, maxY, minGap, pity;
-    if (!st || !st.career || !cadence) return { ok: false, pity: false };
-    gap = monthsSinceLastDevEvent(st);
-    count = devEventsThisYear(st);
-    maxY = cadence.maxPerYear;
-    minGap = num(cadence.minGapMonths, 0);
-    pity = cadence.pityMonths;
-    if (maxY != null && count >= maxY) return { ok: false, pity: false };
-    if (pity != null && pity > 0 && gap >= pity) return { ok: true, pity: true };
-    if (minGap && gap < minGap) return { ok: false, pity: false };
-    return { ok: true, pity: false };
-  }
-
-  sim.rollCareerDevEvent = function (st, config, notes) {
-    var world = sim.careerWorld(config);
-    var isProd = sim.isCareerProducer && sim.isCareerProducer(st);
-    var spec = isProd ? (world.producerEvents || {}) : (world.devEvents || {});
-    var cadence = devEventCadence(spec, world);
-    var chance = cadence.chance;
-    var allow;
-    var phase = currentPhase(st, config);
-    var list = spec.list || [];
-    var pool = [];
-    var i, ev, w, hit, fired;
-    if (!st.career || !st.career.titleId || !st.career.liveStats) return null;
-    if (sim.careerPostLaunch(st)) return null;
-    allow = cadenceAllowsDevEvent(st, cadence);
-    if (!allow.ok) return null;
-    if (!allow.pity && (chance == null || sim.rand(st) >= chance)) return null;
-    fired = st.career.firedTitleEvents || [];
-    for (i = 0; i < list.length; i++) {
-      ev = list[i];
-      if (ev.titleId && ev.titleId !== st.career.titleId) continue;
-      if (ev.titleId && fired.indexOf(ev.id) >= 0) continue;
-      if (!isProd && ev.role && ev.role !== st.career.roleId) continue;
-      if (!isProd && !eventFitsRank(ev, sim.careerJobRank(st.career, config))) continue;
-      if (ev.phase && (!phase || ev.phase !== phase.id)) continue;
-      if ((ev.presentation || "notice") === "choice") {
-        if (!ev.choices || !ev.choices.length) continue;
-      } else if (!ev.qualityDim && !ev.qualityDims && !ev.skillGrant && ev.genreXpDelta == null && ev.gameplayXpDelta == null) {
-        continue;
-      }
-      w = ev.weight != null ? ev.weight : 1;
-      if (ev.titleId && ev.titleId === st.career.titleId) w += (world.devEvents || {}).titleWeightBonus || 0;
-      if (!isProd) {
-        w *= rankTableVal(jobRankSpec(config).negativeWeightByRank, sim.careerJobRank(st.career, config), 1) && eventIsNegative(ev)
-          ? rankTableVal(jobRankSpec(config).negativeWeightByRank, sim.careerJobRank(st.career, config), 1)
-          : 1;
-      }
-      pool.push({ ev: ev, weight: w });
-    }
-    if (!pool.length) return null;
-    hit = sim.pickWeighted(st, pool);
-    if (!hit || !hit.ev) return null;
-    ev = hit.ev;
-    stampCareerDevEvent(st);
-    if ((ev.presentation || "notice") !== "choice") {
-      if (ev.qualityDims) applyQualityDimsMap(st, ev.qualityDims, config, !!ev.titleId);
-      else if (ev.qualityDim) applyDimDeltas(st, ev.qualityDim, scaleQualityAmount(st, ev.qualityDelta, config, !!ev.titleId), config);
-      applyPlayerSkillFx(st, ev, config);
-    }
-    if (ev.titleId) {
-      if (!st.career.firedTitleEvents) st.career.firedTitleEvents = [];
-      st.career.firedTitleEvents.push(ev.id);
-    }
-    if (notes) notes.push(ev.displayName);
-    return ev;
-  };
-
-  sim.rollPostLaunchEvent = function (st, config, notes) {
-    var spec = sim.careerWorld(config).postLaunch || {};
-    var chance = spec.eventChance;
-    var list = spec.events || [];
-    var pool = [];
-    var i, ev, hit, rec;
-    if (!sim.careerPostLaunch(st) || !st.career.liveStats) return null;
-    if (!list.length) return null;
-    if (chance == null || sim.rand(st) >= chance) return null;
-    for (i = 0; i < list.length; i++) {
-      ev = list[i];
-      if (ev.role && ev.role !== st.career.roleId) continue;
-      if (!eventFitsRank(ev, sim.careerJobRank(st.career, config))) continue;
-      if ((ev.presentation || "notice") === "choice") {
-        if (!ev.choices || !ev.choices.length) continue;
-      }
-      pool.push({ ev: ev, weight: ev.weight != null ? ev.weight : 1 });
-    }
-    if (!pool.length) return null;
-    hit = sim.pickWeighted(st, pool);
-    if (!hit || !hit.ev) return null;
-    ev = hit.ev;
-    if ((ev.presentation || "notice") !== "choice" && (ev.qualityDim || ev.skillGrant || ev.genreXpDelta || ev.gameplayXpDelta)) {
-      if (ev.qualityDim) {
-        applyDimDeltas(st, ev.qualityDim, scaleQualityAmount(st, ev.qualityDelta, config, !!ev.titleId), config);
-      }
-      applyPlayerSkillFx(st, ev, config);
-      rec = findWorldReleased(st, st.career.titleId);
-      if (rec) rec.stats = sim.cloneTitleStats(st.career.liveStats, config);
-    }
-    if (notes) notes.push(ev.displayName);
-    return ev;
-  };
-
-  function careerEventQueueItem(ev, copy) {
-    var pres = ev.presentation || "notice";
-    return {
-      type: "event",
-      kind: "event",
-      presentation: pres,
-      eventId: ev.id,
-      kicker: copy.eventKicker || "开发事件",
-      title: ev.displayName,
-      body: ev.text || ev.displayName,
-      options: pres === "choice" ? (ev.choices || []).map(function (c) {
-        return { id: c.id, label: c.label };
-      }) : null
-    };
-  }
-
-  sim.resolveCareerEventChoice = function (state, eventId, optionId, config) {
-    var ev, opt, st, parts;
-    if (eventId && String(eventId).indexOf("line-fork:") === 0) {
-      return sim.resolveCareerPathFork(state, optionId, config);
-    }
-    if (eventId === "producer-pitch") {
-      return sim.resolveProducerPitch(state, optionId, config);
-    }
-    if (eventId && String(eventId).indexOf("line:") === 0) {
-      parts = String(eventId).split(":");
-      return sim.resolveCareerLineChoice(state, parts[1], parts[2], optionId, config);
-    }
-    ev = sim.findCareerEventDef(config, eventId);
-    opt = null;
-    if (!ev) return sim.fail(state, sim.ERR.EVENT_NOT_FOUND);
-    if ((ev.presentation || "notice") !== "choice") return sim.fail(state, sim.ERR.EVENT_NOT_CHOICE);
-    if (ev.careerLine) {
-      return sim.resolveCareerLineChoice(state, ev.lineId, ev.beatId, optionId, config);
-    }
-    (ev.choices || []).forEach(function (c) {
-      if (c.id === optionId) opt = c;
-    });
-    if (!opt) return sim.fail(state, sim.ERR.EVENT_OPTION_INVALID);
-    st = sim.clone(state);
-    if (ev.idleGap) {
-      if (st.career && st.career.idleGap && st.career.idleGap.settled) {
-        return { ok: true, state: st, optionId: optionId };
-      }
-      applyIdleGapChoice(st, opt, config);
-      if (st.career) {
-        if (!st.career.idleGap) st.career.idleGap = { prompted: true };
-        st.career.idleGap.settled = true;
-        st.career.idleGap.choiceId = optionId;
-      }
-      return { ok: true, state: st, optionId: optionId };
-    }
-    if (opt.qualityDims || opt.devMonthsDelta != null || opt.releaseBiasDelta != null ||
-        opt.virtualGenreId || opt.virtualGameplayId || opt.virtualName) {
-      applyProducerEventSideEffects(st, opt, config, !!ev.titleId);
-    } else {
-      applyDimDeltas(st, opt.qualityDim, scaleQualityAmount(st, opt.qualityDelta, config, !!ev.titleId), config);
-    }
-    applyPlayerSkillFx(st, opt, config);
-    return { ok: true, state: st, optionId: optionId };
-  };
-
-  function careerAwardCandidate(g, config) {
-    var stats = sim.cloneTitleStats(g && g.stats, config);
-    var score = g.score != null ? g.score : num(g.avg, 0);
-    var out = {
-      player: !!g.player,
-      titleId: g.id,
-      title: sim.worldLabel(g, config),
-      label: sim.worldLabel(g, config),
-      avg: score,
-      score: score,
-      qsum: sim.titleQualitySum(stats, config),
-      stats: stats,
-      prestige: num(g.prestige, 0),
-      live: sim.isLiveOpsTitle(g),
-      releaseType: g.releaseType,
-      // 销量口径统一走 launchSales：worldReleased 上记的是首月实销，没有 sales 字段。
-      // 之前只读 g.sales，候选的销量恒为 undefined，导致「玩家之选」回退到 prestige——
-      // 奖项名不副实。
-      sales: num(g.launchSales != null ? g.launchSales : g.sales, 0)
-    };
-    // 顶层再摊开一份作品维，供 readAwardStat 的 title[dim] 回退读取。
-    sim.titleDims(config).forEach(function (d) { out[d] = num(stats[d], 0); });
-    return out;
-  }
-
-  // ── TGA 评分子 ──────────────────────────────────────────────────────────
-  // 归一化三部分（口碑 / 质量 / 商业，都是 0-100）才能加权比较。
-  function awardScoreParts(c, config) {
-    var spec = (config.awards && config.awards.score) || {};
-    var dims = sim.titleDims(config).length || 4;
-    var salesRef = num(spec.salesRef, 0);
-    var salesCap = num(spec.salesScoreCap, 100);
-    var sales = num(c.sales, 0);
-    var salesPart = 0;
-    if (sales > 0 && salesRef > 0) {
-      salesPart = num(spec.salesLogScale, 0) * Math.log(1 + sales / salesRef) / Math.LN10;
-      if (salesPart > salesCap) salesPart = salesCap;
-    }
-    return {
-      score: Math.max(0, Math.min(100, num(c.score, 0) * 10)),
-      quality: Math.max(0, Math.min(100, num(c.qsum, 0) / dims)),
-      sales: Math.max(0, salesPart)
-    };
-  }
-
-  function awardWeightsFor(a, config) {
-    var spec = (config.awards && config.awards.score) || {};
-    var weights = spec.weights || {};
-    return (a && a.id && weights[a.id]) || weights.default || { score: 0.5, quality: 0.3, sales: 0.2 };
-  }
-
-  function awardScoreOf(c, a, config) {
-    var w = awardWeightsFor(a, config);
-    var p = c._parts || awardScoreParts(c, config);
-    return num(w.score, 0) * p.score + num(w.quality, 0) * p.quality + num(w.sales, 0) * p.sales;
-  }
-
-  // 奖项专属分：stat 类看对应那一维、avg 看口碑、sales 看商业、qsum 看质量。
-  function awardCategoryPart(c, a, config) {
-    var from = a.scoreFrom || (a.stat ? "stat" : "");
-    var p = c._parts || awardScoreParts(c, config);
-    var v;
-    if (from === "avg" || from === "score") return p.score;
-    if (from === "sales") return p.sales;
-    if (from === "qsum") return p.quality;
-    if (a.stat) {
-      v = sim.readAwardStat(c, a.stat, a.statAliases);
-      return Math.max(0, Math.min(100, v));
-    }
-    return p.score;
-  }
-
-  // 提名与得奖的排序键。按奖项口径分三路，别一刀切：
-  //   单一维度奖（stat）→ 0.8 × 该维 + 0.2 × 综合分，防止「一维极高、整体平庸」拿走单项奖；
-  //   口碑/商业/四维合计（avg / sales / qsum）→ 直接用该奖项自己的评分子或专属分；
-  //   真正需要跨维比较的（goty 这类无 stat 的 avg 奖）→ 用该奖项权重算出的综合分。
-  function awardPickScore(c, a, config) {
-    var spec = (config.awards && config.awards.score) || {};
-    var from = a.scoreFrom || (a.stat ? "stat" : "");
-    var cw = num(spec.categoryWeight, 0.8);
-    if (!a.stat) {
-      if (from === "qsum") return awardCategoryPart(c, a, config);
-      // 现算该奖项自己的权重，不能复用按 default 权重缓存的 _awardScore——
-      // 否则「玩家之选」这种商业权重 0.6 的奖项会退化成一个不含销量的分数。
-      return awardScoreOf(c, a, config);
-    }
-    if (cw < 0) cw = 0;
-    if (cw > 1) cw = 1;
-    return awardCategoryPart(c, a, config) * cw + num(c._awardScore, 0) * (1 - cw);
-  }
-
-  // 提名门槛：绝对线与「当年池子中位数 × 系数」取严。池子小的时候不自动放宽，
-  // 由调用方在达标数过少时回退，避免早期奖项长期空缺。
-  function awardGateOf(pool, config) {
-    var spec = (config.awards && config.awards.score) || {};
-    var gate = spec.gate || {};
-    var abs = num(gate.absolute, 0);
-    var mul = num(gate.medianMul, 1);
-    var vals = [];
-    var i, mid;
-    for (i = 0; i < (pool || []).length; i++) vals.push(num(pool[i]._awardScore, 0));
-    if (!vals.length) return abs;
-    vals.sort(function (x, y) { return x - y; });
-    mid = vals.length % 2
-      ? vals[(vals.length - 1) / 2]
-      : (vals[vals.length / 2 - 1] + vals[vals.length / 2]) / 2;
-    return Math.max(abs, mid * mul);
-  }
-
-  // 评审抖动：分差够大就让强者稳定胜出，只在前二咬得紧时才摇号——颁奖夜才有悬念。
-  // 抖动幅度是归一化分制上的绝对分（jitter × 100）。
-  function pickJuryWinner(st, noms, a, config) {
-    var spec = (config.awards && config.awards.score) || {};
-    var jitter = num(spec.juryJitter, 0);
-    var gap = num(spec.jurySuppressGap, 0);
-    var i, v, pick, wid;
-    if (!noms || !noms.length) return null;
-    if (!(jitter > 0) || noms.length < 2) return noms[0];
-    if (awardPickScore(noms[0], a, config) - awardPickScore(noms[1], a, config) > gap) return noms[0];
-    pick = -Infinity;
-    wid = 0;
-    for (i = 0; i < noms.length; i++) {
-      v = awardPickScore(noms[i], a, config) + (sim.rand(st) - 0.5) * 2 * jitter * 100;
-      if (v > pick) { pick = v; wid = i; }
-    }
-    return noms[wid];
-  }
-
-  // 同一奖项的历次获胜次数，用于重复获奖的名气衰减。
-  function awardPriorWins(st, awardId) {
-    var n = 0;
-    ((st && st.awardsHistory) || []).forEach(function (h) {
-      ((h && h.awards) || []).forEach(function (a) {
-        if (a.id === awardId && a.playerWon) n += 1;
-      });
-    });
-    return n;
-  }
-
-  sim.runCareerAwards = function (st, config, notes) {
-    var world = sim.careerWorld(config);
-    var windowGames = (st.worldReleased || []).filter(function (g) {
-      return sim.inAwardWindow({
-        releasedYear: g.releasedYear || g.releaseYear,
-        releasedMonth: g.releasedMonth || g.releaseMonth
-      }, st.year, config);
-    });
-    var liveGames = (st.worldReleased || []).filter(function (g) {
-      return sim.liveOpsAwardEligible(g, st.year, config);
-    });
-    var pool = windowGames.map(function (g) { return careerAwardCandidate(g, config); });
-    var livePool = liveGames.map(function (g) { return careerAwardCandidate(g, config); });
-    var credits = {};
-    var spec = world.awards || {};
-    var fameWin = spec.famePerWin || 0;
-    var honorWin = spec.honorPerWin || 0;
-    var fameNom = spec.famePerNomination || 0;
-    var honorNom = spec.honorPerNomination || 0;
-    var scoreSpec = (config.awards && config.awards.score) || {};
-    var repeatDecay = num(scoreSpec.repeatFameDecay, 0);
-    var won = 0;
-    var nominated = 0;
-    var nomCount = (config.awards && config.awards.nomineeCount) || 5;
-    var gate, liveGate;
-    // 评分子只算一次，挂到候选上供门槛与各奖项共用。
-    pool.concat(livePool).forEach(function (c) {
-      c._parts = awardScoreParts(c, config);
-      c._awardScore = awardScoreOf(c, null, config);
-    });
-    gate = awardGateOf(pool, config);
-    liveGate = awardGateOf(livePool, config);
-    (st.career.credits || []).forEach(function (c) {
-      if (creditIsSigned(c)) credits[c.titleId] = true;
-    });
-    var awardPack = (config.awards.list || []).map(function (a) {
-      var list = a.liveOnly ? livePool : pool;
-      var useGate = a.liveOnly ? liveGate : gate;
-      var eligible = list.filter(function (c) { return num(c._awardScore, 0) >= useGate; });
-      var noms, hit, playerNom, playerWin, prior, decay;
-      // 达标不足两部就保底取全池：早期作品池小，不能让奖项长期空缺。
-      if (eligible.length < 2) eligible = list.slice();
-      noms = sim.rankAwardCandidates(eligible, function (c) {
-        return awardPickScore(c, a, config);
-      }).slice(0, Math.max(1, a.nomineeCount || nomCount));
-      hit = pickJuryWinner(st, noms, a, config);
-      // 得主排到首位：揭晓动效与 nominees[0] 都当它是第一名在用。
-      if (hit) noms = [hit].concat(noms.filter(function (c) { return c !== hit; }));
-      playerNom = noms.some(function (c) { return c.titleId && credits[c.titleId]; });
-      playerWin = !!(hit && hit.titleId && credits[hit.titleId]);
-      if (playerNom) {
-        nominated += 1;
-        st.career.fame = (st.career.fame || 0) + fameNom;
-        st.career.honor = (st.career.honor || 0) + honorNom;
-      }
-      if (playerWin) {
-        won += 1;
-        // 同一奖项拿得越多名气越不值钱：第 N 次拿同一奖 ×(1+历次数)^(−decay)。
-        prior = awardPriorWins(st, a.id);
-        decay = repeatDecay > 0 ? Math.pow(1 + prior, -repeatDecay) : 1;
-        st.career.fame = (st.career.fame || 0) + Math.round(fameWin * decay);
-        st.career.honor = (st.career.honor || 0) + honorWin;
-      }
-      if ((playerNom || playerWin) && hit && hit.titleId) {
-        (st.career.credits || []).forEach(function (c) {
-          if (c.titleId === hit.titleId && creditIsSigned(c)) {
-            if (!c.awards) c.awards = [];
-            c.awards.push({ id: a.id, name: a.displayName, won: playerWin, nominated: playerNom, year: st.year });
-          }
-        });
-      }
-      return {
-        id: a.id,
-        n: a.displayName,
-        year: st.year,
-        w: hit ? hit.label : "—",
-        titleId: hit && hit.titleId,
-        nominees: noms.map(function (c) {
-          return {
-            label: c.label,
-            titleId: c.titleId,
-            player: !!(c.player || (c.titleId && credits[c.titleId]))
-          };
-        }),
-        playerNominated: playerNom,
-        playerWon: playerWin
-      };
-    });
-    if (notes) {
-      notes.push(won || nominated ? ("年度盛典：提名 " + nominated + " / 获奖 " + won) : "年度盛典");
-    }
-    sim.recordAwardsHistory(st, awardPack);
-    return awardPack;
-  };
-
-  // 玩家那部被提名/获奖的作品名：获奖直接读 a.w，只有提名时从 nominees 里找带 player 标记的那个。
-  function awardStoryTitleOf(a) {
-    var i, noms;
-    if (!a) return "";
-    if (a.playerWon && a.w && a.w !== "—") return a.w;
-    noms = a.nominees || [];
-    for (i = 0; i < noms.length; i++) {
-      if (noms[i] && noms[i].player) return noms[i].label || "";
-    }
-    return "";
-  }
-
-  function awardStoryPage(a, kind, copy) {
-    var isGoty = kind === "goty";
-    var map = { title: awardStoryTitleOf(a), award: (a && a.n) || "" };
-    var fallbackTitle = isGoty ? "年度游戏" : "提名名单上有你的名字";
-    var fallbackBody = isGoty
-      ? "《{title}》——{award}。台上念出这个名字时，掌声从很远的地方涌过来。你没有喊，只是坐在原地，想起凌晨四点还亮着的那盏灯。它陪了你两年，此刻终于有人替你鼓了掌。"
-      : "电话是深夜打来的。对方念出《{title}》的名字，说它进了{award}的提名名单。办公室里静了一瞬。你想起那些被砍掉又捡回来的功能——原来真的有人在看。";
-    return {
-      type: "story",
-      kind: "event",
-      presentation: "notice",
-      kicker: copy.awardKicker || "年度盛典",
-      title: fillPaceTemplate(
-        isGoty ? (copy.tgaGotyTitle || fallbackTitle) : (copy.tgaNomTitle || fallbackTitle), map),
-      body: fillPaceTemplate(
-        isGoty ? (copy.tgaGotyStory || fallbackBody) : (copy.tgaNomStory || fallbackBody), map)
-    };
-  }
-
-  // 首次 TGA 提名 / 首次拿下年度游戏的叙事页。纯剧情，不动任何属性。
-  // 同一年既被提名又拿了年度游戏时只出大奖那一条：flag.nominated 一并置位，提名剧情不再补播
-  // （颁奖夜刚念过年度游戏，紧跟一条「提名」会显得倒叙）。
-  // 持久标记落 st.career.awardStory，随存档走；每次只判「第一次」，之后不再重复。
-  sim.collectCareerAwardStory = function (st, config, pack) {
-    var copy = sim.careerCopy(config);
-    var pages = [];
-    var flag, goty = null, anyNom = null, i, a;
-    if (!st || !st.career || !pack || !pack.length) return pages;
-    flag = st.career.awardStory || (st.career.awardStory = {});
-    for (i = 0; i < pack.length; i++) {
-      a = pack[i];
-      if (!a) continue;
-      if (a.id === "goty" && a.playerWon && !goty) goty = a;
-      if ((a.playerNominated || a.playerWon) && !anyNom) anyNom = a;
-    }
-    if (goty && !flag.goty) {
-      flag.goty = true;
-      flag.nominated = true;
-      pages.push(awardStoryPage(goty, "goty", copy));
-      return pages;
-    }
-    if (anyNom && !flag.nominated) {
-      flag.nominated = true;
-      pages.push(awardStoryPage(anyNom, "nom", copy));
-    }
-    return pages;
-  };
-
-  sim.shipWorldTitlesThisMonth = function (st, config) {
-    var titles = sim.allCareerTitles(config, st);
-    var skip = st.career && st.career.titleId;
-    titles.forEach(function (t) {
-      var rec, leftover, credited;
-      if (skip && t.id === skip) return;
-      if (t.releaseYear === st.year && t.releaseMonth === st.month && !findWorldReleased(st, t.id)) {
-        leftover = st.career && st.career.leftProjectLive && st.career.leftProjectLive[t.id];
-        credited = (st.career.credits || []).some(function (c) {
-          return c.titleId === t.id && creditIsSigned(c);
-        });
-        rec = pushWorldReleased(st, t, config, credited);
-        if (leftover) rec.stats = sim.cloneTitleStats(leftover, config);
-        rec.player = !!credited;
-      }
-    });
-  };
-
-  sim.liveStatsForMedia = function (live, config) {
-    return sim.cloneTitleStats(live, config);
   };
 
   sim.shipPlayerTitle = function (st, config, notes, queue) {
@@ -4541,76 +3417,6 @@
     return ((sim.careerWorld(config).mobility) || {}).skillHire || {};
   }
 
-  function uniqueIds(list) {
-    var out = [];
-    var seen = {};
-    var i, id;
-    for (i = 0; i < (list || []).length; i++) {
-      id = list[i];
-      if (!id || seen[id]) continue;
-      seen[id] = true;
-      out.push(id);
-    }
-    return out;
-  }
-
-  function skillTierBonus(xp, config) {
-    var table = skillHireSpec(config).bonusByTier || {};
-    var tier = sim.xpTierFor(xp, config);
-    var id = tier && tier.id;
-    if (!id || table[id] == null) return 0;
-    return num(table[id], 0);
-  }
-
-  function maxSkillBonus(st, kind, ids, config) {
-    var best = 0;
-    var i, b;
-    for (i = 0; i < (ids || []).length; i++) {
-      b = skillTierBonus(sim.playerXpValue(st, kind, ids[i]), config);
-      if (b > best) best = b;
-    }
-    return best;
-  }
-
-  function targetContentIds(st, company, studio, title, config) {
-    var genreIds = [];
-    var gameplayIds = [];
-    var titles, i, t, studios, j, s;
-    if (title && (title.genreId || title.gameplayId)) {
-      if (title.genreId) genreIds.push(title.genreId);
-      if (title.gameplayId) gameplayIds.push(title.gameplayId);
-      return { genreIds: genreIds, gameplayIds: gameplayIds };
-    }
-    if (studio) {
-      if (studio.genreIds && studio.genreIds.length) genreIds = studio.genreIds.slice();
-      if (studio.gameplayIds && studio.gameplayIds.length) gameplayIds = studio.gameplayIds.slice();
-    }
-    if (!genreIds.length || !gameplayIds.length) {
-      studios = sim.careerStudios(company);
-      for (j = 0; j < studios.length; j++) {
-        s = studios[j];
-        if (!genreIds.length && s.genreIds && s.genreIds.length) genreIds = genreIds.concat(s.genreIds);
-        if (!gameplayIds.length && s.gameplayIds && s.gameplayIds.length) gameplayIds = gameplayIds.concat(s.gameplayIds);
-      }
-    }
-    if (!genreIds.length || !gameplayIds.length) {
-      titles = (sim.careerWorld(config).titles) || [];
-      for (i = 0; i < titles.length; i++) {
-        t = titles[i];
-        if (!company || t.companyId !== company.id) continue;
-        if (t.genreId) genreIds.push(t.genreId);
-        if (t.gameplayId) gameplayIds.push(t.gameplayId);
-      }
-    }
-    return { genreIds: uniqueIds(genreIds), gameplayIds: uniqueIds(gameplayIds) };
-  }
-
-  sim.careerSkillHireBonus = function (state, config, company, studio, title) {
-    var ids = targetContentIds(state, company, studio, title, config);
-    return maxSkillBonus(state, "genre", ids.genreIds, config) +
-      maxSkillBonus(state, "gameplay", ids.gameplayIds, config);
-  };
-
   function skillHireWeight(state, config, company, studio, title) {
     var spec = skillHireSpec(config);
     var bonus = sim.careerSkillHireBonus(state, config, company, studio, title);
@@ -4633,60 +3439,6 @@
     return mul > 0 ? mul : 1;
   }
 
-  sim.careerHireChance = function (company, state, config, studio, title) {
-    var spec = sim.careerWorld(config).mobility || {};
-    var sal = salarySpec(config);
-    var power = company && company.power != null ? String(company.power) : "2";
-    var base = (studio && studio.hireChance != null) ? studio.hireChance : (company && company.hireChance);
-    var cr = state && state.career;
-    var role = sim.careerRole(cr && cr.roleId, config);
-    var mainStat = 0;
-    var chance, min, max, powMul;
-    if (base == null) base = (spec.hireChanceByPower && spec.hireChanceByPower[power]);
-    if (base == null) base = 0.5;
-    if (role && cr && cr.stats) mainStat = num(cr.stats[role.stat], 0);
-    chance = base
-      + num(cr && cr.fame, 0) * num(spec.fameHirePer, 0)
-      + Math.max(0, mainStat - num(sal.statRef, 0)) * num(spec.statHirePer, 0)
-      + rankTableVal(jobRankSpec(config).hireChanceRankBonus, sim.careerJobRank(cr, config), 0)
-      + sim.careerSkillHireBonus(state, config, company, studio, title);
-    // 按公司体量对整条通过率打折（mobility.hireChancePowerMul）。
-    // company.hireChance 已是 power 级基准，但上面四项加成会把它一路推到 hireChanceMax——
-    // 不乘这一下，大厂到后期就是 92% 的保险箱。作用在夹取之前。
-    powMul = tableMult(spec.hireChancePowerMul, power, 1);
-    if (powMul >= 0 && powMul !== 1) chance = chance * powMul;
-    min = spec.hireChanceMin;
-    max = spec.hireChanceMax;
-    if (min != null && chance < min) chance = min;
-    if (max != null && chance > max) chance = max;
-    (function applyMinRank() {
-      var powerKey = company && company.power != null ? String(company.power) : "2";
-      var minRank = (jobRankSpec(config).offerMinRankByPower || {})[powerKey];
-      if (minRank != null && sim.careerJobRank(cr, config) < minRank) chance = 0;
-    })();
-    if (chance < 0) chance = 0;
-    if (chance > 1) chance = 1;
-    return chance;
-  };
-
-  function pickStudioForOffer(st, company, year, month, config) {
-    var studios = sim.careerStudios(company);
-    var i, s, title, busy = [];
-    if (!studios.length) return null;
-    for (i = 0; i < studios.length; i++) {
-      s = studios[i];
-      title = sim.pickCareerAssignment(company.id, year, month, config, st, s.id);
-      if (title) busy.push(s);
-    }
-    if (busy.length) return sim.pick(st, busy);
-    return sim.pick(st, studios);
-  }
-
-  // offer / 邀约的准入开关：mobility.requireInDevTitle
-  //   true（默认）/ 省略 → 四面全开；false → 全关；
-  //   { offer:false, invite:false, scripted:false, studioMove:false } → 分面关。
-  // kind: "offer"（年底 offer 表）| "invite"（年中挖人）| "scripted"（剧情邀约：同事线跳槽/
-  //       前辈线跟着走/搭史诗作/回国）| "studioMove"（剧情内部调岗）。
   function requireInDevTitle(config, kind) {
     var mob = (sim.careerWorld(config).mobility) || {};
     var spec = mob.requireInDevTitle;
@@ -4696,10 +3448,6 @@
     if (kind && spec[kind] === false) return false;
     return true;
   }
-
-  sim.mobilityRequireInDevTitle = function (config, kind) {
-    return requireInDevTitle(config, kind);
-  };
 
   function producerOfferUnlocked(st, config) {
     var mob = (sim.careerWorld(config).mobility) || {};
@@ -4755,700 +3503,6 @@
     return (hit && hit.id) || pool[0].id;
   }
 
-  function salaryForMobilityOffer(st, co, year, config, roleId, rank) {
-    var savedRole = st.career.roleId;
-    var savedRank = st.career.jobRank;
-    var savedStage = st.career.growthStage;
-    var salary;
-    st.career.roleId = roleId;
-    st.career.jobRank = rank;
-    st.career.growthStage = roleId === "producer" ? "producer" : "employee";
-    salary = sim.careerSalaryFor(co, year, config, st.career);
-    st.career.roleId = savedRole;
-    st.career.jobRank = savedRank;
-    st.career.growthStage = savedStage;
-    return salary;
-  }
-
-  function makeHopOffer(st, config, co, studio, roleId, year, month, salaryYear, internal, index) {
-    var title = sim.pickCareerAssignment(co.id, year, month, config, st, studio && studio.id);
-    // 准入：这家（这个工作室）当月手上没活，就不该发 offer——进去就是空窗，过月被塞虚拟作。
-    if (!title && requireInDevTitle(config, "offer")) return null;
-    var chance = sim.careerHireChance(co, st, config, studio, title);
-    var powerKey = co && co.power != null ? String(co.power) : "2";
-    var minRank = (jobRankSpec(config).offerMinRankByPower || {})[powerKey] || 1;
-    var rank = sim.careerJobRank(st.career, config);
-    var late = lateJoinSpec(config);
-    var mul;
-    if (title && sim.careerTitleIsLate(title, sim.careerTitleDetail(title.id, config, st), year, month, config)) {
-      mul = late.hopHireChanceMul;
-      if (mul != null) chance *= mul;
-      if (chance < 0) chance = 0;
-      if (chance > 1) chance = 1;
-    }
-    // 通过率 0 的 offer 不占选项位：职级不够时大厂（offerMinRankByPower[3]=3）会被硬置 0，
-    // 原先仍以「0%」挂在跳槽页上——玩家看着一整排进不去的公司，既挤掉稀缺选项位，
-    // 又误导「这家可以试」。返回 null 由调用方跳过（调用方已标记 usedCo，不会重复抽同一家）。
-    if (!(chance > 0)) return null;
-    return {
-      id: "ye-" + year + "-" + index + "-" + co.id + "-" + ((studio && studio.id) || "x"),
-      offerYear: year,
-      companyId: co.id,
-      studioId: studio && studio.id,
-      studioName: studio ? sim.worldLabel(studio, config) : "",
-      internal: !!internal,
-      roleId: roleId,
-      jobRank: rank,
-      minRank: minRank,
-      salary: salaryForMobilityOffer(st, co, salaryYear, config, roleId, rank),
-      currentSalary: (st.career && st.career.salary) || 0,
-      titleId: title && title.id,
-      titleName: title ? sim.worldLabel(title, config) : "",
-      successChance: chance,
-      successPct: Math.round(chance * 100),
-      skillFit: sim.careerSkillHireBonus(st, config, co, studio, title) > 0
-    };
-  }
-
-  sim.listYearEndOffers = function (state, config) {
-    var world = sim.careerWorld(config);
-    var spec = world.mobility || {};
-    var companies = world.companies || [];
-    var year = state.year;
-    var month = state.month;
-    var current = state.career && state.career.companyId;
-    var currentStudio = state.career && state.career.studioId;
-    var count = spec.offerCount != null ? spec.offerCount : 4;
-    var internalMax = spec.internalOfferMax != null ? spec.internalOfferMax : 2;
-    var salaryYear = year + (month === 12 ? 1 : 0);
-    var curCo = sim.careerCompany(current, config);
-    var out = [];
-    var usedCo = {};
-    var internals = [];
-    var pool, i, s, co, studio, hiring, roleId, offer;
-    // 准入（mobility.requireInDevTitle.offer）：当年月手上没有在研目录作的公司不进 offer 池——
-    // 进去就是空窗，过月被塞虚拟作。抽公司前先过滤，免得权重抽签白抽在死公司上。
-    var needsWork = requireInDevTitle(config, "offer");
-    if (current) usedCo[current] = true;
-    if (curCo) {
-      (sim.careerStudios(curCo) || []).forEach(function (row) {
-        if (row.id !== currentStudio) internals.push(row);
-      });
-    }
-    pool = internals.slice();
-    for (i = 0; i < internalMax && pool.length; i++) {
-      s = sim.pick(state, pool);
-      pool = pool.filter(function (x) { return x.id !== s.id; });
-      roleId = pickMobilityRole(state, config, "hop");
-      offer = makeHopOffer(state, config, curCo, s, roleId, year, month, salaryYear, true, out.length);
-      if (offer) out.push(offer);
-    }
-    hiring = companies.filter(function (c) {
-      if (usedCo[c.id] || !sim.companyJoinable(c, year)) return false;
-      if (needsWork && !sim.companyInDevCatalogTitle(c.id, state, config, null)) return false;
-      return true;
-    });
-    while (out.length < count) {
-      pool = hiring.filter(function (c) { return !usedCo[c.id]; });
-      if (!pool.length) break;
-      (function pickExternal() {
-        var weighted = pool.map(function (c) {
-          return { co: c, weight: skillHireWeight(state, config, c, null, null) * domesticBoostMul(state, c, config) };
-        });
-        var hit = sim.pickWeighted(state, weighted) || weighted[0];
-        co = hit.co;
-      })();
-      usedCo[co.id] = true;
-      studio = pickStudioForOffer(state, co, year, month, config);
-      roleId = pickMobilityRole(state, config, "hop");
-      offer = makeHopOffer(state, config, co, studio, roleId, year, month, salaryYear, false, out.length);
-      if (offer) out.push(offer);
-    }
-    if (((jobRankSpec(config).promotion || {}).yearEndSlot !== false) && sim.canPromoteCareer(state, config)) {
-      (function unshiftPromo() {
-        var view = sim.careerPromotionView(state, config);
-        var copyP = sim.careerCopy(config);
-        var nextSalary = (state.career && state.career.salary) || 0;
-        var savedRank;
-        var usesLine = sim.promotionUsesEventLine && sim.promotionUsesEventLine(state, config);
-        var promoRole = state.career && state.career.roleId;
-        if (sim.hasActiveExclusiveGroup && sim.hasActiveExclusiveGroup(state, "careerPath", config)) return;
-        if (sim.hasPendingCareerLine && sim.hasPendingCareerLine(state)) return;
-        if (curCo) {
-          savedRank = state.career.jobRank;
-          state.career.jobRank = view.nextRank;
-          nextSalary = sim.careerSalaryFor(curCo, salaryYear, config, state.career);
-          state.career.jobRank = savedRank;
-        }
-        if (usesLine) {
-          out.unshift({
-            id: "ye-promo-line-" + year,
-            kind: "promotionLine",
-            lineId: (sim.promotionEventLineDef(state, config) || {}).id,
-            offerYear: year,
-            companyId: current,
-            studioId: currentStudio,
-            internal: true,
-            roleId: promoRole,
-            jobRank: view.nextRank,
-            salary: nextSalary,
-            currentSalary: (state.career && state.career.salary) || 0,
-            successChance: 1,
-            successPct: 100,
-            titleName: (copyP.promoteYearEnd || "内部晋升") + " · " + (view.currentLabel || "") + " → " + (view.nextLabel || "")
-          });
-          return;
-        }
-        out.unshift({
-          id: "ye-promo-" + year,
-          kind: "promotion",
-          offerYear: year,
-          companyId: current,
-          studioId: currentStudio,
-          internal: true,
-          roleId: promoRole,
-          jobRank: view.nextRank,
-          salary: nextSalary,
-          currentSalary: (state.career && state.career.salary) || 0,
-          successChance: 1,
-          successPct: 100,
-          titleName: (copyP.promoteYearEnd || "内部晋升") + " · " + (view.currentLabel || "") + " → " + (view.nextLabel || "")
-        });
-      })();
-    }
-    if (out.length > count) out = out.slice(0, count);
-    return out;
-  };
-
-  sim.listCompanyStudioViews = function (state, config) {
-    var co = state && state.career ? sim.careerCompany(state.career.companyId, config) : null;
-    var studios = sim.careerStudios(co);
-    var mine = state.career && state.career.studioId;
-    var year = state.year;
-    var month = state.month;
-    return studios.map(function (s) {
-      var inDev = sim.titlesInDevAt(co.id, year, month, config, state, s.id);
-      var selling = (state.worldReleased || []).filter(function (g) {
-        return g.studioId === s.id;
-      });
-      var last = selling.length ? selling[selling.length - 1] : null;
-      return {
-        studio: s,
-        studioId: s.id,
-        mine: s.id === mine,
-        inDev: inDev,
-        inDevTitle: inDev[0] || null,
-        selling: last
-      };
-    });
-  };
-
-  sim.ensureYearEndOffers = function (st, config) {
-    if (!st.career) return st;
-    if (st.career.yearEndOffers && st.career.yearEndOffers.length) return st;
-    st.career.yearEndOffers = sim.listYearEndOffers(st, config);
-    st.career.offerYear = st.year;
-    return st;
-  };
-
-  sim.listCareerInvites = function (state, config) {
-    var world = sim.careerWorld(config);
-    var titles = world.titles || [];
-    var details = world.titleDetails || [];
-    var fame = (state.career && state.career.fame) || 0;
-    var now = sim.monthIndex(state.year, state.month);
-    var out = [];
-    var i, d, t, w, co;
-    for (i = 0; i < details.length; i++) {
-      d = details[i];
-      if (!d.inviteEligible || !d.inviteWindow) continue;
-      if (num(d.inviteMinFame, 0) > fame) continue;
-      w = d.inviteWindow;
-      if (now < sim.monthIndex(w.startYear, w.startMonth) || now > sim.monthIndex(w.endYear, w.endMonth)) continue;
-      if (state.career && state.career.titleId === d.id) continue;
-      t = sim.findById(titles, d.id);
-      if (!t) continue;
-      // 准入：邀约必须挂着"当月真在开发"的作（inviteWindow 本来就落在开发窗口内，
-      // 这里是硬约束，防止窗口与开发窗口改歪之后把人送进空窗）。
-      if (requireInDevTitle(config, "invite") && !sim.titleCoversMonth(t, d, state.year, state.month)) continue;
-      if (sim.careerTitleIsLate(t, d, state.year, state.month, config) && lateJoinSpec(config).inviteEligible !== true) continue;
-      if (state.career && t.companyId === state.career.companyId) continue;
-      co = sim.careerCompany(t.companyId, config);
-      if (!sim.companyJoinable(co, state.year)) continue;
-      (function pushInvite() {
-        var staffRoles = (d.inviteRoles && d.inviteRoles.length) ? d.inviteRoles.filter(function (rid) {
-          return PLAYABLE.indexOf(rid) >= 0;
-        }) : PLAYABLE.slice();
-        var roleId;
-        var rankNow = sim.careerJobRank(state.career, config);
-        var specR = jobRankSpec(config);
-        var offered = rankNow;
-        var salary;
-        var maxR = specR.max != null ? specR.max : 6;
-        var maxPer = (specR.promotion && specR.promotion.maxPerYear != null)
-          ? specR.promotion.maxPerYear
-          : num(specR.maxPromotionsPerYear, 1);
-        if (!staffRoles.length && !producerOfferUnlocked(state, config)) return;
-        roleId = pickMobilityRole(state, config, "invite", staffRoles);
-        if (specR.inviteCanRaiseRank && rankNow < maxR && num(state.career.promotionsThisYear, 0) < maxPer) {
-          if (sim.canPromoteCareer(state, config) || num(state.career.fame, 0) >= 8) offered = rankNow + 1;
-        }
-        salary = salaryForMobilityOffer(state, co, state.year, config, roleId, offered);
-        out.push({
-          id: "inv-" + d.id,
-          titleId: d.id,
-          companyId: t.companyId,
-          studioId: t.studioId || sim.defaultStudioId(co),
-          roleId: roleId,
-          jobRank: offered,
-          minFame: d.inviteMinFame,
-          salary: salary,
-          currentSalary: (state.career && state.career.salary) || 0,
-          titleName: sim.worldLabel(t, config)
-        });
-      })();
-    }
-    return out;
-  };
-
-  // 邀约按「年」掷骰：每年只掷一次，inviteChance 直接就是「这一年会不会有厂商来挖」的概率。
-  // 旧写法是每月独立掷一次（失败不消耗次数），12 次叠加后年内命中率 ≈ 99.8%，
-  // 等于每年必被挖一次；而邀约是必成的（acceptCareerInvite 不掷骰），
-  // 于是「进大厂」变成零门槛。现在改成年度单次判定，概率才可预期。
-  function rollInvitesThisMonth(st, config) {
-    var spec = sim.careerWorld(config).mobility || {};
-    var max = spec.inviteMaxPerYear != null ? spec.inviteMaxPerYear : 1;
-    var chance = spec.inviteChance;
-    var eligible, picked;
-    if (st.career.inviteYearStamp !== st.year) {
-      st.career.inviteYearStamp = st.year;
-      st.career.invitesRolledThisYear = 0;
-      if (chance == null) chance = 1;
-      st.career.inviteYearHit = sim.rand(st) < chance;
-    }
-    if (!st.career.inviteYearHit) return st.career.invites || [];
-    if (st.career.invitesRolledThisYear >= max) return st.career.invites || [];
-    eligible = sim.listCareerInvites(st, config);
-    if (!eligible.length) return st.career.invites || [];
-    (function pickInvite() {
-      var weighted = eligible.map(function (inv) {
-        var title = sim.careerTitle(inv.titleId, config, st);
-        var co = sim.careerCompany(inv.companyId, config);
-        var studio = sim.careerStudio(inv.companyId, inv.studioId, config);
-        return { inv: inv, weight: skillHireWeight(st, config, co, studio, title) * domesticBoostMul(st, co, config) };
-      });
-      var hit = sim.pickWeighted(st, weighted) || weighted[0];
-      picked = hit && hit.inv;
-    })();
-    if (!picked) return st.career.invites || [];
-    st.career.invitesRolledThisYear += 1;
-    st.career.invites = [picked];
-    return st.career.invites;
-  }
-
-  sim.applyYearEndOffer = function (state, offerId, config) {
-    var offer = null;
-    var st, spec, copy, chance;
-    if (!sim.isCareerMode(state)) return sim.fail(state, sim.ERR.CAREER_NOT_CAREER);
-    (state.career.yearEndOffers || []).forEach(function (o) {
-      if (o.id === offerId) offer = o;
-    });
-    if (!offer) return sim.fail(state, sim.ERR.CAREER_OFFER_NOT_FOUND);
-    if (offer.kind === "promotion") {
-      if (!sim.canPromoteCareer(state, config)) return sim.fail(state, sim.ERR.CAREER_PROMOTE_LOCKED);
-      st = sim.clone(state);
-      sim.ensureCareerExtras(st, config);
-      applyPromotion(st, config);
-      st.career.yearEndOffers = (st.career.yearEndOffers || []).filter(function (o) { return o.kind !== "promotion"; });
-      copy = sim.careerCopy(config);
-      return { ok: true, state: st, hopped: false, promoted: true, notice: copy.promoteOk || "晋升成功。" };
-    }
-    if (offer.kind === "promotionLine") {
-      if (!offer.lineId) return sim.fail(state, sim.ERR.CAREER_LINE_LOCKED);
-      st = sim.startCareerLine(state, offer.lineId, config);
-      if (!st.ok) return st;
-      st.state.career.yearEndOffers = (st.state.career.yearEndOffers || []).filter(function (o) {
-        return o.kind !== "promotionLine" && o.kind !== "promotion";
-      });
-      copy = sim.careerCopy(config);
-      return {
-        ok: true,
-        state: st.state,
-        hopped: false,
-        lineStarted: true,
-        queue: st.queue || [],
-        notice: copy.lineStarted || "晋升评审已开始。"
-      };
-    }
-    if (state.career && state.career.hopFailedYear === state.year) {
-      return sim.fail(state, sim.ERR.CAREER_HOP_WAIT);
-    }
-    if (!sim.canCareerHop(state, config)) {
-      return sim.fail(state, state.career.hopFailedYear === state.year ? sim.ERR.CAREER_HOP_WAIT : sim.ERR.CAREER_BUSY);
-    }
-    st = sim.clone(state);
-    sim.ensureCareerExtras(st, config);
-    copy = sim.careerCopy(config);
-    spec = sim.careerWorld(config).mobility || {};
-    chance = offer.successChance;
-    if (chance == null) {
-      chance = sim.careerHireChance(sim.careerCompany(offer.companyId, config), st, config, sim.careerStudio(offer.companyId, offer.studioId, config));
-    }
-    if (sim.rand(st) >= chance) {
-      st.career.hopFailedYear = st.year;
-      st.career.hopNotice = copy.hopFailNotice || "没通过，明年再试。";
-      return { ok: true, state: st, hopped: false, notice: st.career.hopNotice };
-    }
-    detachFromProject(st, config);
-    st.career.fame = (st.career.fame || 0) + num(spec.fameOnAccept, 0);
-    st.career.hopFailedYear = null;
-    joinCompany(st, offer.companyId, offer.roleId, offer.salary, offer.titleId, config, offer.studioId, "hop", offer.jobRank);
-    st.career.hopNotice = copy.hopOkNotice || "跳槽成功。";
-    return { ok: true, state: st, hopped: true, notice: st.career.hopNotice };
-  };
-
-  sim.acceptYearEndOffer = function (state, offerId, config) {
-    return sim.applyYearEndOffer(state, offerId, config);
-  };
-
-  sim.declineYearEndOffers = function (state, config) {
-    var st;
-    if (!sim.isCareerMode(state)) return sim.fail(state, sim.ERR.CAREER_NOT_CAREER);
-    st = sim.clone(state);
-    st.career.yearEndOffers = [];
-    return sim.ok(st);
-  };
-
-  sim.acceptCareerInvite = function (state, inviteId, config) {
-    var invite = null;
-    var st, spec, copy;
-    if (!sim.isCareerMode(state)) return sim.fail(state, sim.ERR.CAREER_NOT_CAREER);
-    (state.career.invites || []).forEach(function (o) {
-      if (o.id === inviteId) invite = o;
-    });
-    if (!invite) return sim.fail(state, sim.ERR.CAREER_INVITE_NOT_FOUND);
-    st = sim.clone(state);
-    sim.ensureCareerExtras(st);
-    spec = sim.careerWorld(config).mobility || {};
-    st.career.fame = (st.career.fame || 0) + num(spec.fameOnAccept, 0);
-    detachFromProject(st, config);
-    joinCompany(st, invite.companyId, invite.roleId, invite.salary, invite.titleId, config, invite.studioId, "invite", invite.jobRank);
-    copy = sim.careerCopy(config);
-    st.career.hopNotice = copy.inviteOkNotice || copy.hopOkNotice || "跳槽成功。";
-    return { ok: true, state: st, notice: st.career.hopNotice };
-  };
-
-  sim.counterCareerInvite = function (state, inviteId, config) {
-    var invite = null;
-    var st, spec;
-    if (!sim.isCareerMode(state)) return sim.fail(state, sim.ERR.CAREER_NOT_CAREER);
-    spec = sim.careerWorld(config).mobility || {};
-    if (spec.inviteCanCounter === false) return sim.fail(state, sim.ERR.CAREER_INVITE_NOT_FOUND);
-    (state.career.invites || []).forEach(function (o) {
-      if (o.id === inviteId) invite = o;
-    });
-    if (!invite) return sim.fail(state, sim.ERR.CAREER_INVITE_NOT_FOUND);
-    st = sim.clone(state);
-    st.career.salary = sim.careerSalaryStepUp(st.career.salary || 0, config, spec.counterSteps);
-    st.career.fame = (st.career.fame || 0) + num(spec.stayPromiseFame, 0);
-    st.career.invites = [];
-    return sim.ok(st);
-  };
-
-  sim.declineCareerInvite = function (state, inviteId, config) {
-    var st;
-    if (!sim.isCareerMode(state)) return sim.fail(state, sim.ERR.CAREER_NOT_CAREER);
-    st = sim.clone(state);
-    st.career.invites = (st.career.invites || []).filter(function (o) { return o.id !== inviteId; });
-    return sim.ok(st);
-  };
-
-  sim.careerYearReleases = function (year, config, st) {
-    var titles = sim.allCareerTitles(config, st);
-    var months = {};
-    var m;
-    for (m = 1; m <= 12; m++) months[m] = [];
-    titles.forEach(function (t) {
-      if (t.releaseYear === year) {
-        months[t.releaseMonth] = months[t.releaseMonth] || [];
-        months[t.releaseMonth].push(t);
-      }
-    });
-    return { year: year, months: months };
-  };
-
-  function hopOfferCount(config) {
-    var n = ((sim.careerWorld(config).mobility || {}).offerCount);
-    return n != null ? n : 4;
-  }
-
-  function hopOfferChoice(o, config) {
-    var copy = sim.careerCopy(config);
-    var co = sim.careerCompany(o.companyId, config);
-    var studio = sim.careerStudio(o.companyId, o.studioId, config);
-    var isPromo = o.kind === "promotion" || o.kind === "promotionLine";
-    var prefix = isPromo ? (copy.promoteYearEnd || "内部晋升") : (o.internal ? (copy.hopInternal || "内部调动") : "");
-    var companyName = co ? sim.worldLabel(co, config) : (o.companyId || "");
-    var studioName = studio ? sim.worldLabel(studio, config) : (o.studioName || "");
-    var title = companyName + (studioName ? (" / " + studioName) : "");
-    var pct = o.successPct != null ? o.successPct : Math.round((o.successChance || 0) * 100);
-    var rankLabel = sim.formatCareerRankLabel(o.roleId, o.jobRank, config) || "";
-    var metaBits = [];
-    var labelBits = [];
-    if (prefix) title = prefix + " · " + title;
-    if (o.salary != null) metaBits.push(String(o.salary));
-    if (rankLabel) metaBits.push(rankLabel);
-    if (title) labelBits.push(title);
-    if (metaBits.length) labelBits.push(metaBits.join(" · "));
-    labelBits.push(pct + "%");
-    return {
-      id: o.id,
-      label: labelBits.join(" · "),
-      hopView: {
-        title: title,
-        meta: metaBits.join(" · "),
-        pct: pct + "%"
-      }
-    };
-  }
-
-  function hopQueueItem(st, config) {
-    var copy = sim.careerCopy(config);
-    var offers = (st.career.yearEndOffers || []).slice(0, hopOfferCount(config));
-    var can = sim.canCareerHop(st, config);
-    return {
-      type: "hop",
-      kind: "event",
-      presentation: "choice",
-      kicker: copy.hopKicker || "年底跳槽",
-      title: copy.hopTitle || "全球 offer",
-      body: can ? (copy.hopBody || "") : (copy.hopLocked || "在研中途不能走。"),
-      offers: offers,
-      canHop: can,
-      options: offers.map(function (o) {
-        return hopOfferChoice(o, config);
-      }).concat([{ id: "stay", label: copy.hopStay || "先留下" }])
-    };
-  }
-
-  function inviteQueueItem(invite, config) {
-    var copy = sim.careerCopy(config);
-    var co = sim.careerCompany(invite.companyId, config);
-    var role = sim.careerRole(invite.roleId, config);
-    var seniorLine = sim.careerSeniorLine(co, config);
-    var rankLabel = invite.jobRank ? (sim.formatCareerRankLabel(invite.roleId, invite.jobRank, config) || ("职级 Lv." + invite.jobRank)) : "";
-    var spec = sim.careerWorld(config).mobility || {};
-    var options = [
-      { id: "accept", label: copy.inviteAccept || "跳槽加入" },
-      { id: "decline", label: copy.inviteDecline || "留下" }
-    ];
-    if (spec.inviteCanCounter === true) {
-      options.splice(1, 0, { id: "counter", label: copy.inviteCounter || "现公司还价" });
-    }
-    return {
-      type: "invite",
-      kind: "event",
-      presentation: "choice",
-      inviteId: invite.id,
-      kicker: copy.inviteKicker || "挖人",
-      title: copy.inviteTitle || "入职邀请",
-      body: (co ? sim.worldLabel(co, config) : invite.companyId) +
-        " 请你做" + (role ? sim.worldLabel(role, config) : "") +
-        (invite.titleName ? ("，进组《" + invite.titleName + "》") : "") +
-        (rankLabel ? ("，" + rankLabel) : "") +
-        "。现薪 " + invite.currentSalary + " / 新薪 " + invite.salary +
-        (seniorLine ? ("。" + seniorLine) : ""),
-      options: options
-    };
-  }
-
-  sim.tickCareerMonth = function (state, config) {
-    var st = sim.clone(state);
-    var notes = [];
-    var queue = [];
-    var copy = sim.careerCopy(config);
-    var world = sim.careerWorld(config);
-    var cal = world.timeline || {};
-    var eco = world.personalEconomy || {};
-    var mobility = world.mobility || {};
-    var hopMonth = mobility.hopMonth || 12;
-    var awardPack = null;
-    var awardStory = [];
-    var firedEvent = null;
-    var lineFired = 0;
-    var pay, living, co, view, projectView, phaseLabel, role, invites, supporting, titleNow, xpSpec, phaseMult;
-
-    sim.ensureCareerExtras(st, config);
-    if (st.career) st.career.inspirationMonth = false;
-    if (st.month === 1 && sim.applyPendingStoryPromos) {
-      sim.applyPendingStoryPromos(st, config);
-    }
-    if (st.career && st.career.companyId && !st.career.studioId) {
-      st.career.studioId = sim.defaultStudioId(sim.careerCompany(st.career.companyId, config));
-    }
-    supporting = !!sim.careerPostLaunch(st);
-    projectView = sim.careerProjectView(st, config);
-    view = projectView;
-    xpSpec = world.playerXp || {};
-    titleNow = st.career.titleId ? sim.careerTitle(st.career.titleId, config, st) : null;
-    if (sim.tickCareerGrind) {
-      sim.tickCareerGrind(st, config, !!st.career.liveStats && (supporting || !projectView.idle));
-    }
-    if (supporting && st.career.liveStats) {
-      grantPlayerTitleXp(st, titleNow, num(xpSpec.xpPerPostLaunchMonth, num(xpSpec.xpPerDevMonth, 0)));
-      grantMainStatAndXp(st, "support", config, titleNow);
-      role = sim.careerRole(st.career.roleId, config);
-      // 长线运营月不吃阶段权重（那是开发期的节奏），只吃体量阻尼。
-      applyMonthlyLiveContribution(st, config, sim.careerPowerContribMult(titleNow, config));
-      (function markSupported() {
-        var cred = findCredit(st, st.career.titleId);
-        if (cred) cred.supported = true;
-      })();
-      phaseLabel = projectView.phase ? sim.worldLabel(projectView.phase, config) : "";
-      if (phaseLabel) notes.push((copy.phasePrefix || "阶段") + " " + phaseLabel);
-    } else if (!projectView.idle && st.career.liveStats) {
-      role = sim.careerRole(st.career.roleId, config);
-      if (st.career.burnoutMonth) notes.push("倦怠：连轴转太久了，这个月状态只剩一半");
-      // 开发月的成长倍率：阶段权重（立项慢 / 填充·打磨快 / 金盘期 0）× 体量阻尼。
-      // 同一个倍率同时管「属性成长」「职级经验」「作品月贡献」，玩家才对得上「这个月干了多少活」。
-      phaseMult = sim.careerPhaseMult(projectView.phase && projectView.phase.id, config) *
-        sim.careerPowerContribMult(titleNow, config);
-      applyMonthlyLiveContribution(st, config, phaseMult);
-      rollInspirationMonth(st, config, notes);
-      grantPlayerTitleXp(st, titleNow, num(xpSpec.xpPerDevMonth, 0) * phaseMult);
-      grantMainStatAndXp(st, "dev", config, titleNow, phaseMult);
-      phaseLabel = projectView.phase ? sim.worldLabel(projectView.phase, config) : "";
-      if (phaseLabel) notes.push((copy.phasePrefix || "阶段") + " " + phaseLabel);
-    }
-
-    sim.shipWorldTitlesThisMonth(st, config);
-
-    if (st.career.titleId && !sim.careerPostLaunch(st)) {
-      view = sim.careerTitle(st.career.titleId, config, st);
-      if (view && view.releaseYear === st.year && view.releaseMonth === st.month) {
-        sim.shipPlayerTitle(st, config, notes, queue);
-      }
-    }
-
-    if (st.month === hopMonth && sim.markCareerLineYearEnd) {
-      sim.markCareerLineYearEnd(st);
-    }
-
-    if (sim.processCareerLines) {
-      lineFired = sim.processCareerLines(st, config, queue, notes) || 0;
-    }
-
-    if (!lineFired && supporting && st.career.liveStats) {
-      firedEvent = sim.rollPostLaunchEvent(st, config, notes);
-      if (firedEvent) {
-        queue.push(careerEventQueueItem(firedEvent, copy));
-      }
-    } else if (!lineFired && !projectView.idle && st.career.liveStats && !sim.careerPostLaunch(st)) {
-      firedEvent = sim.rollCareerDevEvent(st, config, notes);
-      if (firedEvent) {
-        queue.push(careerEventQueueItem(firedEvent, copy));
-      }
-    }
-
-    pay = st.career.salary || 0;
-    st.career.lastPay = pay;
-    st.career.savings = (st.career.savings || 0) + pay;
-    // ⚠️ 钱在生涯档目前没有出口：deductLivingCost=false，savings 只喂 UI 与结算页，
-    // savingsGate 也没有消费方。要打开这个开关，先让「钱能买到什么」成立，否则只是数字变化；
-    // 在那之前不要给天赋写 livingCostMult（守卫测试 careerTraitsStayOnLiveKeys 会拦）。
-    if (eco.deductLivingCost) {
-      living = sim.careerLivingCost(st.year, config) *
-        sim.careerTraitMult(st, "livingCostMult", config, 1);
-      st.career.savings -= living;
-    }
-    st.company.funds = st.career.savings;
-
-    if (st.phase === "PLAYING") {
-      st.career.monthsInRank = num(st.career.monthsInRank, 0) + (st.career.companyId ? 1 : 0);
-      if (sim.tickCareerBonds) sim.tickCareerBonds(st, config);
-    }
-
-    if (st.phase === "PLAYING" && st.month === (config.awards.month || 11)) {
-      awardPack = sim.runCareerAwards(st, config, notes);
-      if (sim.collectCareerAwardStory) {
-        awardStory = sim.collectCareerAwardStory(st, config, awardPack);
-      }
-    }
-
-    invites = rollInvitesThisMonth(st, config);
-    if (invites && invites.length) {
-      queue.push(inviteQueueItem(invites[0], config));
-    }
-
-    if (st.month === hopMonth) {
-      st.career.yearEndOffers = sim.listYearEndOffers(st, config);
-      st.career.offerYear = st.year;
-      if (!supporting && st.career.yearEndOffers.length) queue.push(hopQueueItem(st, config));
-    }
-
-    st.month += 1;
-    if (st.month > 12) {
-      st.month = 1;
-      st.year += 1;
-      st.career.promotionsThisYear = 0;
-      co = sim.careerCompany(st.career.companyId, config);
-      if (co) st.career.salary = sim.careerSalaryFor(co, st.year, config, st.career);
-    }
-
-    if (st.month === hopMonth) {
-      st.career.yearEndOffers = sim.listYearEndOffers(st, config);
-      st.career.offerYear = st.year;
-    } else if (mobility.allowMidProject && st.phase === "PLAYING" && st.career.companyId) {
-      sim.ensureYearEndOffers(st, config);
-    }
-
-    if (supporting && st.career.postLaunch) {
-      st.career.postLaunch.monthsLeft = num(st.career.postLaunch.monthsLeft, 0) - 1;
-      if (num(st.career.postLaunch.monthsLeft, 0) <= 0) {
-        persistProjectLive(st, config);
-        st.career.postLaunch = null;
-        st.career.titleId = null;
-        st.career.liveStats = null;
-      }
-    }
-    if (!sim.careerPostLaunch(st) && !st.career.titleId) st.career.idleMonths = num(st.career.idleMonths, 0) + 1;
-    sim.assignCareerProject(st, config, queue);
-    sim.ensureCareerColleagues(st, config);
-
-    if (st.phase === "PLAYING" && (st.year > cal.endYear || (st.year === cal.endYear && st.month > cal.endMonth))) {
-      st.phase = "SETTLED";
-    }
-
-    if (awardPack) {
-      queue.push({
-        type: "awards",
-        kind: "event",
-        year: st.year,
-        kicker: sim.fillAwardYear
-          ? sim.fillAwardYear(copy.awardNightKicker, st.year, st.year + "年度盛典")
-          : (copy.awardKicker || "年度盛典"),
-        title: sim.fillAwardYear
-          ? sim.fillAwardYear(copy.awardNightTitle, st.year, st.year + "颁奖夜")
-          : (copy.awardTitle || "颁奖夜"),
-        body: copy.awardBody || "",
-        awards: awardPack
-      });
-      // 剧情页排在颁奖夜之后：先看滚幕揭晓，再读这一段。
-      awardStory.forEach(function (p) { queue.push(p); });
-    }
-    return { state: st, queue: queue };
-  };
-
-  function careerPaceSpec(config) {
-    return (sim.careerWorld(config).careerPace) || {};
-  }
-
-  function awardsInvolvePlayer(pack) {
-    return (pack || []).some(function (a) {
-      return !!(a && (a.playerWon || a.playerNominated));
-    });
-  }
-
   function fillPaceTemplate(tpl, map) {
     var out = String(tpl || "");
     Object.keys(map || {}).forEach(function (k) {
@@ -5461,86 +3515,58 @@
     return year + "." + (month < 10 ? "0" : "") + month;
   }
 
-  sim.careerQueueNeedsDecision = function (queue, config) {
-    var pace = careerPaceSpec(config);
-    var stopTypes = pace.stopOnTypes || [
-      "invite", "hop", "promotion", "media", "producerPitch", "careerLine", "careerLineFork"
-    ];
-    var stopOnChoice = pace.stopOnChoice !== false;
-    var stopOnPlayerAwards = pace.stopOnPlayerAwards !== false;
-    var i;
-    var page;
-    for (i = 0; i < (queue || []).length; i++) {
-      page = queue[i];
-      if (!page) continue;
-      if (stopOnChoice && page.presentation === "choice") return true;
-      if (page.type === "awards") {
-        if (stopOnPlayerAwards && awardsInvolvePlayer(page.awards)) return true;
-        continue;
-      }
-      if (stopTypes.indexOf(page.type) >= 0) return true;
-    }
-    return false;
-  };
 
-  sim.tickCareerToDecision = function (state, config) {
-    var pace;
-    var maxSkip;
-    var summaryMin;
-    var fromY;
-    var fromM;
-    var skipped;
-    var st;
-    var last;
-    var queue;
-    var copy;
-    var summary;
-    var toY;
-    var toM;
-    if (!state || state.mode !== "career") {
-      return sim.tickMonth(state, config);
-    }
-    pace = careerPaceSpec(config);
-    maxSkip = num(pace.maxSkipMonths, 12);
-    if (maxSkip < 1) maxSkip = 1;
-    summaryMin = num(pace.summaryMinSkipped, 2);
-    if (summaryMin < 1) summaryMin = 1;
-    fromY = state.year;
-    fromM = state.month;
-    skipped = 0;
-    st = state;
-    last = null;
-    while (st.phase === "PLAYING") {
-      last = sim.tickCareerMonth(st, config);
-      st = last.state;
-      skipped += 1;
-      if (st.phase !== "PLAYING") break;
-      if (sim.careerQueueNeedsDecision(last.queue, config)) break;
-      if (skipped >= maxSkip) break;
-    }
-    queue = (last && last.queue) ? last.queue.slice() : [];
-    toY = st.year;
-    toM = st.month;
-    if (skipped >= summaryMin) {
-      copy = sim.careerCopy(config);
-      summary = {
-        type: "paceSkip",
-        kind: "info",
-        kicker: copy.paceSkipKicker || "时间飞逝",
-        title: fillPaceTemplate(copy.paceSkipTitle || "推进了 {months} 个月", { months: skipped }),
-        body: fillPaceTemplate(
-          copy.paceSkipBody || "{from} → {to}。途中没有需要你当场决定的事。",
-          { from: dateLabel(fromY, fromM), to: dateLabel(toY, toM), months: skipped }
-        )
-      };
-      queue = [summary].concat(queue);
-    }
-    return {
-      state: st,
-      queue: queue,
-      skippedMonths: skipped,
-      from: { year: fromY, month: fromM },
-      to: { year: toY, month: toM }
-    };
-  };
+  // ── 共享基座 sim._（供拆分出去的域文件取用，勿在别处重复定义）──
+  sim._ = sim._ || {};
+  (function exposeShared() {
+    var _ = sim._;
+    if (typeof num !== 'undefined') _.num = num;
+    if (typeof isArr !== 'undefined') _.isArr = isArr;
+    if (typeof cloneStats !== 'undefined') _.cloneStats = cloneStats;
+    if (typeof DIMS !== 'undefined') _.DIMS = DIMS;
+    if (typeof PLAYABLE !== 'undefined') _.PLAYABLE = PLAYABLE;
+    if (typeof clampJobRank !== 'undefined') _.clampJobRank = clampJobRank;
+    if (typeof jobRankSpec !== 'undefined') _.jobRankSpec = jobRankSpec;
+    if (typeof rankTableVal !== 'undefined') _.rankTableVal = rankTableVal;
+    if (typeof mainStatValue !== 'undefined') _.mainStatValue = mainStatValue;
+    if (typeof findCredit !== 'undefined') _.findCredit = findCredit;
+    if (typeof creditIsSigned !== 'undefined') _.creditIsSigned = creditIsSigned;
+    if (typeof cloneXpMap !== 'undefined') _.cloneXpMap = cloneXpMap;
+    if (typeof mergeXpMap !== 'undefined') _.mergeXpMap = mergeXpMap;
+    if (typeof scoreFromLiveSpec !== 'undefined') _.scoreFromLiveSpec = scoreFromLiveSpec;
+    if (typeof idleGapSpec !== 'undefined') _.idleGapSpec = idleGapSpec;
+    if (typeof virtualList !== 'undefined') _.virtualList = virtualList;
+    if (typeof careerTraits !== 'undefined') _.careerTraits = careerTraits;
+    if (typeof findWorldReleased !== 'undefined') _.findWorldReleased = findWorldReleased;
+    if (typeof attrRefOf !== 'undefined') _.attrRefOf = attrRefOf;
+    if (typeof tableMult !== 'undefined') _.tableMult = tableMult;
+    if (typeof requireInDevTitle !== 'undefined') _.requireInDevTitle = requireInDevTitle;
+    if (typeof scaleQualityAmount !== 'undefined') _.scaleQualityAmount = scaleQualityAmount;
+    if (typeof promotionReq !== 'undefined') _.promotionReq = promotionReq;
+    if (typeof promotionGaps !== 'undefined') _.promotionGaps = promotionGaps;
+    if (typeof fillPaceTemplate !== 'undefined') _.fillPaceTemplate = fillPaceTemplate;
+    if (typeof dateLabel !== 'undefined') _.dateLabel = dateLabel;
+    if (typeof applyPromotion !== 'undefined') _.applyPromotion = applyPromotion;
+    if (typeof detachFromProject !== 'undefined') _.detachFromProject = detachFromProject;
+    if (typeof joinCompany !== 'undefined') _.joinCompany = joinCompany;
+    if (typeof closeTenure !== 'undefined') _.closeTenure = closeTenure;
+    if (typeof lateJoinSpec !== 'undefined') _.lateJoinSpec = lateJoinSpec;
+    if (typeof producerOfferUnlocked !== 'undefined') _.producerOfferUnlocked = producerOfferUnlocked;
+    if (typeof domesticBoostMul !== 'undefined') _.domesticBoostMul = domesticBoostMul;
+    if (typeof skillHireSpec !== 'undefined') _.skillHireSpec = skillHireSpec;
+    if (typeof skillHireWeight !== 'undefined') _.skillHireWeight = skillHireWeight;
+    if (typeof pickMobilityRole !== 'undefined') _.pickMobilityRole = pickMobilityRole;
+    if (typeof bondHomeCompanyId !== 'undefined') _.bondHomeCompanyId = bondHomeCompanyId;
+    if (typeof bondRoleForLine !== 'undefined') _.bondRoleForLine = bondRoleForLine;
+    if (typeof peerEpicPool !== 'undefined') _.peerEpicPool = peerEpicPool;
+    if (typeof pickReturnInviteTarget !== 'undefined') _.pickReturnInviteTarget = pickReturnInviteTarget;
+    if (typeof canStartCareerVirtual !== 'undefined') _.canStartCareerVirtual = canStartCareerVirtual;
+    if (typeof virtualMinDevMonths !== 'undefined') _.virtualMinDevMonths = virtualMinDevMonths;
+    if (typeof liveFromTitle !== 'undefined') _.liveFromTitle = liveFromTitle;
+    if (typeof pushWorldReleased !== 'undefined') _.pushWorldReleased = pushWorldReleased;
+    if (typeof grantMainStatAndXp !== 'undefined') _.grantMainStatAndXp = grantMainStatAndXp;
+    if (typeof persistProjectLive !== 'undefined') _.persistProjectLive = persistProjectLive;
+    if (typeof grantPlayerTitleXp !== 'undefined') _.grantPlayerTitleXp = grantPlayerTitleXp;
+  })();
+
 })(typeof globalThis !== "undefined" ? globalThis : this);

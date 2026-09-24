@@ -83,6 +83,89 @@
     return { rows: rows, avg: avg, quote: (rows[0] && rows[0].quote) || sim.pick(st, quotes) };
   }
 
+  // 把「分数 → 评语档位」单独公开出来：过渡项目评语（career.js::titlePoolNote）和
+  // 媒体评语必须用同一套档位（release.media 的 topScore/highScore/lowScore），
+  // 各写一份迟早会分叉。
+  sim.mediaQuoteBand = function (score, config) {
+    var media = ((config && config.release) || {}).media || {};
+    return quoteBand(num(score, 0), media);
+  };
+
+
+  // ── P6b 离奖信号：发售评语旁的一行「离奖距离」（纯文案，不改评分机制）──
+  sim.mediaAwardHint = function (score, config) {
+    var copy = sim.careerCopy(config);
+    var bands = (config.awards || {}).awardHintBands || [
+      { min: 8.5, tpl: copy.awardHintHigh || "颁奖夜的请柬已经在路上了。" },
+      { min: 7.5, tpl: copy.awardHintMid || "提名名单有戏，稳住。" },
+      { min: 6, tpl: copy.awardHintLow || "离奖还差一口气。" }
+    ];
+    for (var i = 0; i < bands.length; i++) {
+      if (num(score, -1) >= num(bands[i].min, 0)) return bands[i].tpl;
+    }
+    return null;
+  };
+
+
+  // ── P6c 销量具象化 + P6b 合并入口：发售揭晓页的两行风味（纯读，不改数值链路）──
+  // 数据只读 rec.lifetimeSales → rec.launchSales（都缺则相应行不出现）。
+  sim.mediaRevealFlavor = function (rec, st, config) {
+    var copy, lines = [], hint, mySales, rows, i, recY, recM, recIdx, best, bestScore, t, xs, ridx, tiers;
+    if (!rec) return lines;
+    copy = sim.careerCopy(config);
+    // ① 离奖信号
+    if (rec.score != null) {
+      hint = sim.mediaAwardHint(rec.score, config);
+      if (hint) lines.push(hint);
+    }
+    // ② 销量具象化
+    mySales = num(rec.lifetimeSales != null ? rec.lifetimeSales : rec.launchSales, null);
+    if (mySales != null && st) {
+      // 名次优先于绝对数字：首月榜前 10 才提
+      rows = sim.monthlySalesRanking ? sim.monthlySalesRanking(st, config) : [];
+      for (i = 0; i < rows.length; i++) {
+        if (rows[i] && rows[i].titleId === rec.titleId && num(rows[i].rank, 99) <= 10) {
+          lines.push((copy.chartRankTpl || "首月榜第 {rank} 名。").replace("{rank}", String(rows[i].rank)));
+          break;
+        }
+      }
+      // 对标同期 landmark（±18 个月内、销量被超过的最高分地标作）；没有再落月活生活化
+      recY = rec.releasedYear != null ? rec.releasedYear : rec.releaseYear;
+      recM = rec.releasedMonth != null ? rec.releasedMonth : rec.releaseMonth;
+      recIdx = (recY != null && recM != null) ? sim.monthIndex(recY, recM) : null;
+      best = null;
+      bestScore = -1;
+      (st.worldReleased || []).forEach(function (x) {
+        var t, xY, xM, xi, s2;
+        if (!x || x.titleId === rec.titleId) return;
+        t = sim.findById(sim.careerWorld(config).titles || [], x.titleId);
+        if (!t || !t.landmark) return;
+        xY = x.releasedYear != null ? x.releasedYear : x.releaseYear;
+        xM = x.releasedMonth != null ? x.releasedMonth : x.releaseMonth;
+        if (recIdx == null || xY == null || xM == null) return;
+        xi = sim.monthIndex(xY, xM);
+        if (Math.abs(xi - recIdx) > 18) return;
+        s2 = num(x.lifetimeSales != null ? x.lifetimeSales : x.launchSales, null);
+        if (s2 == null || s2 >= mySales) return;
+        if (num(t.score, 0) > bestScore) { bestScore = num(t.score, 0); best = t; }
+      });
+      if (best) {
+        lines.push((copy.beatLandmarkTpl || "首月销量超过了同期的《{title}》。")
+          .replace("{title}", best.name || best.alias || best.id));
+      } else {
+        tiers = copy.salesLifeTiers || [
+          { min: 3000000, tpl: "网吧里一半屏幕都是它。" },
+          { min: 1000000, tpl: "论坛上到处是通关截图。" },
+          { min: 300000, tpl: "朋友圈里开始有人安利。" }
+        ];
+        for (i = 0; i < tiers.length; i++) {
+          if (mySales >= num(tiers[i].min, 0)) { lines.push(tiers[i].tpl); break; }
+        }
+      }
+    }
+    return lines.slice(0, 2);
+  };
+
   sim.scoreMedia = function (st, stats, team, config, producerId) {
     var floor = 0;
     var leadId = producerId || (team[0] && team[0].id);

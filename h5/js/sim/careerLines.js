@@ -246,13 +246,18 @@
     return st && st.career && st.career.bonds ? st.career.bonds[role] : null;
   }
 
-  function bondDisplayName(st, role) {
-    var b = bondRecord(st, role);
+  function bondDisplayName(st, role, config) {
+    var b = bondRecord(st, role), cast;
     if (!b) return "";
+    // 人物姓名实时走 cast 双模式（bond 里存的 name/alias 只作回落，切模式后老档也跟着变）。
     if (role === "junior") {
-      if (b.revealed && b.aliasNow) return b.aliasNow;
-      return b.aliasThen || b.aliasNow || "";
+      if (!b.revealed) return b.aliasThen || b.aliasNow || "";
+      cast = b.revealSeniorId && sim.castFind ? sim.castFind(b.revealSeniorId, config) : null;
+      if (cast) return sim.castName(cast, config);
+      return b.aliasNow || b.aliasThen || "";
     }
+    cast = b.seniorId && sim.castFind ? sim.castFind(b.seniorId, config) : null;
+    if (cast) return sim.castName(cast, config);
     return b.alias || b.name || "";
   }
 
@@ -263,7 +268,7 @@
     if (beat.speakerBond) {
       bond = bondRecord(st, beat.speakerBond);
       if (beat.speakerBond === "junior" && bond) {
-        return bondDisplayName(st, "junior");
+        return bondDisplayName(st, "junior", config);
       }
       if (bond && (bond.alias || bond.name)) {
         return (bond.alias || bond.name) + (bond.title ? (" · " + bond.title) : "");
@@ -318,9 +323,9 @@
     text = text.replace(/\{currentLabel\}/g, view.currentLabel || "");
     text = text.replace(/\{nextLabel\}/g, view.nextLabel || "");
     text = text.replace(/\{name\}/g, (st.career && st.career.characterName) || "");
-    text = text.replace(/\{mentorName\}/g, bondDisplayName(st, "mentor"));
-    text = text.replace(/\{peerName\}/g, bondDisplayName(st, "peer"));
-    text = text.replace(/\{juniorName\}/g, bondDisplayName(st, "junior"));
+    text = text.replace(/\{mentorName\}/g, bondDisplayName(st, "mentor", config));
+    text = text.replace(/\{peerName\}/g, bondDisplayName(st, "peer", config));
+    text = text.replace(/\{juniorName\}/g, bondDisplayName(st, "junior", config));
     mentor = bondRecord(st, "mentor");
     succ = mentor && mentor.successorCompanyId ? sim.careerCompany(mentor.successorCompanyId, config) : null;
     text = text.replace(/\{successorCompany\}/g, succ ? sim.worldLabel(succ, config) : "");
@@ -469,7 +474,7 @@
             if (!sim.companyJoinable(co, st.year)) continue;
             if (sim.mobilityRequireInDevTitle && sim.mobilityRequireInDevTitle(config, "scripted")) {
               // 只认当月正在开发的史诗作（与 sim.pickPeerEpicTarget 同规则）。
-              if (!sim.titleCoversMonth(t, sim.careerTitleDetail(t.id, config, st), st.year, st.month)) continue;
+              if (!sim.titleCoversMonth(t, sim.careerTitleDetail(t.id, config, st), st.year, st.month, config)) continue;
             } else if (t.releaseYear != null && t.releaseYear < st.year) {
               continue;
             }
@@ -605,7 +610,8 @@
       opts = (beat.options || []).filter(function (o) {
         return optionVisible(st, def, o, config);
       }).map(function (o) {
-        return { id: o.id, label: fillBody(o.label, st, config) };
+        // P4a：req 随选项带给渲染层（置灰判断）与 dispatch（兜底拒绝）。
+        return { id: o.id, label: fillBody(o.label, st, config), req: o.req || null };
       });
     }
     return {
@@ -650,6 +656,19 @@
     var dims, k, f, role, dim, story;
     if (!effects) return;
     if (effects.fame) st.career.fame = num(st.career.fame, 0) + num(effects.fame, 0);
+    if (effects.health) sim.applyCareerHealthDelta(st, num(effects.health, 0), config);
+    if (effects.cheer && queue) {
+      // P6d 人物线正反馈拍：拍文案之外的一行「被看见」，随拍页队列呈现（≤2 行）。
+      queue.push({
+        type: "cheer",
+        kind: "event",
+        presentation: "notice",
+        lineId: effects.cheerLineId || null,
+        kicker: "人物线",
+        title: "被看见的一刻",
+        body: effects.cheer
+      });
+    }
     if (effects.honor) st.career.honor = num(st.career.honor, 0) + num(effects.honor, 0);
     if (effects.jobXp) st.career.jobXp = num(st.career.jobXp, 0) + num(effects.jobXp, 0);
     if (effects.mainStat) {
@@ -714,6 +733,16 @@
     }
     if (effects.kickOut && sim.kickOutOfCareerCompany) {
       sim.kickOutOfCareerCompany(st, config);
+    }
+    // Project cancelled: drop the current title, player stays employed;
+    // assignCareerProject refills the gap at the end of the month tick.
+    if (effects.dropProject && st.career) {
+      st.career.titleId = null;
+      st.career.liveStats = null;
+      st.career.cancelledCount = num(st.career.cancelledCount, 0) + 1;
+      if (!st.career.idleGap) st.career.idleGap = {};
+      st.career.idleGap.prompted = true;
+      st.career.idleGap.settled = true;
     }
     if (effects.revealJunior && sim.revealCareerJunior) {
       sim.revealCareerJunior(st, config);
@@ -952,7 +981,7 @@
       title: fork.title || "下一段怎么走？",
       body: fork.body || "",
       options: (fork.options || []).map(function (o) {
-        return { id: o.id, label: o.label };
+        return { id: o.id, label: o.label, req: o.req || null };
       })
     };
   }
@@ -1039,8 +1068,22 @@
     return true;
   }
 
+  // One bad year per career: a downbeat line never opens once any line of the same
+  // group has already been lived through (exclusiveGroup only blocks simultaneous runs).
+  function groupHasDone(st, group, config) {
+    var lines = (st && st.career && st.career.lines) || {};
+    var id;
+    for (id in lines) {
+      if (!Object.prototype.hasOwnProperty.call(lines, id)) continue;
+      if (!lines[id] || lines[id].status !== "done") continue;
+      if (lineGroup(findLineDef(config, id)) === group) return true;
+    }
+    return false;
+  }
+
   function startWhenMet(st, def, config) {
     var when = def.startWhen || {};
+    if (when.noGroupDone && groupHasDone(st, when.noGroupDone, config)) return false;
     var i, any;
     if (when.anyOf && when.anyOf.length) {
       any = false;
@@ -1055,8 +1098,9 @@
     return whenClauseMet(st, when, config);
   }
 
+  // downbeat = the three losing arcs (project cancelled / crunch collapse / a flop).
   function optionalLineKind(def) {
-    return def && (def.kind === "bond" || def.kind === "epic" || def.kind === "era");
+    return def && (def.kind === "bond" || def.kind === "epic" || def.kind === "era" || def.kind === "downbeat");
   }
 
   function canStartOptionalLine(st, def, config) {
@@ -1144,17 +1188,22 @@
     return fired;
   }
 
-  function tryStartOptionalLines(st, config, queue, notes, budget) {
+  // wantBond: true = bond lines only, false = exclude bond lines, undefined = no filter.
+  function tryStartOptionalLines(st, config, queue, notes, budget, wantBond) {
     var spec = eventLinesSpec(config);
     var maxNew = num(spec.maxNewLinesPerMonth, 1);
     var list = lineDefs(config);
     var eligible = [];
     var fired = 0;
     var started = 0;
-    var i, def;
+    var i, def, isBond;
     if (budget <= 0) return 0;
     for (i = 0; i < list.length; i++) {
       def = list[i];
+      if (wantBond !== undefined) {
+        isBond = def.kind === "bond";
+        if (wantBond ? !isBond : isBond) continue;
+      }
       if (canStartOptionalLine(st, def, config)) eligible.push({ def: def });
     }
     eligible.sort(compareLinePri);
@@ -1236,17 +1285,20 @@
   sim.processCareerLines = function (st, config, queue, notes) {
     var spec = eventLinesSpec(config);
     var maxPer = num(spec.maxBeatsPerMonth, 1);
+    // Bond lines run on their own monthly budget, else career/promo beats starve them
+    // (their priority is only 6/5/4). 0 keeps the legacy single-lane behaviour.
+    var maxBond = num(spec.bondBeatsPerMonth, 0);
     var fired = 0;
-    var ready = [];
-    var ids, i, def, prog, beats;
+    var bondFired = 0;
+    var readyMain = [];
+    var readyBond = [];
+    var ids, i, def, prog, beats, slot;
 
     if (!st.career) return 0;
     if (sim.hasPendingCareerLine(st)) return 0;
 
     fired += tryFireMerger(st, config, queue, notes);
-    if (fired >= maxPer) return fired;
-    fired += tryFireRemoteBeats(st, config, queue, notes, maxPer - fired);
-    if (fired >= maxPer) return fired;
+    fired += tryFireRemoteBeats(st, config, queue, notes, Math.max(0, maxPer - fired));
 
     ids = sim.activeCareerLineIds(st);
     for (i = 0; i < ids.length; i++) {
@@ -1258,20 +1310,30 @@
       if (prog.status !== "active" || prog.pending) continue;
       beats = def.beats || [];
       if (prog.beat < beats.length && beatWaitReady(st, prog, beats[prog.beat], config)) {
-        ready.push({ def: def, prog: prog });
+        slot = { def: def, prog: prog };
+        if (def.kind === "bond" && maxBond > 0) readyBond.push(slot);
+        else readyMain.push(slot);
       }
     }
-    ready.sort(compareLinePri);
-    for (i = 0; i < ready.length && fired < maxPer; i++) {
-      fired += fireBeat(st, ready[i].def, ready[i].prog.beat, config, queue, notes);
+    readyMain.sort(compareLinePri);
+    for (i = 0; i < readyMain.length && fired < maxPer; i++) {
+      fired += fireBeat(st, readyMain[i].def, readyMain[i].prog.beat, config, queue, notes);
     }
-    if (fired >= maxPer) return fired;
-    fired += tryStartPendingMentorProducer(st, config, queue, notes);
-    if (fired >= maxPer) return fired;
-    fired += tryStartCareerPath(st, config, queue, notes);
-    if (fired >= maxPer) return fired;
-    fired += tryStartOptionalLines(st, config, queue, notes, maxPer - fired);
-    return fired;
+    if (maxBond > 0) {
+      readyBond.sort(compareLinePri);
+      for (i = 0; i < readyBond.length && bondFired < maxBond; i++) {
+        bondFired += fireBeat(st, readyBond[i].def, readyBond[i].prog.beat, config, queue, notes);
+      }
+    }
+    if (fired < maxPer) fired += tryStartPendingMentorProducer(st, config, queue, notes);
+    if (fired < maxPer) fired += tryStartCareerPath(st, config, queue, notes);
+    if (fired < maxPer) {
+      fired += tryStartOptionalLines(st, config, queue, notes, maxPer - fired, maxBond > 0 ? false : undefined);
+    }
+    if (maxBond > 0 && bondFired < maxBond) {
+      bondFired += tryStartOptionalLines(st, config, queue, notes, maxBond - bondFired, true);
+    }
+    return fired + bondFired;
   };
 
   sim.requestCareerPromotion = function (state, config) {

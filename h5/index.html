@@ -72,15 +72,12 @@
             <b class="kpi-val date" id="hq-date">—</b>
           </div>
           <div class="kpi">
-            <span class="kpi-lab" id="hq-funds-lab">积蓄</span>
-            <span class="kpi-val-row">
-              <b class="kpi-val funds" id="hq-funds">—</b>
-              <span class="pay-delta career-only" id="hq-pay-delta" hidden></span>
-            </span>
-          </div>
-          <div class="kpi">
             <span class="kpi-lab" id="hq-fans-lab">声望</span>
             <b class="kpi-val fans" id="hq-fans">—</b>
+          </div>
+          <div class="kpi career-only">
+            <span class="kpi-lab" id="hq-health-lab">健康</span>
+            <div class="health-pips" id="hq-health"><i></i><i></i><i></i><i></i><i></i></div>
           </div>
         </div>
         <div class="top-sub">
@@ -213,7 +210,6 @@
             <div class="stat"><b id="end-series">—</b><span id="end-series-label">最后东家</span></div>
           </div>
           <div class="row item"><span id="end-avg-label">荣誉</span><b id="end-avg">—</b></div>
-          <div class="row item"><span id="end-sales-label">积蓄</span><b id="end-sales">—</b></div>
           <p class="hint">只在页里看，不发到微信/微博。可以再开一局。</p>
           <button type="button" class="btn wide mt-12" id="btn-again1">再开一局</button>
         </div>
@@ -238,8 +234,7 @@
           <button data-sheet="intel" id="btn-sheet-intel">情报</button>
         </div>
         <div class="dock-ticks" id="dock-ticks">
-          <button class="dock-tick dock-tick-month" id="btn-tick" type="button">下一月</button>
-          <button class="dock-tick dock-tick-skip career-only" id="btn-tick-skip" type="button">推进到抉择</button>
+          <button class="dock-tick dock-tick-month" id="btn-tick" type="button">继续</button>
         </div>
       </div>
     </div>
@@ -268,10 +263,18 @@
   <script src="js/sim/media.js"></script>
   <script src="js/sim/awards.js"></script>
   <script src="js/sim/career.js"></script>
+  <script src="js/sim/career-colleagues.js"></script>
+  <script src="js/sim/career-awards.js"></script>
+  <script src="js/sim/career-events.js"></script>
+  <script src="js/sim/career-mobility.js"></script>
+  <script src="js/sim/career-bonds.js"></script>
+  <script src="js/sim/career-world-sim.js"></script>
+  <script src="js/sim/career-pace.js"></script>
   <script src="js/sim/careerLines.js"></script>
   <script src="js/sim/tick.js"></script>
   <script src="js/sim/actions.js"></script>
   <script src="js/bridge/colorbox.js"></script>
+  <script src="js/bridge/local.js"></script>
   <script src="js/save/port.js"></script>
   <script src="js/ui/dom.js"></script>
   <script src="js/ui/reveal.js"></script>

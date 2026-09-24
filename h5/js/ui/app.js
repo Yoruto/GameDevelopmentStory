@@ -36,7 +36,7 @@
     ui.session.statSnap = {
       titleId: state.career.titleId || null,
       // liveStats 是作品维，career.stats 是人物维——两套键不能共用一个循环。
-      live: live ? sim.cloneTitleStats(live, GDS.CONFIG) : null,
+      live: live ? sim.cloneTitleStats(live, cfg()) : null,
       self: self ? {
         program: self.program,
         design: self.design,
@@ -82,33 +82,78 @@
     live = state.career.liveStats;
     if (snap.live && live && snap.titleId && snap.titleId === state.career.titleId) {
       ["p", "d", "a", "m"].forEach(function (suffix, i) {
-        var d = sim.titleDims(GDS.CONFIG)[i];
+        var d = sim.titleDims(cfg())[i];
         ui.flashStatDelta("hq-live-" + suffix, snap.live[d], live[d]);
       });
     }
   };
 
   ui.finishTickUi = function () {
+    var dateEl, fromText, reduced, beat;
     ui.closeDlg();
-    ui.$("btn-tick").disabled = false;
-    if (ui.$("btn-tick-skip")) ui.$("btn-tick-skip").disabled = false;
     GDS.save.persist(ui.session.state);
+    // 收口拍：队列走完（事件选择的属性加成已全部落定）才刷新面板——过月成长与事件
+    // 效果在这一次 paint 里一起落新值，日期 1s 翻牌 + ±浮字同拍呈现（Master 2026-09-22）。
+    reduced = !!(root.matchMedia && root.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    dateEl = ui.$("hq-date");
+    fromText = dateEl ? dateEl.textContent : "";
     ui.paintHq();
     ui.paintTga();
     ui.flashCareerStatDeltas();
-    if (ui.session.state.phase === "SETTLED") ui.show("sc-settled");
-    else ui.show("sc-hq");
+    ui.rollDateText(dateEl, fromText);
+    // 动画放完才恢复按钮（reduced-motion 下无动画，不干等）。
+    beat = reduced ? 0 : 1000;
+    if (ui.session.dateBeatTimer) root.clearTimeout(ui.session.dateBeatTimer);
+    ui.session.dateBeatTimer = root.setTimeout(function () {
+      ui.session.dateBeatTimer = null;
+      ui.$("btn-tick").disabled = false;
+      // 只在确实要切换场景时才调 ui.show——避免 finishTickUi 结束时多余重设
+      // .scene.on 在移动端 WebView 触发 scene-in 重放（translateY 6px→0 跳一下
+      // 又还原）。SETTLED 必须切到 sc-settled；PLAYING 期间 scene 本来就是
+      // sc-hq，强行 remove+add 等于无事生非。
+      var phase = ui.session.state && ui.session.state.phase;
+      if (phase === "SETTLED") ui.show("sc-settled");
+    }, beat);
   };
 
   ui.runTickResult = function (tick) {
     ui.session.state = tick.state;
     ui.session.tickPages = tick.queue || [];
     ui.session.tickStep = 0;
+    GDS.save.persist(ui.session.state);
+    // Master 2026-09-22 拍板：先弹队列（事件/发售/颁奖——含属性加成的选择都在这里落定，
+    // 此时面板保持旧值不动），队列走完进 finishTickUi 统一放日期动画 + 属性浮字。
     if (!ui.session.tickPages.length) {
       ui.finishTickUi();
       return;
     }
     ui.showTickPage();
+  };
+
+  // 日期翻牌滑换：旧日期上滑淡出、新日期下滑就位（CSS 动画 1s）。
+  // 只动 #hq-date 的表现层，数值已在 paintHq 落定；reduced-motion 下直接换字不动画。
+  ui.rollDateText = function (el, fromText) {
+    var toText, wrap, oldS, newS;
+    if (!el) return;
+    toText = el.textContent;
+    if (!fromText || fromText === toText) return;
+    if (root.matchMedia && root.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    el.textContent = "";
+    wrap = doc.createElement("span");
+    wrap.className = "date-roll";
+    oldS = doc.createElement("span");
+    oldS.className = "date-roll-out";
+    oldS.textContent = fromText;
+    newS = doc.createElement("span");
+    newS.className = "date-roll-in";
+    newS.textContent = toText;
+    wrap.appendChild(newS);
+    wrap.appendChild(oldS);
+    el.appendChild(wrap);
+    // 动画结束后落回纯文本，防止连点叠加；节点已被重绘时静默跳过。
+    root.setTimeout(function () {
+      if (wrap.parentNode === el) el.textContent = toText;
+    }, 1030);
   };
 
   ui.showTickPage = function () {
@@ -140,9 +185,15 @@
       page.options.forEach(function (opt) {
         var btn = doc.createElement("button");
         var main, title, meta, pct;
+        var lockHint = null;
         btn.type = "button";
         btn.className = "btn ghost";
         btn.setAttribute("data-event-opt", opt.id);
+        // P4a：不满足 req 的选项置灰 + 一行解锁提示（不隐藏）。判定 RNG-free。
+        if (opt.req && ui.session.state && sim.careerOptionLockHint) {
+          lockHint = sim.careerOptionLockHint(ui.session.state, cfg(), opt.req);
+        }
+        btn.disabled = !!lockHint;
         if (opt.hopView) {
           btn.className += " hop-opt";
           main = doc.createElement("span");
@@ -164,6 +215,13 @@
           btn.appendChild(pct);
         } else {
           btn.textContent = opt.label;
+        }
+        if (lockHint) {
+          // 置灰提示独立成行，别把选项文案挤变形。
+          var lockEl = doc.createElement("span");
+          lockEl.className = "opt-lock";
+          lockEl.textContent = lockHint;
+          btn.appendChild(lockEl);
         }
         box.appendChild(btn);
       });
@@ -312,9 +370,16 @@
     ui.prepareCareerStart();
 
     function backToBoot() {
+      // 清掉过月动画的第二拍定时器和残留队列，防止重开局后弹旧弹窗。
+      if (ui.session.dateBeatTimer) {
+        root.clearTimeout(ui.session.dateBeatTimer);
+        ui.session.dateBeatTimer = null;
+      }
       ui.session.state = null;
       ui.session.startRoll = null;
       ui.session.rollsLeft = null;
+      ui.session.tickPages = null;
+      ui.session.tickStep = 0;
       ui.prepareCareerStart();
       ui.show("sc-boot");
     }
@@ -347,37 +412,16 @@
       if (!ui.session.state || ui.session.state.phase !== "PLAYING") { ui.toast("这一局已经结束"); return; }
       ui.closeDockSheets();
       ui.$("btn-tick").disabled = true;
-      if (ui.$("btn-tick-skip")) ui.$("btn-tick-skip").disabled = true;
       try {
         ui.captureCareerStatSnap();
-        ui.runTickResult(sim.tickMonth(ui.session.state, config));
+        // P3：唯一推进按钮 = 「继续」，快进到下一个节点（与逐月共用同一条 tick 路径）。
+        ui.runTickResult(sim.skipToNextNode(ui.session.state, config));
       } catch (err) {
         ui.session.statSnap = null;
         ui.$("btn-tick").disabled = false;
-        if (ui.$("btn-tick-skip")) ui.$("btn-tick-skip").disabled = false;
-        ui.toast("过月没走完，再点一次");
+        ui.toast("推进没走完，再点一次");
       }
     });
-
-    if (ui.$("btn-tick-skip")) {
-      ui.$("btn-tick-skip").addEventListener("click", function () {
-        if (ui.$("btn-tick-skip").classList.contains("off") || ui.$("btn-tick-skip").disabled) return;
-        if (!ui.session.state || ui.session.state.phase !== "PLAYING") { ui.toast("这一局已经结束"); return; }
-        if (!sim.isCareerMode || !sim.isCareerMode(ui.session.state)) return;
-        ui.closeDockSheets();
-        ui.$("btn-tick").disabled = true;
-        ui.$("btn-tick-skip").disabled = true;
-        try {
-          ui.captureCareerStatSnap();
-          ui.runTickResult(sim.tickCareerToDecision(ui.session.state, config));
-        } catch (err) {
-          ui.session.statSnap = null;
-          ui.$("btn-tick").disabled = false;
-          ui.$("btn-tick-skip").disabled = false;
-          ui.toast("过月没走完，再点一次");
-        }
-      });
-    }
 
     ui.$("dlg-ok").addEventListener("click", function () {
       if (ui.session.dlgHook.mode === "tick") {
@@ -480,29 +524,8 @@
         var page = ui.session.tickPages[ui.session.tickStep];
         if (!page) return;
         var picked;
-        if (page.type === "hop") {
-          if (optId === "stay") picked = sim.declineYearEndOffers(ui.session.state, config);
-          else picked = sim.applyYearEndOffer(ui.session.state, optId, config);
-        } else if (page.type === "promotion") {
-          if (optId === "promote") {
-            picked = sim.requestCareerPromotion
-              ? sim.requestCareerPromotion(ui.session.state, config)
-              : sim.promoteCareer(ui.session.state, config);
-          } else picked = { ok: true, state: ui.session.state };
-        } else if (page.type === "invite") {
-          if (optId === "accept") picked = sim.acceptCareerInvite(ui.session.state, page.inviteId, config);
-          else if (optId === "counter") picked = sim.counterCareerInvite(ui.session.state, page.inviteId, config);
-          else picked = sim.declineCareerInvite(ui.session.state, page.inviteId, config);
-        } else if (page.type === "careerLineFork") {
-          picked = sim.resolveCareerPathFork(ui.session.state, optId, config);
-        } else if (page.type === "careerLine") {
-          picked = sim.resolveCareerLineChoice(ui.session.state, page.lineId, page.beatId, optId, config);
-        } else if (page.type === "producerPitch") {
-          picked = sim.resolveProducerPitch(ui.session.state, optId, config);
-        } else {
-          if (!page.eventId) return;
-          picked = sim.resolveEventChoice(ui.session.state, page.eventId, optId, config);
-        }
+        // P3：选项落地统一走 sim.resolveCareerQueueChoice（与测试自动应答同一条路径）。
+        picked = sim.resolveCareerQueueChoice(ui.session.state, page, optId, config);
         if (!picked || !picked.ok) {
           ui.toast(sim.errorMessage(picked && picked.error));
           return;
@@ -518,6 +541,16 @@
     });
 
     ui.showPreviewFlag();
+    // webview 被杀兜底：页面隐藏/关闭时把当前档立即写一次存档（双写之一；常规写入
+    // 已在 applySim / runTickResult / finishTickUi 覆盖）。localStorage 写入是同步的，
+    // pagehide 场景也能落盘。
+    function persistOnHide() {
+      if (ui.session.state) GDS.save.persist(ui.session.state);
+    }
+    doc.addEventListener("visibilitychange", function () {
+      if (doc.visibilityState === "hidden") persistOnHide();
+    });
+    root.addEventListener("pagehide", persistOnHide);
     GDS.save.restoreOrNull().then(function (saved) {
       var copyC = sim.careerCopy(config);
       if (saved && saved.mode === "career" && saved.career) {

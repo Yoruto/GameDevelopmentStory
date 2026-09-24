@@ -1,0 +1,23 @@
+{
+  "comment": "sim 层含 CJK 的行数基线（B1 文案守卫：只许降不许涨）。新文案进 config.copy；本数字只能减少。2026-09-22 建。2026-09-22 cast 人物层 +9（career-bonds+1/career-world-sim+6/career.js+1/careerLines+1），全部为机制注释，无玩家文案。2026-09-22 cast 阶段3（队友接真实角色）+4：career-colleagues 5->9、career-world-sim 39->40，仍全为注释。2026-09-22 派工新鲜度（B，节奏修复）+6：career.js 179->185，全为机制注释，无玩家文案。2026-09-22 专属新作通道（A，节奏修复）+9：career.js 185->194，全为机制注释；新增的玩家文案走 config.copy.career.waitingHint，未进 sim。2026-09-22 开工窗口规则（D，节奏修复，默认关闭）+3：career.js 194->197，全为机制注释。2026-09-22 职级门槛修补 +7：career.js 197->201、career-mobility 37->40，全为机制注释（无玩家文案）。2026-09-22 晋升只看属性 + 挖人按属性定级 +11：career.js 201->206（-1 条死分支）、career-mobility 40->43、career-pace 83->84，全为机制注释；删掉的 gapMain 玩家文案在 config，不进 sim。",
+  "total": 602,
+  "files": {
+    "actions.js": 15,
+    "awards.js": 7,
+    "career-awards.js": 54,
+    "career-bonds.js": 24,
+    "career-colleagues.js": 11,
+    "career-events.js": 7,
+    "career-mobility.js": 43,
+    "career-pace.js": 84,
+    "career-world-sim.js": 45,
+    "career.js": 206,
+    "careerLines.js": 31,
+    "events.js": 2,
+    "lifecycle.js": 10,
+    "media.js": 39,
+    "rng.js": 1,
+    "tick.js": 1,
+    "util.js": 25
+  }
+}

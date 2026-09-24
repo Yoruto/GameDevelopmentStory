@@ -131,6 +131,36 @@
 
   var ROLL_DIM_CLASS = { program: "dim-p", design: "dim-d", art: "dim-a", music: "dim-m" };
   var ROLL_DIM_ORDER = ["program", "design", "art", "music"];
+  // 天赋点击 tip：单例气泡，锚在所点 chip 下方（放不下就翻到上方），3 秒或点别处自动收
+  var TRAIT_TIP_TIMER = null;
+  function showTraitTip(anchor, text) {
+    if (!text) return;
+    var tip = doc.getElementById("trait-tip");
+    if (!tip) {
+      tip = doc.createElement("div");
+      tip.id = "trait-tip";
+      tip.className = "trait-tip";
+      doc.body.appendChild(tip);
+      doc.addEventListener("pointerdown", function (e) {
+        var t = e.target;
+        while (t && t !== doc.body) {
+          if (t.classList && t.classList.contains("trait-chip")) return;
+          t = t.parentNode;
+        }
+        tip.classList.remove("on");
+      });
+    }
+    tip.textContent = text;
+    tip.classList.add("on");
+    var r = anchor.getBoundingClientRect();
+    var left = Math.min(Math.max(8, r.left), root.innerWidth - tip.offsetWidth - 8);
+    var top = r.bottom + 6;
+    if (top + tip.offsetHeight > root.innerHeight - 8) top = r.top - tip.offsetHeight - 6;
+    tip.style.left = Math.round(left) + "px";
+    tip.style.top = Math.round(top) + "px";
+    if (TRAIT_TIP_TIMER) root.clearTimeout(TRAIT_TIP_TIMER);
+    TRAIT_TIP_TIMER = root.setTimeout(function () { tip.classList.remove("on"); }, 3000);
+  }
 
   ui.paintCareerStartRoll = function () {
     var config = cfg();
@@ -167,25 +197,28 @@
     }
     if (traitBox) {
       ids = draft.traitIds || (draft.traitId ? [draft.traitId] : []);
-      ids.forEach(function (tid, ti) {
-        var t = sim.traitDef(tid, config);
-        var label;
-        if (!t) return;
-        item = doc.createElement("div");
-        item.className = "roll-item";
-        name = doc.createElement("div");
-        name.className = "name";
-        label = copy.traitTitle || "天赋";
-        // 多条时给序号，避免三张卡都写「天赋 · X」看不出是三条独立的
-        if (ids.length > 1) label += " " + (ti + 1) + "/" + ids.length;
-        name.textContent = label + " · " + (t.displayName || tid);
-        sum = doc.createElement("p");
-        sum.className = "hint";
-        sum.textContent = t.summary || "";
-        item.appendChild(name);
-        item.appendChild(sum);
-        traitBox.appendChild(item);
-      });
+      if (ids.length) {
+        // 小组件化：只露天赋名，不显示效果文案与序号；点击 chip 弹出效果 tip
+        var label = doc.createElement("div");
+        label.className = "trait-chip-label";
+        label.textContent = (copy.traitTitle || "天赋") + " · 点击查看效果";
+        traitBox.appendChild(label);
+        var row = doc.createElement("div");
+        row.className = "trait-chip-row";
+        ids.forEach(function (tid) {
+          var t = sim.traitDef(tid, config);
+          var chip;
+          if (!t) return;
+          chip = doc.createElement("span");
+          chip.className = "trait-chip";
+          chip.textContent = t.displayName || tid;
+          chip.addEventListener("click", (function (text, el) {
+            return function () { showTraitTip(el, text); };
+          })(t.summary || "", chip));
+          row.appendChild(chip);
+        });
+        traitBox.appendChild(row);
+      }
     }
     if (rerollBtn) {
       rerollBtn.textContent = rollsLeft > 0
@@ -211,25 +244,14 @@
     title = ui.$("offer-title");
     hint = ui.$("offer-hint");
     if (title) title.textContent = copy.offerTitle || "三份 offer";
-    if (hint) hint.textContent = copy.offerHint || "";
-    (function paintOfferSkills() {
+    if (hint) {
+      hint.textContent = copy.offerHint || "";
+      hint.style.display = copy.offerHint ? "" : "none";
+    }
+    // 入行熟练行已按需求撤下：占位元素直接藏掉，避免留空隙
+    (function hideOfferSkills() {
       var el = ui.$("offer-skills");
-      var sheet, able, bits;
-      if (!el) return;
-      if (!sim.careerSkillSheet) {
-        el.textContent = "";
-        return;
-      }
-      sheet = sim.careerSkillSheet(state, config);
-      able = (sheet.genres || []).concat(sheet.gameplay || []).filter(function (row) {
-        return row.tierId && row.tierId !== "novice";
-      });
-      if (!able.length) {
-        el.textContent = "";
-        return;
-      }
-      bits = able.map(function (row) { return row.label + " " + (row.tier || ""); });
-      el.textContent = (copy.offerSkillPrefix || "入行熟练：") + bits.join(" · ");
+      if (el) el.style.display = "none";
     })();
     (state.career.openingOffers || []).forEach(function (o) {
       var co = sim.careerCompany(o.companyId, config);
@@ -237,33 +259,19 @@
       var card = doc.createElement("div");
       var name = doc.createElement("div");
       var meta = doc.createElement("p");
-      var risk = doc.createElement("p");
       var go = doc.createElement("button");
       card.className = "offer-card";
       name.className = "name";
       name.textContent = co ? sim.worldLabel(co, config) : o.companyId;
       meta.className = "hint";
       meta.textContent = (role ? sim.worldLabel(role, config) : "") +
-        " · " + (copy.salaryLabel || "月薪") + " " + o.salary +
         (o.roleId ? (" · " + sim.formatCareerRankLabel(o.roleId, (o.jobRank != null ? o.jobRank : 1), config)) : "");
-      risk.className = "hint";
-      risk.textContent = (copy.riskLabel || "风险") + "：" + (o.risk || "");
       go.type = "button";
       go.className = "btn wide mt-8";
       go.textContent = copy.acceptButton || "入职";
       go.setAttribute("data-offer", o.id);
       card.appendChild(name);
       card.appendChild(meta);
-      card.appendChild(risk);
-      (function appendSeniors() {
-        var line = sim.careerSeniorLine(co, config);
-        var el;
-        if (!line) return;
-        el = doc.createElement("p");
-        el.className = "hint";
-        el.textContent = line;
-        card.appendChild(el);
-      })();
       card.appendChild(go);
       box.appendChild(card);
     });
@@ -274,7 +282,7 @@
     var config = cfg();
     var copy = sim.careerCopy(config);
     var career, co, role, view, live, job, box, tickBtn, self, head, stats;
-    var hopCard, hopList, hopApply, payEl, roleEl, nameEl, metaEl;
+    var hopCard, hopList, hopApply, roleEl, nameEl, metaEl;
     if (!state || !state.career) return;
     sim.ensureCareerExtras(state);
     career = state.career;
@@ -287,23 +295,30 @@
     ui.$("end-name").textContent = career.characterName;
     ui.$("hq-date").textContent = sim.dateText(state);
     (function setLabs() {
-      var fundsLab = ui.$("hq-funds-lab");
       var fansLab = ui.$("hq-fans-lab");
-      if (fundsLab) fundsLab.textContent = copy.savingsLabel || "积蓄";
       if (fansLab) fansLab.textContent = copy.fameLabel || "声望";
+      var healthLab = ui.$("hq-health-lab");
+      if (healthLab) healthLab.textContent = copy.healthLabel || "健康";
     })();
-    ui.$("hq-funds").textContent = String(career.savings);
-    payEl = ui.$("hq-pay-delta");
-    if (payEl) {
-      if (career.lastPay) {
-        payEl.hidden = false;
-        payEl.textContent = (copy.payDeltaPrefix || "+") + career.lastPay;
-      } else {
-        payEl.hidden = true;
-        payEl.textContent = "";
+    // P4c：声望 KPI 显示称号链档位（裸分留存在 fame 字段与结算页）。
+    (function paintRenown() {
+      var fans = ui.$("hq-fans");
+      var rv = sim.careerRenownView ? sim.careerRenownView(state, config) : null;
+      if (fans && rv) {
+        fans.textContent = rv.label;
+        fans.title = (copy.renownLabel || "声望") + " " + rv.score + "（获奖 " + rv.wins + " · 高分作品 " + rv.scoreHits + "）";
       }
-    }
-    ui.$("hq-fans").textContent = String(career.fame);
+    })();
+    // P4b：健康 5 段体检条，不显数字。
+    (function paintHealth() {
+      var box = ui.$("hq-health");
+      if (!box) return;
+      var init = (sim.careerWorld(config).careerHealth || {}).init;
+      var v = Number(career.health != null ? career.health : (init != null ? init : 4));
+      [].slice.call(box.querySelectorAll("i")).forEach(function (pip, i) {
+        pip.className = i < v ? "on" : "";
+      });
+    })();
     ui.$("hq-scale").textContent = co
       ? (sim.worldLabel(co, config) + (function () {
         var studio = sim.careerStudio(career.companyId, career.studioId, config);
@@ -493,7 +508,7 @@
           ? stripRankCode(sim.formatCareerRankLabel(s.roleId, s.jobRank != null ? s.jobRank : 1, config))
           : "";
         addRow(
-          s.n,
+          sim.colleagueName ? sim.colleagueName(s, config) : s.n,
           [rr ? sim.worldLabel(rr, config) : "", rankLabel].filter(Boolean).join(" · "),
           dimOfRole(rr)
         );
@@ -502,9 +517,6 @@
     tickBtn = ui.$("btn-tick");
     if (tickBtn && !ui.$("dlg-mask").classList.contains("on")) {
       tickBtn.disabled = state.phase !== "PLAYING";
-    }
-    if (ui.$("btn-tick-skip") && !ui.$("dlg-mask").classList.contains("on")) {
-      ui.$("btn-tick-skip").disabled = state.phase !== "PLAYING";
     }
     ui.paintEnds();
   };
@@ -558,10 +570,19 @@
     var state = st();
     var config = cfg();
     var copy = sim.careerCopy(config);
-    var view, box, i, row, el, bits, credits;
+    var view, box, i, row, el, bits, credits, head;
     if (!state || !state.career || !sim.careerResumeView) return;
     view = sim.careerResumeView(state, config);
     credits = (view.credits || []).filter(function (c) { return c.shipped; });
+    // 标题即摘要：把「署名作品」和「过渡项目」拆开，玩家一眼看得见时间花在哪。
+    head = ui.$("resume-head");
+    if (head) {
+      bits = [(copy.resumeCredits || copy.resumeTitle || "署名作品") + " " + (view.signedCount || 0)];
+      if ((view.transitionCount || 0) > 0) {
+        bits.push((copy.resumeVirtual || "过渡项目") + " " + view.transitionCount);
+      }
+      head.textContent = bits.join(" · ");
+    }
     box = ui.$("resume-credits");
     if (box) {
       box.textContent = "";
@@ -582,7 +603,11 @@
         bits = doc.createElement("p");
         bits.className = "hint";
         bits.textContent = [
-          row.virtual ? (copy.resumeVirtual || "虚拟作") : "",
+          // 过渡项目显示它的专属评语（按落盘分数档）；前面仍保留「过渡项目」标签，
+          // 不然行内只剩一句感慨，玩家看不出这行的性质。
+          row.virtual
+            ? ((copy.resumeVirtual || "过渡项目") + (row.poolNote ? ("·" + row.poolNote) : ""))
+            : "",
           row.supported ? (copy.resumeSupported || "后续支持") : "",
           row.score != null ? String(row.score) : "",
           row.sales != null
@@ -613,7 +638,6 @@
     ui.$("end-games").textContent = String(settle ? settle.creditedCount : (career.credits || []).length);
     ui.$("end-series").textContent = (settle && settle.employer) || (co ? sim.worldLabel(co, config) : "—");
     ui.$("end-avg").textContent = String((settle && settle.honor) != null ? settle.honor : (career.honor || 0));
-    ui.$("end-sales").textContent = String((settle && settle.savings) != null ? settle.savings : (career.savings || 0));
     function setLab(id, text) {
       var el = ui.$(id);
       if (el) el.textContent = text;
@@ -623,7 +647,6 @@
     setLab("end-games-label", copy.settleCreditsLabel || "署名作");
     setLab("end-series-label", copy.settleEmployerLabel || "最后东家");
     setLab("end-avg-label", copy.settleHonorLabel || "荣誉");
-    setLab("end-sales-label", copy.settleSavingsLabel || "积蓄");
   };
 
   ui.paintHq = function () {
@@ -649,9 +672,10 @@
     var intelBtn = ui.$("btn-sheet-intel");
     if (intelBtn && copyC.intel) intelBtn.textContent = copyC.intel;
     var tickBtnCopy = ui.$("btn-tick");
-    if (tickBtnCopy && copyC.nextMonth) tickBtnCopy.textContent = copyC.nextMonth;
-    var tickSkipCopy = ui.$("btn-tick-skip");
-    if (tickSkipCopy && copyC.tickToDecision) tickSkipCopy.textContent = copyC.tickToDecision;
+    // P3：唯一推进按钮文案 = 「继续」。copyC 已是 copy.career（sim.careerCopy 的返回值）。
+    if (tickBtnCopy) {
+      tickBtnCopy.textContent = copyC.continueButton || copyC.nextMonth || tickBtnCopy.textContent;
+    }
     var tgaHead = ui.$("tga-head");
     if (tgaHead && copyC.awardKicker) tgaHead.textContent = copyC.awardKicker;
     var tgaHint = ui.$("tga-hint");
@@ -695,8 +719,6 @@
     if (playerL1 && copyC.playerDockLabel) playerL1.textContent = copyC.playerDockLabel;
     var tgaL1 = ui.$("dock-tga-l1");
     if (tgaL1 && copyC.tgaEntry) tgaL1.textContent = copyC.tgaEntry;
-    var resumeHead = ui.$("resume-head");
-    if (resumeHead) resumeHead.textContent = copyC.resumeCredits || copyC.resumeTitle || "署名作品";
     var nameInput = ui.$("name-input");
     if (nameInput) {
       var defName = copyC.defaultName || "阿喵";
@@ -834,6 +856,19 @@
       sr.appendChild(sl);
       sr.appendChild(sq);
       nodes.push(sr);
+      // P6：离奖信号 + 销量具象化（≤2 行；呈现层只读，launchSales 数值链路不动）。
+      var stHere = ui.session && ui.session.state;
+      if (sim.mediaRevealFlavor && stHere) {
+        (sim.mediaRevealFlavor(rec, stHere, cfg()) || []).forEach(function (line) {
+          var fr = doc.createElement("div");
+          fr.className = "media-outlet fx-flavor";
+          var fq = doc.createElement("p");
+          fq.className = "quote";
+          fq.textContent = line;
+          fr.appendChild(fq);
+          nodes.push(fr);
+        });
+      }
     }
     return nodes;
   };

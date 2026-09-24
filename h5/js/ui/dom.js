@@ -124,7 +124,6 @@
       }
     })();
     ui.$("btn-tick").classList.toggle("off", !hq);
-    if (ui.$("btn-tick-skip")) ui.$("btn-tick-skip").classList.toggle("off", !hq);
     if (ui.$("dock-ticks")) ui.$("dock-ticks").classList.toggle("off", !hq);
   };
 
@@ -151,9 +150,18 @@
   };
 
   ui.show = function (id) {
+    var target = ui.$(id);
+    if (!target) return;
+    var wasOn = target.classList.contains("on");
+    // 目标 scene 已是当前 scene 时跳过 add，避免移动端 WebView（X5 / 老 Blink /
+    // WebKit）把同步 remove+add 视为新动画，重放 .scene.on { animation: scene-in }
+    // 造成主界面 translateY(6px)→0 跳一下又还原（桌面 Chromium 优化掉了，所以重
+    // 放只在真机上能复现）。
     var all = doc.querySelectorAll(".scene");
-    for (var i = 0; i < all.length; i++) all[i].classList.remove("on");
-    ui.$(id).classList.add("on");
+    for (var i = 0; i < all.length; i++) {
+      if (all[i] !== target) all[i].classList.remove("on");
+    }
+    if (!wasOn) target.classList.add("on");
     if (id !== "sc-hq") ui.closeDockSheets();
     else ui.syncDock();
   };

@@ -32,7 +32,7 @@
       width: 100%;
       max-width: 430px;
       height: 100%;
-      height: 100dvh;
+      height: 100svh;
       background: var(--bg);
       position: relative;
       overflow: hidden;
@@ -69,7 +69,8 @@
     }
     .top-kpis {
       display: grid;
-      grid-template-columns: 1.1fr 1.2fr 0.9fr;
+      /* P2a：货币移除后顶栏只剩「年月 / 声望」两格；P4b 健康会补回第三格。 */
+      grid-template-columns: 1.1fr 0.9fr;
       gap: 8px;
       font-variant-numeric: tabular-nums;
     }
@@ -92,15 +93,7 @@
       text-overflow: ellipsis;
       white-space: nowrap;
     }
-    .kpi-val-row {
-      display: flex;
-      align-items: baseline;
-      gap: 6px;
-      min-width: 0;
-    }
     .top .date { color: var(--gold); }
-    .top .funds { color: var(--green); }
-    .pay-delta { color: var(--green); font-weight: 700; font-size: 12px; }
     .media-outlet { margin: 8px 0; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
     .media-outlet .quote { margin: 4px 0 0; font-size: 12px; }
     .top .fans { color: var(--text); }
@@ -223,6 +216,23 @@
     @keyframes stat-float-up {
       from { opacity: 1; transform: translateX(-50%) translateY(0); }
       to { opacity: 0; transform: translateX(-50%) translateY(-16px); }
+    }
+    /* 过月日期翻牌滑换（app.js rollDateText 驱动，1s）：旧值上滑淡出、新值下滑就位。
+       #hq-date 文本格式固定 YYYY.MM，新旧等宽，绝对定位的新值不会溢出。 */
+    .kpi-val.date { position: relative; }
+    .date-roll { position: relative; display: inline-block; overflow: hidden; }
+    .date-roll-out { display: inline-block; animation: date-roll-out 1s ease-in forwards; }
+    .date-roll-in {
+      position: absolute; left: 0; top: 0; display: inline-block;
+      animation: date-roll-in 1s cubic-bezier(.2, .7, .3, 1) forwards;
+    }
+    @keyframes date-roll-out {
+      from { opacity: 1; transform: translateY(0); }
+      to { opacity: 0; transform: translateY(-72%); }
+    }
+    @keyframes date-roll-in {
+      from { opacity: 0; transform: translateY(72%); }
+      to { opacity: 1; transform: translateY(0); }
     }
     .grid4 .stat { padding: 8px 2px; }
     .grid4 .stat b { font-size: 15px; }
@@ -359,10 +369,6 @@
       font-weight: 800;
       color: #fff8f2;
     }
-    .dock-tick-skip {
-      flex: 0 0 78px;
-      font-size: 12px;
-    }
     .dock-tick.off { display: none; }
     .dock-ticks.off { display: none; }
     .dock-tick:disabled { opacity: .45; cursor: not-allowed; box-shadow: none; }
@@ -414,13 +420,13 @@
       border: 1px solid var(--line);
       border-radius: 16px;
       padding: 16px 16px 14px;
-      max-height: min(70vh, calc(100dvh - 96px));
+      max-height: min(70vh, calc(100svh - 96px));
       overflow: hidden; display: flex; flex-direction: column;
       box-shadow: 0 16px 40px rgba(0,0,0,.45);
     }
     .dlg.dlg-fx {
       width: min(480px, 100%);
-      max-height: min(90vh, calc(100dvh - 20px));
+      max-height: min(90vh, calc(100svh - 20px));
       padding: 18px 16px 16px;
     }
     .dlg-event { border-color: var(--gold); }
@@ -438,6 +444,7 @@
     .dlg-body {
       color: var(--text); margin-bottom: 10px; max-height: 8em; overflow-y: auto;
       scrollbar-width: none; -ms-overflow-style: none;
+      white-space: pre-line; /* P5：年度快讯 / 章开场白描按 \n 分行 */
     }
     .dlg-body::-webkit-scrollbar { display: none; width: 0; height: 0; }
     .dlg.dlg-fx .dlg-body { max-height: none; }
@@ -456,6 +463,19 @@
     .dlg-cancel.off, .dlg-ok.off { display: none; }
     .dlg-choices { display: flex; flex-direction: column; gap: 8px; }
     .dlg-choices .btn { width: 100%; }
+    /* P4a：req 不满足 → 置灰 + 一行解锁提示（不隐藏） */
+    .dlg-choices .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .dlg-choices .opt-lock {
+      display: block; font-size: 11px; font-weight: 400;
+      color: var(--gold); margin-top: 3px; line-height: 1.3;
+    }
+    /* P4b：健康 5 段体检条（不显数字） */
+    .health-pips { display: flex; gap: 3px; align-items: center; height: 100%; }
+    .health-pips i {
+      width: 9px; height: 9px; border-radius: 2px;
+      border: 1px solid var(--line); background: transparent; display: inline-block;
+    }
+    .health-pips i.on { background: var(--gold); border-color: var(--gold); }
     .dlg-choices .btn.hop-opt {
       display: flex;
       align-items: center;
@@ -491,12 +511,13 @@
       .name { font-size: 16px; }
       .card { padding: 6px 8px; }
       .chip { padding: 4px 6px; font-size: 11px; }
-      /* 开局可能一次抽到 3 条天赋（traitCountMax=3）。实测 360×640 下三张卡会把 .hero
-         顶出 8px（overflow:auto 会变成内部滚动 = 违反「一屏放完」），这里把 roll 卡收紧。 */
+      /* 开局可能一次抽到 3 条天赋（traitCountMax=3）。chips 一行放不下会换行，
+         这里把 roll 卡收紧，保证矮屏一屏放完。 */
       .hero p { margin-bottom: 12px; }
       #sc-boot .roll-card { padding: 10px; }
       #sc-boot .roll-trait { margin-top: 8px; padding-top: 8px; }
-      #sc-boot .roll-trait .roll-item + .roll-item { margin-top: 6px; padding-top: 6px; }
+      #sc-boot .trait-chip { padding: 3px 8px; font-size: 11px; }
+      .trait-tip { max-width: 220px; }
       #sc-boot .btn.mt-12 { margin-top: 8px; }
       #sc-boot .preview-flag { margin-top: 6px; }
     }
@@ -528,7 +549,7 @@
     .fx-reel.done { color: var(--text); }
     .dlg.dlg-awards {
       width: min(400px, 100%);
-      max-height: min(92vh, calc(100dvh - 12px));
+      max-height: min(92vh, calc(100svh - 12px));
       padding: 12px 12px 10px;
     }
     .dlg.dlg-awards .dlg-kicker { margin-bottom: 2px; }
@@ -590,6 +611,7 @@
       .fx-outlet, .fx-quote, .fx-score, .fx-score.on { animation: none; }
       .fx-score, .fx-score.on { opacity: 1; }
       .stat-float { animation: none; opacity: 0; }
+      .date-roll-out, .date-roll-in { animation: none; }
     }
     .stars { color: var(--gold); font-size: 18px; font-weight: 800; }
     .hint { color: var(--muted); font-size: 12px; margin-top: 6px; }
@@ -652,7 +674,6 @@
     .mt-8 { margin-top: 8px; }
     .mt-10 { margin-top: 10px; }
     .mt-12 { margin-top: 12px; }
-    #app.mode-career #btn-tick-skip { display: none !important; }
     #app.mode-career .dock-tick-month {
       flex: 0 0 78px;
       border-color: #ffd2b8;
@@ -903,12 +924,47 @@
       margin-top: 10px; padding-top: 10px;
       border-top: 1px dashed var(--line);
     }
-    .roll-trait .roll-item .name { font-size: 13px; font-weight: 700; }
-    .roll-trait .roll-item .hint { margin: 2px 0 0; }
-    .roll-trait .roll-item + .roll-item {
-      margin-top: 8px; padding-top: 8px;
-      border-top: 1px dashed var(--line);
+    .roll-trait .trait-chip-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 6px;
     }
+    .roll-trait .trait-chip-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .trait-chip {
+      display: inline-flex;
+      align-items: center;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--card2);
+      border: 1px solid var(--line);
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1.2;
+      white-space: nowrap;
+      cursor: pointer;
+    }
+    .trait-chip:active { border-color: var(--gold); }
+    /* 点击天赋弹出的效果 tip：fixed 气泡，JS 锚定到所点 chip */
+    .trait-tip {
+      display: none;
+      position: fixed;
+      z-index: 60;
+      max-width: 260px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: var(--card2);
+      border: 1px solid var(--gold);
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.5;
+      box-shadow: 0 4px 14px rgba(0,0,0,.35);
+      pointer-events: none;
+    }
+    .trait-tip.on { display: block; }
     #btn-reroll:disabled { opacity: .45; cursor: not-allowed; }
     .pitch-plat { margin-top: 4px; }
     #studio-ok { display: none; }
@@ -983,12 +1039,17 @@
       text-overflow: ellipsis;
       white-space: nowrap;
       min-width: 0;
+      flex: 1 1 auto;
     }
     .staff-role {
-      flex: 0 0 auto;
+      flex: 0 1 auto;
       margin-left: auto;
       font-size: 11px;
       color: var(--muted);
+      max-width: 52%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
     .dim-p { color: var(--gold); }
     .dim-d { color: var(--green); }
@@ -1036,13 +1097,6 @@
       box-shadow: none;
       color: #1a1320;
       font-weight: 800;
-    }
-    .dock-shell .dock-tick-skip {
-      border: 1px solid var(--gold);
-      background: var(--card2);
-      box-shadow: none;
-      color: var(--gold);
-      font-weight: 700;
     }
     .scene.on { animation: scene-in .22s ease-out; }
     @keyframes scene-in {

@@ -19,29 +19,9 @@ env-detail.json
 # 事件文案批量改写前的本地快照（还原点；历史本身已在 git 里）
 scripts/_cw_*.json
 
-# 阶段探针 / 拆分前备份 / 阶段 API 快照 / 验证截图 / 临时分析（工作区共存但不入仓）
-scripts/_probe_*.js
-scripts/_cast_probe*.js
-scripts/_cast_probe*.json
-scripts/_cast_check/
-scripts/_diag_*.js
-scripts/_career_before_*.js
-scripts/_tests_before_split.js
-scripts/_api_snapshot_before_*.json
-scripts/_check.json
-scripts/_check.log
-scripts/_check.out
-scripts/_p*_check.json
-scripts/_p*_check.log
-scripts/_p*_check.out
-scripts/_p*_shot.png
-scripts/_evt_copy_*.*
-scripts/_labels_*.*
-scripts/_real_*.png
-scripts/_analyze_*.py
-scripts/_cut_points.py
-scripts/_plan_career_split.py
-scripts/_event_copy_pass*.py
-scripts/_event_lines_pass*.py
-scripts/_label_pass4.py
-scripts/_text_pass5.py
+# 阶段探针 / patch 前备份 / 阶段 API 快照 / 验证截图 / 临时分析（工作区共存但不入仓）
+# 通用兜底：scripts/ 下所有 _ 前缀文件默认忽略（探针、备份、截图、检查输出、分析脚本）
+scripts/_*
+# 例外：3 个 production patch 脚本（_patch_development_assignment / _patch_promotion_gate /
+# _patch_promotion_stat_only），跟其他 patch_*.py 同质用于追溯历史变更
+!scripts/_patch_*.py

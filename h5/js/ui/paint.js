@@ -647,6 +647,12 @@
     setLab("end-games-label", copy.settleCreditsLabel || "署名作");
     setLab("end-series-label", copy.settleEmployerLabel || "最后东家");
     setLab("end-avg-label", copy.settleHonorLabel || "荣誉");
+    var ending = sim.careerEndingView ? sim.careerEndingView(state, config) : null;
+    if (ending) {
+      ui.$("end-card-title").textContent = ending.title;
+      ui.$("end-card-body").textContent = ending.body;
+      ui.$("end-card-echo").textContent = ending.echo;
+    }
   };
 
   ui.paintHq = function () {

@@ -1,7 +1,7 @@
 # AI-MAP — AI 快速目录（唯一常驻入口）
 
 > 给 AI/新人用：**先读本文件就能开工**。只做索引不复制内容；内容细节点进去看。
-> 状态（做到哪了/待拍板）→ `HANDOFF.md`；本文件只回答「东西在哪、怎么跑、别踩什么」。
+> 当前状态 → `activity/current-status.md`；`HANDOFF.md` 与 `P3-HANDOFF.md` 为历史记录。
 
 ---
 
@@ -16,8 +16,9 @@ JSON 数据驱动、Node vm 沙箱跑同一份 sim 代码做测试。发布目�
 PY="C:/Users/xyc/.workbuddy/binaries/python/versions/3.13.12/python.exe"
 NODE="C:/Users/xyc/.workbuddy/binaries/node/versions/22.22.2-3/node.exe"
 $PY scripts/sync_config.py                 # activity/*.json 改过才需要
-$PY scripts/validate_career_world.py       # 0 error / 2 warning（历史既有，别修）
-$NODE tests/run-sim-tests.js               # 全量（94 条）
+$PY scripts/validate_career_world.py --quiet # 0 error / 0 warning
+$NODE tests/run-sim-tests.js               # 全量（128 条）
+$NODE tests/run-save-tests.js              # 存档接口与恢复检查
 $NODE tests/run-sim-tests.js --only 11-tick  # 按文件名过滤单个用例组
 ```
 
@@ -51,7 +52,7 @@ $NODE tests/run-sim-tests.js --only 11-tick  # 按文件名过滤单个用例组
 |---|---|
 | `activity/*.json` | **唯一事实源**（career-world.json = 世界，含 `cast[]` 人物表 + `nameMode`；config.json = 文案/天赋/fx） |
 | `activity/cast-plan.md` | 角色数据方案 + 实施记录（真实/虚构双姓名模式、cast 取人层）——**改人物/姓名模式前读** |
-| `h5/config.json` + `h5/js/config.generated.js` | 生成物，**永不手改** |
+| `h5/js/config.generated.js` | 唯一发布配置生成物，**永不手改** |
 | `scripts/sync_config.py` | 生成管线；`scripts/validate_career_world.py` 数据校验 |
 | `scripts/split_career.py` | 摘域脚本（自动同步两处加载列表，禁手改） |
 | `scripts/_*.py / _*.json` | 历次改动的幂等补丁与数据备份（`_cw_before_*.json` 可回滚） |
@@ -61,9 +62,9 @@ $NODE tests/run-sim-tests.js --only 11-tick  # 按文件名过滤单个用例组
 |---|---|
 | `run-sim-tests.js` | 入口 runner：收集 cases、`--only` 过滤 |
 | `_harness.js` | vm 沙箱 + 共享 helper（loadSim/loadConfig/13 个 helper/ok 计数） |
-| `cases/case-00-core-dims.js` … `case-14-resume.js` | 按域分组的用例（文件名排序=执行序） |
+| `cases/case-00-core-dims.js` … `case-19-endings.js` | 按域分组的用例（文件名排序=执行序） |
 | `cases/case-98-copy-guard.js` | B1 文案守卫（sim 内 CJK 行数只许降） |
-| `cases/case-99-guards.js` | 加载序同源 + API 面守卫（271 导出） |
+| `cases/case-99-guards.js` | 加载序同源 + API 面守卫（283 导出） |
 | `sim-api-snapshot.json` / `sim-shared-tools.json` / `sim-copy-baseline.json` | 三份守卫基线：增删 API、增文案行、新文件含文案 → 相应基线要有意重建/下调 |
 
 ## 4. 硬规则（只列名字，全文在 ARCHITECTURE-V2 §8.1）

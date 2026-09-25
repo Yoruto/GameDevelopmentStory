@@ -1,22 +1,22 @@
 # 游戏开发物语
 
-虎扑活动 H5。现行页面是 **1995 生涯档**（刚毕业入职，点月打工到 2025）。原 2015 经营局已于 2026-09 整体移除，`h5/js/sim/` 只剩生涯档一条路径（`mode=career`）。
+虎扑活动 H5。现行页面是 **1995 生涯档**（刚毕业入职，点「继续」推进关键节点到 2025）。原 2015 经营局已于 2026-09 整体移除，`h5/js/sim/` 只剩生涯档一条路径（`mode=career`）。
 
-经营数字只改本目录的 `config.json`；生涯公司/作品/薪资/跳槽/职级/前辈/事件线只改 `career-world.json`。规则只在 `h5/js/sim/`（生涯事件线在 `careerLines.js`）。制作人询问次数（`become-producer.maxAsks`）、挖人能否还价（`mobility.inviteCanCounter`）也只改生涯表。
+共享玩法数值只改本目录的 `config.json`；生涯公司/作品/跳槽/职级/前辈/事件线只改 `career-world.json`。规则只在 `h5/js/sim/`（生涯事件线在 `careerLines.js`）。制作人询问次数（`become-producer.maxAsks`）、挖人能否还价（`mobility.inviteCanCounter`）也只改生涯表。
 
 ## 怎么打开
 
-用浏览器直接打开仓库里的 `h5/index.html`（`file://` 即可预览）。时间不会自己走，要点「下一月」。
+用浏览器直接打开仓库里的 `h5/index.html`（`file://` 即可预览）。时间不会自己走，要点「继续」推进到下一个事件节点。
 
-- 预览：无 Colorbox 时起名过审视为通过，进度记在这一次打开的内存里。
-- 虎扑 App：走登录、内容检查和云端存档（环境开通后才写得进云）。禁止 `localStorage`。
+- 直接打开：无 Colorbox 时起名过审视为通过，进度存浏览器 `localStorage`，刷新后可继续。
+- 虎扑 App：先写 `ColorboxAI.storage` 本机缓存，再按修订号同步云端；失败会提示并可重试。云端环境配置完成后才会真正同步。
 - 腾讯云 EdgeOne Pages：站点入口是 `h5/`，不是仓库根。仓库根已有 `edgeone.json`（`outputDirectory: ./h5`）。若控制台仍把输出目录设成 `/`，预览根路径会 404，游戏实际在 `/h5/`。
 
 ## 怎么改数值
 
 1. 数值只改 json，不要抄进 design / HTML / sim。分工：`config.json` 放生涯仍在消费的**共享段**（`lifecycle` 生命周期曲线、`awards`、`release.media`、`traits`、`copy`、`fx`）；`career-world.json` 放**生涯表**（公司/作品/作品四维/薪资档/跳槽/虚拟作/职级门槛与成长/前辈/事件线/制作人规则/开发期成长 `development`/熟练度 `proficiency`）。成为制作人询问上限、挖人还价开关也在生涯表里。
-2. `python scripts/sync_config.py`（同步 `h5/config.json` 与 `h5/js/config.generated.js`，并并入生涯表）。Windows 若失败再试 `python3`。改公司/作品目录可先改 `scripts/build_career_world.py` 再生成 json，然后 sync。
-3. `node tests/run-sim-tests.js`，必须绿。
+2. `python scripts/sync_config.py`（只生成 `h5/js/config.generated.js`，并并入生涯表）。Windows 若失败再试 `python3`。改公司/作品目录可先改 `scripts/build_career_world.py` 再生成 json，然后 sync。
+3. `python scripts/validate_career_world.py --quiet`、`node tests/run-sim-tests.js`、`node tests/run-save-tests.js`，必须绿。
 
 销量基准与生命周期（`lifecycle` 的 `lambda0` / `lambdaSpan` / `tMin` / `tSpan` / `maxMonths` / `chartSize`）只改 `config.json`（首周份额 `week1Share*` 已于 2026-09-18 随「不显示首周销量」删除）；作品基准销量公式的系数（`careerWorld.launchSales`）与开发期成长权重（`careerWorld.development`）只改 `career-world.json`。
 
@@ -24,7 +24,8 @@
 
 | 文件 | 给谁看 |
 |------|--------|
-| [design.md](design.md) | 现行玩法：生涯档（入口，含职级/事件线/制作人询问上限/挖人无还价）、长线/版本、TGA（年份横滑）、点月顺序 |
+| [design.md](design.md) | 历史玩法设计，部分货币和逐月规则已过期 |
+| [current-status.md](current-status.md) | 当前功能、存档部署顺序、测试和待验收项 |
 | [architecture.md](architecture.md) | view / sim / config、公开接口、存档字段、测试与改数流程 |
 | [requirements.md](requirements.md) | 已拍板业务：云档、不分享、生涯角色名默认「阿喵」（不要用公司名） |
 | `config.json` | 生涯仍在消费的共享数值唯一源（生命周期/奖项/媒体/天赋/文案）；改完必须 sync + 测 |

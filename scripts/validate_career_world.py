@@ -28,7 +28,6 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 WORLD = os.path.join(ROOT, "activity", "career-world.json")
-H5_JSON = os.path.join(ROOT, "h5", "config.json")
 
 # 与模拟器 timeline 对齐；P5 起优先读 careerWorld.chapters（硬编码仅作缺省兜底）
 _CHAPTER_DEFAULTS = [

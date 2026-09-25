@@ -1,163 +1,67 @@
+"use strict";
+
 const http = require("http");
 const tcb = require("@cloudbase/node-sdk");
-const zlib = require("zlib");
+const { createHandler } = require("./api");
 
 const app = tcb.init({
   env: process.env.CLOUDBASE_ENV_ID,
-  accessKey: process.env.COLORBOX__ACCESS_KEY,
+  accessKey: process.env.COLORBOX__ACCESS_KEY
 });
 const rdb = app.rdb({ database: "public" });
 
-function apiPath(req) {
-  const pathname = new URL(req.url, "http://localhost").pathname || "/";
-  return pathname.replace(/^\/api(?=\/|$)/, "") || "/";
-}
-
-function readPuid(req) {
-  const raw = req.headers["x-cloudbase-context"];
-  if (!raw) {
-    const err = new Error("unauthorized");
-    err.statusCode = 401;
-    throw err;
-  }
-  let buf = Buffer.from(String(raw).trim(), "base64");
-  if (buf.length >= 2 && buf[0] === 0x1f && buf[1] === 0x8b) {
-    buf = zlib.gunzipSync(buf);
-  }
-  const ctx = JSON.parse(buf.toString("utf8"));
-  const puid = ctx.customUserId || ctx.userId || ctx.uid;
-  if (!puid) {
-    const err = new Error("unauthorized");
-    err.statusCode = 401;
-    throw err;
-  }
-  return String(puid);
-}
-
-function getJsonBody(req) {
-  return new Promise((resolve) => {
-    let data = "";
-    req.on("data", (chunk) => {
-      data += chunk;
-    });
-    req.on("end", () => {
-      try {
-        resolve(data ? JSON.parse(data) : {});
-      } catch (e) {
-        resolve({});
-      }
-    });
-  });
-}
-
-function clampSave(body) {
-  const year = Number(body.year);
-  const month = Number(body.month);
-  if (!Number.isInteger(year) || year < 2015 || year > 2026) {
-    const err = new Error("invalid year");
-    err.statusCode = 400;
-    throw err;
-  }
-  if (!Number.isInteger(month) || month < 1 || month > 12) {
-    const err = new Error("invalid month");
-    err.statusCode = 400;
-    throw err;
-  }
-  const phase = String(body.phase || "PLAYING").slice(0, 32);
-  const companyName = String(body.companyName || "喵扑studio").slice(0, 32);
-  const saveJson = typeof body.saveJson === "string" ? body.saveJson : JSON.stringify(body.saveJson || {});
-  if (saveJson.length > 180000) {
-    const err = new Error("save too large");
-    err.statusCode = 400;
-    throw err;
-  }
-  return { companyName, year, month, phase, saveJson };
-}
-
-async function handle(req, res) {
-  const cors = {
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Request-Id, X-CloudBase-Context",
-    "Content-Type": "application/json; charset=utf-8",
-  };
-
-  if (req.method === "OPTIONS") {
-    res.writeHead(204, cors);
-    return res.end();
-  }
-
-  const path = apiPath(req);
-
-  try {
-    if (req.method === "GET" && path === "/health") {
-      res.writeHead(200, cors);
-      return res.end(JSON.stringify({ code: 0, message: "ok" }));
+async function atomicUpsert(puid, save) {
+  const envId = process.env.CLOUDBASE_ENV_ID;
+  if (!envId) throw new Error("cloud environment unavailable");
+  const token = process.env.COLORBOX__ACCESS_KEY;
+  if (!token) throw new Error("database service credential unavailable");
+  const response = await fetch(
+    `https://${envId}.api.tcloudbasegateway.com/v1/rdb/rest/rpc/upsert_game_save`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: token.startsWith("Bearer ") ? token : `Bearer ${token}`,
+        "X-Db-Instance": "default",
+        "Accept-Profile": "public",
+        "Content-Profile": "public"
+      },
+      body: JSON.stringify({
+        p_puid: puid,
+        p_expected_revision: save.expectedRevision,
+        p_company_name: save.companyName,
+        p_year: save.year,
+        p_month: save.month,
+        p_phase: save.phase,
+        p_save_json: save.saveJson
+      })
     }
-
-    if (req.method === "GET" && path === "/my/save") {
-      const puid = readPuid(req);
-      const result = await rdb
-        .from("game_saves")
-        .select("company_name,year,month,phase,save_json,updated_at")
-        .eq("puid", puid)
-        .limit(1);
-      if (result.error) {
-        const err = new Error("Database Query Failed");
-        err.statusCode = 500;
-        throw err;
-      }
-      const row = (result.data && result.data[0]) || null;
-      res.writeHead(200, cors);
-      return res.end(
-        JSON.stringify({
-          code: 0,
-          message: "success",
-          data: row
-            ? {
-                companyName: row.company_name,
-                year: row.year,
-                month: row.month,
-                phase: row.phase,
-                saveJson: row.save_json,
-                updatedAt: row.updated_at,
-              }
-            : null,
-        })
-      );
-    }
-
-    if (req.method === "POST" && path === "/save/upsert") {
-      const puid = readPuid(req);
-      const body = await getJsonBody(req);
-      const save = clampSave(body);
-      const record = {
-        puid: puid,
-        company_name: save.companyName,
-        year: save.year,
-        month: save.month,
-        phase: save.phase,
-        save_json: save.saveJson,
-        updated_at: new Date().toISOString(),
-      };
-      const { error: dbError } = await rdb.from("game_saves").upsert([record], { onConflict: "puid" });
-      if (dbError) {
-        const err = new Error("Database Upsert Failed");
-        err.statusCode = 500;
-        throw err;
-      }
-      res.writeHead(200, cors);
-      return res.end(JSON.stringify({ code: 0, message: "success" }));
-    }
-
-    res.writeHead(404, cors);
-    return res.end(JSON.stringify({ code: 404, message: "not found" }));
-  } catch (err) {
-    console.error("[Activity API Error]", err);
-    const statusCode = err.statusCode || 500;
-    const userMessage = statusCode < 500 ? err.message || "bad request" : "internal server error";
-    res.writeHead(statusCode, cors);
-    return res.end(JSON.stringify({ code: statusCode, message: userMessage }));
-  }
+  );
+  if (!response.ok) throw new Error(`database upsert failed (${response.status})`);
+  const body = await response.json();
+  const row = Array.isArray(body) ? body[0] : body;
+  if (!row || typeof row.conflicted !== "boolean") throw new Error("invalid database response");
+  return { revision: row.revision, updatedAt: row.updated_at, conflicted: row.conflicted };
 }
 
-http.createServer(handle).listen(process.env.PORT || 9000);
+const handler = createHandler({
+  getSave: async function (puid) {
+    const result = await rdb.from("game_saves")
+      .select("company_name,year,month,phase,save_json,revision,updated_at")
+      .eq("puid", puid).limit(1);
+    if (result.error) throw new Error("database query failed");
+    const row = result.data && result.data[0];
+    return row ? {
+      companyName: row.company_name,
+      year: row.year,
+      month: row.month,
+      phase: row.phase,
+      saveJson: row.save_json,
+      revision: Number(row.revision || 0),
+      updatedAt: row.updated_at
+    } : null;
+  },
+  upsertSave: atomicUpsert
+});
+
+http.createServer(handler).listen(process.env.PORT || 9000);

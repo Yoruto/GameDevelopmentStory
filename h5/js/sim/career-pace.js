@@ -644,7 +644,20 @@
       if (hit) break;
       if (skipped >= maxSkip) { hit = { id: "paceCap" }; break; }
     }
-    // 近况摘要已移除：queue = 跨年/章末字幕 + 停机当月的原始队列。
+    // 普通年度快讯并入本次首张事件页，避免每年多点一次重复新闻。
+    // 章开场仍独立成页；没有其他事件时保留年度快讯，确保信息不丢失。
+    if (last && last.queue && last.queue.length && banners.length) {
+      var digest = banners.filter(function (page) { return page.type === "yearBanner"; });
+      if (digest.length) {
+        banners = banners.filter(function (page) { return page.type !== "yearBanner"; });
+        var first = Object.assign({}, last.queue[0]);
+        first.bits = digest.map(function (page) {
+          return page.title + (page.body ? "\n" + page.body : "");
+        }).join("\n") + (first.bits ? "\n" + first.bits : "");
+        last.queue = [first].concat(last.queue.slice(1));
+      }
+    }
+    // queue = 跨年/章末字幕 + 停机当月的原始队列。
     // 命中 paceCap 且途中无事发生时 queue 可为空——UI 层只走日期动画，不弹窗。
     queue = banners.slice().concat((last && last.queue) ? last.queue.slice() : []);
     return {

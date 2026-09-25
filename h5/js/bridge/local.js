@@ -28,16 +28,16 @@
     cloudPutSave: async function () { return false; },
     storageSet: async function (st) {
       var store = ls();
-      if (!store) return;
-      try { store.setItem(KEY, JSON.stringify(st)); } catch (e) { /* 隐私模式/配额满，不打断游玩 */ }
+      if (!store) return false;
+      try { store.setItem(KEY, JSON.stringify(st)); return true; } catch (e) { return false; }
     },
     storageGet: async function () {
       var store = ls();
       if (!store) return null;
-      try {
-        var raw = store.getItem(KEY);
-        return raw ? JSON.parse(raw) : null;
-      } catch (e) { return null; }
+      var raw = store.getItem(KEY);
+      if (!raw) return null;
+      try { return JSON.parse(raw); }
+      catch (e) { return { corruptLocalSave: true }; }
     }
   };
 })(typeof globalThis !== "undefined" ? globalThis : this);

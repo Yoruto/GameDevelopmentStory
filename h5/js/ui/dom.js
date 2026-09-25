@@ -62,6 +62,7 @@
     hook.mode = opts.mode || "once";
     hook.onOk = opts.onOk || null;
     hook.onCancel = opts.onCancel || null;
+    hook.returnFocus = doc.activeElement;
     var dlg = ui.$("dlg");
     dlg.className = "dlg dlg-" + (opts.kind || "info");
     ui.$("dlg-kicker").textContent = opts.kicker || (opts.kind === "event" ? "本月事件" : (opts.kind === "confirm" ? "请确认" : "提示"));
@@ -74,15 +75,41 @@
     ui.$("dlg-ok").classList.toggle("off", !!opts.hideOk);
     ui.$("dlg-actions").classList.toggle("off", !!opts.hideActions);
     ui.$("dlg-mask").classList.add("on");
+    root.setTimeout(function () {
+      var first = ui.$("dlg").querySelector("[data-event-opt]:not([disabled]), #dlg-ok:not(.off), #dlg-cancel:not(.off)");
+      (first || ui.$("dlg")).focus();
+    }, 0);
   };
 
   ui.closeDlg = function () {
     if (ui.stopReveal) ui.stopReveal();
     ui.$("dlg-mask").classList.remove("on");
+    var returnFocus = ui.session.dlgHook.returnFocus;
     ui.session.dlgHook.mode = null;
     ui.session.dlgHook.onOk = null;
     ui.session.dlgHook.onCancel = null;
+    ui.session.dlgHook.returnFocus = null;
+    if (returnFocus && returnFocus.focus) returnFocus.focus();
   };
+
+  doc.addEventListener("keydown", function (event) {
+    if (!ui.$("dlg-mask").classList.contains("on")) return;
+    var mode = ui.session.dlgHook.mode;
+    if (event.key === "Escape" && mode !== "tick" && mode !== "tick-choice") {
+      event.preventDefault();
+      var cancel = ui.session.dlgHook.onCancel;
+      ui.closeDlg();
+      if (cancel) cancel();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    var nodes = Array.prototype.slice.call(ui.$("dlg").querySelectorAll("button:not(:disabled)"))
+      .filter(function (el) { return !el.classList.contains("off") && el.offsetParent !== null; });
+    if (!nodes.length) { event.preventDefault(); ui.$("dlg").focus(); return; }
+    var first = nodes[0], last = nodes[nodes.length - 1];
+    if (event.shiftKey && doc.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && doc.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
 
   ui.l2Open = function () {
     var intel = ui.$("dock-intel");

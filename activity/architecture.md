@@ -13,8 +13,8 @@
 | 载体 | 单页活动 H5（`h5/index.html`），虎扑 App WebView / 移动浏览器；`file://` 可预览 |
 | 时间 | 玩家点「下一月」才推进；**禁止**定时器自动过月 |
 | 模拟 | 全部在客户端 `h5/js/sim/` 算，不依赖虎扑赛事/帖子接口 |
-| 配置 | `activity/config.json` + `career-world.json` → sync 到 `h5/config.json` 与 `h5/js/config.generated.js` |
-| 存档 | 已拍板云端：一用户一局 `game_saves`。本机 `ColorboxAI.storage` 只作缓存，禁止 `localStorage`。云环境开通后 `GET …/my/save`、`POST …/save/upsert` |
+| 配置 | `activity/config.json` + `career-world.json` → 只生成 `h5/js/config.generated.js` |
+| 存档 | 一用户一局 `game_saves`，云端修订号比较后写入；App 用 `ColorboxAI.storage` 缓存，直开预览用 `localStorage` |
 | 登录 | 写云档、起名过审需要登录。未登录 / 预览不把进度写进云 |
 | 开局名 | 生涯档角色名默认「阿喵」，不要用公司名「喵扑studio」 |
 | 分享 | 生涯结算不分享 |
@@ -30,8 +30,8 @@
 ```
 启动
  └─ 生涯档：角色名（过审）→ 选擅长 → 三份 offer → 入职总览
-      或 读档：PLAYING 进总览 / OFFER 回选 offer
-      └─ 【主场景】职员总览（积蓄、声望、职称/职级代号、在研、同事、前辈）
+      或 继续旧档：PLAYING 进总览 / OFFER 回选 offer / SETTLED 看结算
+      └─ 【主场景】职员总览（声望、职称/职级代号、在研、同事、前辈）
             ├─ 情报弹层：发售情报（日历，目录作 + 系列版本「系列：版本名」）、生涯结算、再开一局
             ├─ 底栏：自身（含「履历」槽位）、排行榜、年度奖
             ├─ 点「下一月」→ 结算中（锁操作）
@@ -83,9 +83,9 @@ BOOT ──► 生涯：ROLE → OFFER → PLAYING ──► MONTH_TICK ──�
 |------|------|
 | 开局成功 / 每项点月前操作成功后 | 立即写档 |
 | 一次点月 `queue` 全部展示完 | 写档 |
-| 启动 | 云优先，否则 storage 缓存，再否则预览内存 |
+| 启动 | 读取本机缓存与云端修订号；优先有效且较新的进度；若本机待同步而云端已变更，提示冲突 |
 
-再来一局覆盖旧档。本机写入走 `ColorboxAI.storage`，禁止 `localStorage` / `sessionStorage`。
+回开局页保留旧档；确认开始新局后覆盖单档。本机先写；云端失败提示并可重试。App 用 `ColorboxAI.storage`，无宿主的直开预览用 `localStorage`。
 
 ---
 
@@ -98,28 +98,28 @@ scripts/sync_config.py        # 同步生成物
 scripts/build_career_world.py # 生成生涯目录（改完再 sync）
 scripts/career_choice_events.py
 tests/run-sim-tests.js        # 不启动浏览器的数值测试
+tests/run-save-tests.js       # 存档 API 与本机/云端恢复测试
 h5/
   index.html                  # 结构 + 外链 css/js
-  config.json                 # sync 拷贝
   css/app.css
   js/
     config.generated.js       # file:// 可读的 GDS.CONFIG
     sim/                      # 纯逻辑
     ui/                       # 只画和点（含 reveal.js 揭晓动效）
-    save/port.js              # persist / restoreOrNull
+    save/port.js              # persist / restoreOrNull / retry / loadCloud
     bridge/colorbox.js        # ColorboxAI 封装
 ```
 
 `ui/`：`dom.js` `reveal.js` `paint.js` `app.js`。媒体评分与颁奖夜揭晓只在 UI，不改 sim。
 
-`sim/` 文件（11 个）：`ns.js` `rng.js` `util.js` `events.js` `lifecycle.js` `media.js` `awards.js` `career.js` `careerLines.js` `tick.js` `actions.js`。经营局专属的 `company.js` / `staff.js` / `project.js` / `versions.js` / `series.js` / `rivals.js` 已随经营局移除。
+`sim/` 加载序共 18 文件，以 `h5/index.html` 和 `tests/_harness.js` 为准。经营局专属文件已随经营局移除。
 
 | 层 | 职责 | 禁止 |
 |----|------|------|
 | **config** | 共享数值在 `activity/config.json`；生涯公司/作品/薪资/跳槽/前辈/职级代号/事件线/制作人规则在 `activity/career-world.json` | 在 HTML / UI / sim 里再写一套平衡数字 |
 | **sim/** | 下节公开函数 | `document`、`window.ColorboxAI`、存档 IO、`fetch` |
 | **ui/** | 场景、按钮、弹层 | 在 click handler 里改 state 数值 |
-| **save/ + bridge/** | 云档、storage 缓存、审核 | `localStorage` / `sessionStorage`；假后端 |
+| **save/ + bridge/** | 云档、storage 缓存、直开预览本机档、审核 | 在有 Colorbox 宿主时绕开官方桥直接写浏览器存储 |
 
 动作校验失败 `{ ok:false, error }`，不改入参 state。
 
@@ -135,7 +135,7 @@ Windows 可用 `python`；若失败再试 `python3`。
 
 ## 4. 数据层
 
-部署决策已拍板：**云端保存**。云环境开通放部署阶段；未开通时读云失败不改用 `localStorage`，预览用内存 + storage 缓存。
+部署决策已拍板：**云端保存**。测试环境已配置；云端不可用时本机档仍可玩。
 
 ### 4.1 只放在客户端
 
@@ -149,14 +149,14 @@ Windows 可用 `python`；若失败再试 `python3`。
 
 - 写：`ColorboxAI.storage.setValue`
 - 读：`ColorboxAI.storage.getValue`
-- 禁止原生 `localStorage`
+- 无 Colorbox 宿主的 `file://` 预览使用 `localStorage`
 
-### 4.4 云端（已拍板，环境未开通）
+### 4.4 云端（测试环境已部署）
 
 - 登录后 `ColorboxAI.cloud.auth`，再 `cloud.request`
-- 表 `game_saves`：一人一条（`unique puid`）
-- 读：`GET {apiBase}/my/save`；写：`POST {apiBase}/save/upsert`（body 含 `saveJson`，不带身份字段）
-- `h5/index.html` 里 `ACTIVITY_API_BASE` / `ACTIVITY_ENV_ID` 现为空；有值且 Colorbox 就绪才 `canCloud()`
+- 表 `game_saves`：一人一条（`unique puid`），含 `revision`；客户端角色不得直接访问
+- 读：`GET {apiBase}/my/save` 返回 `revision`，大档分段读取；写：`POST {apiBase}/save/upsert` 带 `expectedRevision`，冲突返回 409
+- `h5/index.html` 已配置测试环境的 `ACTIVITY_API_BASE` / `ACTIVITY_ENV_ID`；Colorbox 就绪才 `canCloud()`
 
 ### 4.5 明确不做
 
@@ -180,7 +180,7 @@ Windows 可用 `python`；若失败再试 `python3`。
 
 ## 6. 安全与发布
 
-资源/接口域名仅虎扑域；`sim/` 不联网；禁止 `localStorage`、内联脚本、`eval`、iframe、外域跳转、设备敏感 API。玩家输入当文本节点，不 `innerHTML` 拼接。
+`sim/` 不联网；玩家输入当文本节点，不 `innerHTML` 拼接。云函数以网关注入的用户身份读写服务端存档。
 
 ---
 
@@ -200,7 +200,7 @@ Windows 可用 `python`；若失败再试 `python3`。
 | `career` | 见 7.1b |
 | `worldReleased` | 世界已发售作品记录；目录作四维进局时先按 `quality.eraStatScale` 乘发售年，再按 `quality.statJitterMinPct`～`MaxPct` 整数百分比浮动后向上取整 |
 | `companyXp` `studioXp` | 公司/工作室题材·玩法经验桶 |
-| `company` | **仅 UI 镜像**：`name` 存角色名、`funds` 存积蓄，复用总览展示，不代表开了一家公司 |
+| `company` | **仅 UI 镜像**：`name` 存角色名，不代表开了一家公司；货币系统已移除 |
 | `trend` `trendWait` | 热点与距离下次随机刷新 |
 | `firedEventIds` | 已触发的事件 |
 | `monthChart` | 最近一次点月的榜快照（本月 `worldReleased` 按实销排） |
@@ -308,9 +308,9 @@ ERR 码：`EVENT_NOT_FOUND` / `EVENT_NOT_CHOICE` / `EVENT_OPTION_INVALID` + `CAR
 
 ## 8. 实现进度与非目标
 
-已接到点月循环，并拆成 view / sim / config。现行页面默认生涯档（1995 入职）。云表与读写骨架已有，环境未开通。浏览器直接打开是预览模式。
+已接到点月循环，并拆成 view / sim / config。现行页面提供继续游戏和开始新局入口。测试环境的云表、云函数和网关已部署；浏览器直接打开是本机预览模式。
 
-第一版仍不做：开通云环境（等部署阶段）、联机、付费抽奖、真排行、海报发帖、1985 更早档、生涯档自己开公司、自动过月、岗位编制、培训界面、虎扑赛事接口、精细立绘。
+第一版仍不做：联机、付费抽奖、真排行、海报发帖、1985 更早档、生涯档自己开公司、自动过月、岗位编制、培训界面、虎扑赛事接口、精细立绘。
 
 **已废规则不要复活：** 经营局（社长/招人/立项/发布/待发售/外包/对手/破产/份额/广告/工作室/自研主机）、自动发售、指数长尾、`launchSales` 当后续乘数、PS4/Xbox 玩家选项、12 月 TGA、制作人 2:1 三项合计、制作人专属换算矩阵。
 

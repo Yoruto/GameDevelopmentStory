@@ -4,6 +4,6 @@
 
 本仓库正在做的活动是 H5「游戏开发物语」。打开 `h5/index.html` 即可预览；玩法文档与改数流程见 `activity/README.md`。部署到腾讯云 EdgeOne Pages 时输出目录必须是 `h5`（仓库根 `edgeone.json` 已写明），否则预览根路径会 404。
 
-> **接手开发（新会话）先读根目录 `P3-HANDOFF.md`**：现状基线、必读清单、待拍板决策、未提交改动与回滚点都在里面。
+> **接手开发先读 `activity/README.md` 与 `activity/current-status.md`。** `P3-HANDOFF.md` 是 2026-09-20 的历史交接，里面的任务和测试数已过期。
 > 记忆文件 `.workbuddy/memory/MEMORY.md` 会自动注入；改配置/引擎的标准流程见项目级 skill `gds-config-workflow`。
 > 注：`AGENTS.md` 是外层 Colorbox 工作区模板（讲 `skills/runbook/` 的交付状态机），与游戏开发本身无关，别照它去跑 `state.py`。

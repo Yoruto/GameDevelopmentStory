@@ -1433,6 +1433,36 @@
     };
   };
 
+  sim.careerEndingView = function (state, config) {
+    var cr = state && state.career || {};
+    var spec = sim.careerWorld(config).endings || {};
+    var lines = cr.lines || {};
+    var doneBonds = ["bond-mentor", "bond-peer", "bond-junior"].filter(function (id) {
+      return lines[id] && lines[id].status === "done";
+    }).length;
+    var settlement = sim.careerSettlementView(state, config);
+    var matches = {
+      producer: settlement.growthStage === "producer",
+      relationships: doneBonds >= num(spec.relationshipLines, 2),
+      awards: settlement.honor >= num(spec.awardHonor, 4),
+      prolific: settlement.creditedCount >= num(spec.prolificCredits, 8),
+      health: num(cr.health, 4) <= num(spec.lowHealth, 2),
+      ordinary: true
+    };
+    var order = spec.priority || ["producer", "relationships", "awards", "prolific", "health", "ordinary"];
+    var id = order.filter(function (key) { return matches[key]; })[0] || "ordinary";
+    var card = (spec.cards || {})[id] || {};
+    var echo = "";
+    (spec.echoes || []).some(function (item) {
+      if (lines[item.line] && lines[item.line].flags && lines[item.line].flags[item.flag]) {
+        echo = item.text || "";
+        return true;
+      }
+      return false;
+    });
+    return { id: id, title: card.title || "", body: card.body || "", echo: echo };
+  };
+
   // phaseMult：开发月的阶段权重（sim.careerPhaseMult）。0 表示这个月没有实质产出
   // （金盘期等发售），连职级经验一起停——「这个月你在项目上实际投入了多少」是一个倍率管全部。
   function grantMainStatAndXp(st, kind, config, title, phaseMult) {

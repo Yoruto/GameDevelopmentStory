@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>游戏开发物语</title>
   <script type="application/json" id="colorbox-skill-usage">
 {
@@ -18,8 +18,8 @@
 </script>
   <!-- ColorboxAI JS Path（实现在 js/bridge/colorbox.js）：window.ColorboxAI.cloud.auth window.ColorboxAI.cloud.request window.ColorboxAI.security.checkAudit window.ColorboxAI.storage.getValue window.ColorboxAI.storage.setValue -->
   <script>
-    window.ACTIVITY_API_BASE = "";
-    window.ACTIVITY_ENV_ID = "";
+    window.ACTIVITY_API_BASE = "https://app-3c72f55c0c-d3gc5cvnta9f232c1-1252166086.ap-shanghai.app.tcloudbase.com/api";
+    window.ACTIVITY_ENV_ID = "app-3c72f55c0c-d3gc5cvnta9f232c1";
   </script>
   <link rel="stylesheet" href="css/app.css">
 </head>
@@ -33,7 +33,7 @@
           <p id="boot-lead">刚毕业入行。填好名字，挑一个擅长和天赋，就能入职开始这一局。</p>
         </div>
         <div class="hero-form">
-          <label id="boot-name-label">角色名</label>
+          <label id="boot-name-label" for="name-input">角色名</label>
           <input id="name-input" type="text" maxlength="16" value="">
 
           <div class="roll-card" id="roll-box">
@@ -46,7 +46,11 @@
           </div>
 
           <button class="btn ghost wide mt-12" id="btn-reroll" type="button">🎲 重掷开局</button>
-          <button class="btn wide mt-8" id="btn-start">开始游戏</button>
+          <button class="btn wide mt-8" id="btn-continue" type="button" hidden>继续旧档</button>
+          <button class="btn wide mt-8" id="btn-start" type="button">开始新局</button>
+          <p class="save-status" id="save-status-boot" role="status" aria-live="polite"></p>
+          <button class="btn tiny ghost" id="btn-save-retry-boot" type="button" hidden>重试同步</button>
+          <button class="btn tiny ghost" id="btn-cloud-boot" type="button" hidden>载入云端存档</button>
           <div class="preview-flag" id="preview-flag-boot">预览模式</div>
         </div>
       </div>
@@ -85,6 +89,7 @@
           <span class="top-chip" id="hq-cap">岗位 —</span>
           <span class="top-chip" id="hq-plats-chip">阶段 —</span>
         </div>
+        <div class="save-row"><span class="save-status" id="save-status-hq" role="status" aria-live="polite"></span><button class="btn tiny ghost" id="btn-save-retry" type="button" hidden>重试同步</button><button class="btn tiny ghost" id="btn-cloud-hq" type="button" hidden>载入云端</button></div>
       </div>
       <div class="scene-body" id="hq-body">
         <div class="hq-grid">
@@ -210,6 +215,7 @@
             <div class="stat"><b id="end-series">—</b><span id="end-series-label">最后东家</span></div>
           </div>
           <div class="row item"><span id="end-avg-label">荣誉</span><b id="end-avg">—</b></div>
+          <div class="ending-card" id="end-card"><h3 id="end-card-title"></h3><p id="end-card-body"></p><p class="hint" id="end-card-echo"></p></div>
           <p class="hint">只在页里看，不发到微信/微博。可以再开一局。</p>
           <button type="button" class="btn wide mt-12" id="btn-again1">再开一局</button>
         </div>
@@ -241,7 +247,7 @@
   </div>
 
   <div class="mask" id="dlg-mask">
-    <div class="dlg dlg-info" id="dlg">
+    <div class="dlg dlg-info" id="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-title" aria-describedby="dlg-body" tabindex="-1">
       <p class="dlg-kicker" id="dlg-kicker">提示</p>
       <h2 id="dlg-title">提示</h2>
       <p class="dlg-body" id="dlg-body"></p>
@@ -252,7 +258,7 @@
       </div>
     </div>
   </div>
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
   <script src="js/config.generated.js"></script>
   <script src="js/sim/ns.js"></script>

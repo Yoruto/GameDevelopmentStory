@@ -100,6 +100,28 @@
     "comment": "个人线新局 saveVersion。经营局仍写 4。职级/履历起为 9；事件线/制作人起为 10。",
     "version": 10
   },
+  "endings": {
+    "comment": "结局按 producer → relationships → awards → prolific → health → ordinary 的优先级命中；阈值是固定业务规则，文案与人物线回声由此处提供。",
+    "relationshipLines": 2,
+    "awardHonor": 4,
+    "prolificCredits": 8,
+    "lowHealth": 2,
+    "priority": ["producer", "relationships", "awards", "prolific", "health", "ordinary"],
+    "cards": {
+      "producer": { "title": "掌舵的人", "body": "从工位走到立项桌前，你终于能把自己的判断交给整个团队。" },
+      "relationships": { "title": "一路同行", "body": "作品会谢幕，与你并肩的人把这段生涯继续讲了下去。" },
+      "awards": { "title": "奖台常客", "body": "那些被反复打磨的作品，最终在聚光灯下留下了名字。" },
+      "prolific": { "title": "作品如山", "body": "一部接一部，行业的年表里有许多页写着你的名字。" },
+      "health": { "title": "燃尽之后", "body": "你留下了作品，也终于学会问自己：下一程要怎样走。" },
+      "ordinary": { "title": "认真做完这一程", "body": "不必每年站上台，这些年一起完成的游戏已经足够真实。" }
+    },
+    "echoes": [
+      { "line": "bond-junior", "flag": "taughtWell", "text": "你把学会的东西交给了后辈。" },
+      { "line": "bond-peer", "flag": "creditShare", "text": "你曾把属于自己的署名分给同伴。" },
+      { "line": "bond-peer", "flag": "peerReconciled", "text": "当年的对手，后来成了懂你的人。" },
+      { "line": "bond-mentor", "flag": "ownStyle", "text": "前辈教会你起步，你走出了自己的路。" }
+    ]
+  },
   "player": {
     "comment": "开局不再选主职：先 roll 总属性（startRoll.totalMin–totalMax），再按随机权重分到四维，最高维定擅长主职。chances 是含首掷在内的总 roll 次数。startingStats/specialtyBonus 仅作旧档兜底，新开局不再使用。月贡献 = monthlyContribution × contribMult[rank] × careerStatFactor(该维属性) × 阶段权重 × 体量权重，再乘熟练度加成（playerSkillContribMult）。",
     "startingFame": 0,

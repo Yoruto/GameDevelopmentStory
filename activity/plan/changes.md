@@ -1,5 +1,7 @@
 # 排行榜合并 · 改动清单（已有改造）
 
+> **历史方案，已过期。** 当前状态与生成流程见 `activity/current-status.md`。
+
 - 基线：`h5/index.html` 及其 `h5/css/`、`h5/js/`（不重写，只改榜单相关部分）
 - 改动幅度：**改规则**（排序口径 + 掉榜停售门槛都动了） → 须看预览并确认
 - 数值源：`activity/config.json`（改完跑 `scripts/sync_config.py` 同步到 `h5/config.json` 与 `h5/js/config.generated.js`）
@@ -156,5 +158,4 @@
 
 
 **另一条实测结论**：生涯档（当前唯一可玩档位，`career.js` 里 `mode: "career"` 写死）**不进填充游戏**（`chartEntries` 只在非 career 档加 `chartFillers`），所以生涯榜上只有真实作品；§4 的填充游戏/门槛变化只对经营档生效，经营档目前在实机里没有入口（仅 `#app.mode-company` 的 CSS 分支存在）。
-
 

@@ -14,6 +14,7 @@
       --blue: #6aa6d8;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    [hidden] { display: none !important; }
     html, body {
       background: #0c0a10;
       color: var(--text);
@@ -114,6 +115,16 @@
       background: var(--gold); cursor: pointer;
     }
     .btn.ghost { background: var(--card2); color: var(--text); border: 1px solid var(--line); }
+    button:focus-visible, input:focus-visible, [tabindex="-1"]:focus-visible {
+      outline: 2px solid var(--gold);
+      outline-offset: 2px;
+    }
+    .save-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .save-status { color: var(--muted); font-size: 12px; line-height: 1.35; }
+    .save-row .save-status { flex: 1; min-width: 0; }
+    .ending-card { margin-top: 10px; padding: 12px; border: 1px solid var(--gold); border-radius: 10px; background: var(--card2); }
+    .ending-card h3 { color: var(--gold); font-size: 17px; margin-bottom: 6px; }
+    .ending-card p + p { margin-top: 6px; }
     .btn.danger { background: var(--red); color: #fff; }
     .btn.wide { width: 100%; }
     .btn:disabled { opacity: .45; cursor: not-allowed; }

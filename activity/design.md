@@ -1,6 +1,8 @@
 # 游戏开发物语 · 设计（对齐现行 sim）
 
-本文描述**已经落地**的玩法，不是待做草案。可点页面在 `h5/index.html`；规则在 `h5/js/sim/`；目录与接口见 `activity/architecture.md`。
+> **历史设计稿：货币、薪资、积蓄和逐月点击等段落已过期。** 当前可运行规则以 `activity/current-status.md`、`activity/career-world.json` 与 `h5/js/sim/` 为准；本稿用于追溯旧方案。
+
+本文记录迭代时的设计口径。可点页面在 `h5/index.html`；规则在 `h5/js/sim/`；目录与接口见 `activity/architecture.md`。
 
 sim 只有一套局：**生涯档**（`mode=career`）。玩家是 1995 年入行的职员，一路做到 2025——不当社长、不招人、不立项、不经营公司（原经营局逻辑已于 2026-09 整体移除，代码与文档均不再保留）。
 

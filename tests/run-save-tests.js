@@ -153,11 +153,17 @@ async function main() {
     }
   } };
   vm.runInNewContext(fs.readFileSync(path.join(__dirname, "../h5/js/bridge/colorbox.js"), "utf8"), fakeWindow);
+  assert.equal((await fakeWindow.GDS.bridge.auditText("测试名字")).ok, false);
+  fakeWindow.ACTIVITY_API_BASE = "";
+  assert.equal((await fakeWindow.GDS.bridge.auditText("测试名字")).preview, true);
+  fakeWindow.ACTIVITY_API_BASE = "https://test";
+  fakeWindow.ColorboxAI.security = { checkAudit: async () => ({ code: 200, data: true }) };
+  assert.equal((await fakeWindow.GDS.bridge.auditText("测试名字")).ok, true);
   const assembled = await fakeWindow.GDS.bridge.cloudGetSave();
   assert.equal(Buffer.byteLength(assembled.saveJson), MAX_SAVE_BYTES);
   assert.equal(JSON.parse(assembled.saveJson).year, 2025);
   assert.equal((await invoke(zippedHandler, "GET", "/my/save?part=1&revision=0", undefined, "u2")).status, 409);
-  count += 8;
+  count += 11;
 
   const cache = { value: null }, server = { row: null, fail: false }, online = { value: false };
   const port = makePort(makeBridge(cache, server, online));

@@ -293,7 +293,7 @@
     stats = career.stats || {};
     ui.$("hq-name").textContent = career.characterName;
     ui.$("end-name").textContent = career.characterName;
-    ui.$("hq-date").textContent = sim.dateText(state);
+    ui.motion.setText(ui.$("hq-date"), sim.dateText(state));
     (function setLabs() {
       var fansLab = ui.$("hq-fans-lab");
       if (fansLab) fansLab.textContent = copy.fameLabel || "声望";
@@ -653,6 +653,7 @@
       ui.$("end-card-body").textContent = ending.body;
       ui.$("end-card-echo").textContent = ending.echo;
     }
+    ui.$("btn-career-poster").hidden = state.phase !== "SETTLED";
   };
 
   ui.paintHq = function () {
@@ -861,6 +862,12 @@
       sq.appendChild(sb);
       sr.appendChild(sl);
       sr.appendChild(sq);
+      if (rec.salesReason) {
+        var why = doc.createElement("p");
+        why.className = "hint";
+        why.textContent = rec.salesReason;
+        sr.appendChild(why);
+      }
       nodes.push(sr);
       // P6：离奖信号 + 销量具象化（≤2 行；呈现层只读，launchSales 数值链路不动）。
       var stHere = ui.session && ui.session.state;

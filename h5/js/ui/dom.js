@@ -7,6 +7,12 @@
     return doc.getElementById(id);
   };
 
+  ui.focusWithoutScroll = function (el) {
+    if (!el || !el.focus) return;
+    try { el.focus({ preventScroll: true }); }
+    catch (error) { el.focus(); }
+  };
+
   ui.toast = function (msg) {
     var el = ui.$("toast");
     el.textContent = msg;
@@ -64,7 +70,8 @@
     hook.onCancel = opts.onCancel || null;
     hook.returnFocus = doc.activeElement;
     var dlg = ui.$("dlg");
-    dlg.className = "dlg dlg-" + (opts.kind || "info");
+    dlg.className = "dlg dlg-" + (opts.kind || "info") +
+      ((hook.mode === "tick" || hook.mode === "tick-choice") ? " dlg-queue" : "");
     ui.$("dlg-kicker").textContent = opts.kicker || (opts.kind === "event" ? "本月事件" : (opts.kind === "confirm" ? "请确认" : "提示"));
     ui.$("dlg-title").textContent = opts.title || "";
     ui.$("dlg-body").textContent = opts.body || "";
@@ -77,7 +84,7 @@
     ui.$("dlg-mask").classList.add("on");
     root.setTimeout(function () {
       var first = ui.$("dlg").querySelector("[data-event-opt]:not([disabled]), #dlg-ok:not(.off), #dlg-cancel:not(.off)");
-      (first || ui.$("dlg")).focus();
+      if (ui.$("dlg-mask").classList.contains("on")) ui.focusWithoutScroll(first || ui.$("dlg"));
     }, 0);
   };
 
@@ -89,7 +96,7 @@
     ui.session.dlgHook.onOk = null;
     ui.session.dlgHook.onCancel = null;
     ui.session.dlgHook.returnFocus = null;
-    if (returnFocus && returnFocus.focus) returnFocus.focus();
+    ui.focusWithoutScroll(returnFocus);
   };
 
   doc.addEventListener("keydown", function (event) {
@@ -105,7 +112,7 @@
     if (event.key !== "Tab") return;
     var nodes = Array.prototype.slice.call(ui.$("dlg").querySelectorAll("button:not(:disabled)"))
       .filter(function (el) { return !el.classList.contains("off") && el.offsetParent !== null; });
-    if (!nodes.length) { event.preventDefault(); ui.$("dlg").focus(); return; }
+    if (!nodes.length) { event.preventDefault(); ui.focusWithoutScroll(ui.$("dlg")); return; }
     var first = nodes[0], last = nodes[nodes.length - 1];
     if (event.shiftKey && doc.activeElement === first) { event.preventDefault(); last.focus(); }
     else if (!event.shiftKey && doc.activeElement === last) { event.preventDefault(); first.focus(); }
@@ -180,15 +187,19 @@
     var target = ui.$(id);
     if (!target) return;
     var wasOn = target.classList.contains("on");
-    // 目标 scene 已是当前 scene 时跳过 add，避免移动端 WebView（X5 / 老 Blink /
-    // WebKit）把同步 remove+add 视为新动画，重放 .scene.on { animation: scene-in }
-    // 造成主界面 translateY(6px)→0 跳一下又还原（桌面 Chromium 优化掉了，所以重
-    // 放只在真机上能复现）。
+    // Only a real scene change may start an entrance animation. Repainting
+    // the active scene must never replay a transform on the whole screen.
     var all = doc.querySelectorAll(".scene");
     for (var i = 0; i < all.length; i++) {
-      if (all[i] !== target) all[i].classList.remove("on");
+      if (all[i] !== target) {
+        ui.motion.cancel(all[i]);
+        all[i].classList.remove("on");
+      }
     }
-    if (!wasOn) target.classList.add("on");
+    if (!wasOn) {
+      target.classList.add("on");
+      ui.motion.play(target, target, "scene-enter", 220);
+    }
     if (id !== "sc-hq") ui.closeDockSheets();
     else ui.syncDock();
   };

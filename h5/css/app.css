@@ -119,12 +119,34 @@
       outline: 2px solid var(--gold);
       outline-offset: 2px;
     }
-    .save-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+    .save-row { display: flex; align-items: center; gap: 8px; margin-top: 4px; min-height: 17px; }
     .save-status { color: var(--muted); font-size: 12px; line-height: 1.35; }
     .save-row .save-status { flex: 1; min-width: 0; }
     .ending-card { margin-top: 10px; padding: 12px; border: 1px solid var(--gold); border-radius: 10px; background: var(--card2); }
     .ending-card h3 { color: var(--gold); font-size: 17px; margin-bottom: 6px; }
     .ending-card p + p { margin-top: 6px; }
+    .poster-overlay {
+      position: fixed; inset: 0; z-index: 1000; background: rgba(10, 8, 13, .98);
+      display: flex; flex-direction: column; align-items: center; gap: 10px;
+      overflow-y: auto; padding: max(12px, env(safe-area-inset-top)) 14px max(18px, env(safe-area-inset-bottom));
+      overscroll-behavior: contain;
+    }
+    .poster-toolbar { width: min(100%, 430px); display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .poster-toolbar strong { font-size: 15px; }
+    .poster-toolbar button, .poster-nav button {
+      border: 1px solid var(--line); border-radius: 9px; padding: 9px 12px;
+      background: var(--card2); color: var(--text); font: inherit; cursor: pointer;
+    }
+    .poster-image {
+      display: block; flex: 0 0 auto; width: min(calc((100dvh - 195px) * .5625), calc(100vw - 28px), 430px);
+      max-width: 100%; height: auto; aspect-ratio: 9 / 16; object-fit: contain;
+      background: #f5efdf; box-shadow: 0 16px 40px rgba(0,0,0,.5);
+      -webkit-touch-callout: default;
+    }
+    .poster-nav { display: flex; align-items: center; justify-content: center; gap: 14px; }
+    .poster-nav span { min-width: 40px; text-align: center; font-weight: 800; }
+    .poster-nav button:disabled { opacity: .4; cursor: default; }
+    .poster-hint { max-width: 430px; color: var(--muted); font-size: 12px; text-align: center; }
     .btn.danger { background: var(--red); color: #fff; }
     .btn.wide { width: 100%; }
     .btn:disabled { opacity: .45; cursor: not-allowed; }
@@ -228,15 +250,15 @@
       from { opacity: 1; transform: translateX(-50%) translateY(0); }
       to { opacity: 0; transform: translateX(-50%) translateY(-16px); }
     }
-    /* 过月日期翻牌滑换（app.js rollDateText 驱动，1s）：旧值上滑淡出、新值下滑就位。
-       #hq-date 文本格式固定 YYYY.MM，新旧等宽，绝对定位的新值不会溢出。 */
-    .kpi-val.date { position: relative; }
-    .date-roll { position: relative; display: inline-block; overflow: hidden; }
-    .date-roll-out { display: inline-block; animation: date-roll-out 1s ease-in forwards; }
-    .date-roll-in {
-      position: absolute; left: 0; top: 0; display: inline-block;
-      animation: date-roll-in 1s cubic-bezier(.2, .7, .3, 1) forwards;
+    /* Motion owns only pixels: the date slot keeps the same geometry before,
+       during and after the roll. Both animated values are out of flow. */
+    .kpi-val.date { position: relative; height: 1.2em; }
+    .date-roll { position: absolute; inset: 0; display: block; overflow: hidden; }
+    .date-roll-out, .date-roll-in {
+      position: absolute; left: 0; top: 0; display: block; white-space: nowrap;
     }
+    .date-roll-out { animation: date-roll-out 1s ease-in forwards; }
+    .date-roll-in { animation: date-roll-in 1s cubic-bezier(.2, .7, .3, 1) forwards; }
     @keyframes date-roll-out {
       from { opacity: 1; transform: translateY(0); }
       to { opacity: 0; transform: translateY(-72%); }
@@ -604,6 +626,13 @@
       white-space: nowrap;
     }
     .dlg.dlg-awards .dlg-actions { margin-top: 8px; }
+    /* Every page in a tick queue shares one shell size, including media and
+       awards. Appending reveal rows only changes the scrollable body. */
+    .dlg.dlg-queue {
+      width: min(400px, 100%);
+      height: min(75svh, 560px);
+      max-height: calc(100svh - 20px);
+    }
     @media (max-height: 620px) {
       .dlg.dlg-awards { padding: 8px 10px 8px; }
       .dlg.dlg-awards h2 { font-size: 15px; margin-bottom: 2px; }
@@ -1109,7 +1138,7 @@
       color: #1a1320;
       font-weight: 800;
     }
-    .scene.on { animation: scene-in .22s ease-out; }
+    .scene.scene-enter { animation: scene-in .22s ease-out; }
     @keyframes scene-in {
       from { opacity: 0; transform: translateY(6px); }
       to { opacity: 1; transform: translateY(0); }
@@ -1124,6 +1153,6 @@
       .pager button:active, .tga-year-chip:active, .hq-sum:active, .offer-card:active {
         transform: none;
       }
-      .scene.on { animation: none; }
+      .scene.scene-enter { animation: none; }
     }
 

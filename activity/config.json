@@ -677,7 +677,7 @@
     "calendarMoved": "已改期",
     "calendarEmpty": "暂无",
     "chartTitle": "排行榜",
-    "chartHint": "长线与单机同榜，按本月销量排序，前 15。",
+    "chartHint": "长线与单机同榜，按本月实销（当月新增份数）排序，前 15。",
     "chartEmpty": "这个月还没有在售作品上榜。",
     "chartPlayerTag": "本公司",
     "chartFillerTag": "市场",
@@ -690,9 +690,19 @@
     "baselineSalesLabel": "基准（首月参照）",
     "monthActualSalesLabel": "本月实销",
     "launchActualSalesLabel": "发售当月实销",
-    "launchSalesReveal": "月销量",
+    "launchSalesReveal": "本月实销",
+    "releaseStrategyPrefix": "公司",
+    "releaseStrategyNames": {
+      "targeted": "定向",
+      "standard": "常规",
+      "wide": "广泛"
+    },
+    "releaseStrategySuffix": "发售 · ",
+    "releaseAwarenessLow": "新作起步",
+    "releaseAwarenessMid": "已有一定知名度",
+    "releaseAwarenessHigh": "系列与公司知名度高",
     "mediaSalesHint": "基准是发售公式算出的首月参照，不是账上实销。有的事件只砸本月实销，有的会改写基准、之后每月都按新基准走。",
-    "mediaRevealHint": "先出评语，再出分，最后揭晓月销量。点屏幕跳过这一拍。",
+    "mediaRevealHint": "先出评语，再出分，最后揭晓本月实销。点屏幕跳过这一拍。",
     "awardRevealHint": "点屏幕可立刻揭晓。年度游戏压轴。",
     "awardNightKicker": "{year}年度盛典",
     "awardNightTitle": "{year}年颁奖夜",
@@ -783,6 +793,7 @@
       "yearBannerKicker": "新年",
       "yearNewsTpl": "{year}年，《{title}》风靡业界。",
       "healthLabel": "健康",
+      "hospitalNote": "住院休养：这个月没有个人工作贡献，健康恢复到 {health} 格",
       "renownLabel": "声望",
       "renownTiers": [
         "无名新人",
@@ -1116,7 +1127,21 @@
     "tSpan": 0.3,
     "scoreMin": 1,
     "scoreMax": 10,
-    "chartSize": 15
+    "chartSize": 15,
+    "v2": {
+      "comment": "新增作品的月销量曲线：口碑决定衰减，广泛发售首发更集中，12 月后尾部继续收敛；旧存档作品沿用上方原曲线。史实累计锚点作品单独按目标总量归一化。",
+      "maxMonths": 24,
+      "lambda0": 0.8,
+      "lambdaSpan": -0.25,
+      "tMin": 0.015,
+      "tSpan": 0.09,
+      "tailDecayAfterMonth": 12,
+      "tailDecay": 0.13,
+      "anchorLambda": 0.3,
+      "anchorTail": 0.22,
+      "anchorAfterDecay": 0.22,
+      "strategyLambdaMult": { "targeted": 0.8, "standard": 1, "wide": 1.15 }
+    }
   },
   "release": {
     "comment": "生涯档只读 media 段：四家媒体的四维权重（决定各自打多少分）与 highScore/lowScore 分档（决定引用哪一档媒体评语）。经营档的发售系数（fanSalesCoeff / qualitySumSalesCoeff / trendSalesMultiplier）与 readyToShipMax 已随公司档移除——生涯发售公式在 careerWorld.launchSales。",

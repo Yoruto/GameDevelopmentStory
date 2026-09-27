@@ -160,7 +160,7 @@
       <div class="scene-body">
         <div class="card grow">
           <h2 class="sec-title" id="chart-head">排行榜</h2>
-          <p class="hint" id="chart-hint">长线与单机同榜，按本月销量排序，前 15。</p>
+          <p class="hint" id="chart-hint">长线与单机同榜，按本月实销（当月新增售出份数）排序，前 15。</p>
           <div class="list-fit" id="month-chart"></div>
         </div>
       </div>
@@ -216,7 +216,8 @@
           </div>
           <div class="row item"><span id="end-avg-label">荣誉</span><b id="end-avg">—</b></div>
           <div class="ending-card" id="end-card"><h3 id="end-card-title"></h3><p id="end-card-body"></p><p class="hint" id="end-card-echo"></p></div>
-          <p class="hint">只在页里看，不发到微信/微博。可以再开一局。</p>
+          <button type="button" class="btn wide mt-12" id="btn-career-poster" hidden>查看生涯海报</button>
+          <p class="hint">海报可以保存为图片，不会自动发布。可以再开一局。</p>
           <button type="button" class="btn wide mt-12" id="btn-again1">再开一局</button>
         </div>
       </div>
@@ -244,6 +245,14 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <div class="poster-overlay" id="poster-overlay" role="dialog" aria-modal="true" aria-label="游戏作者生涯海报" hidden>
+    <div class="poster-toolbar"><strong>游戏作者生涯海报</strong><button type="button" id="poster-close" aria-label="关闭生涯海报">关闭</button></div>
+    <img class="poster-image" id="poster-image" alt="当前生涯海报，可长按保存" draggable="false">
+    <canvas id="poster-canvas" width="900" height="1600" hidden></canvas>
+    <div class="poster-nav"><button type="button" id="poster-prev">上一张</button><span id="poster-count">1 / 2</span><button type="button" id="poster-next">下一张</button></div>
+    <p class="poster-hint">长按海报图片保存；在电脑上可右键保存图片。</p>
   </div>
 
   <div class="mask" id="dlg-mask">
@@ -283,8 +292,10 @@
   <script src="js/bridge/local.js"></script>
   <script src="js/save/port.js"></script>
   <script src="js/ui/dom.js"></script>
+  <script src="js/ui/motion.js"></script>
   <script src="js/ui/reveal.js"></script>
   <script src="js/ui/paint.js"></script>
+  <script src="js/ui/poster.js"></script>
   <script src="js/ui/app.js"></script>
 </body>
 </html>

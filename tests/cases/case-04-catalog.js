@@ -251,7 +251,8 @@ module.exports = function runGroup(ctx) {
       if (ev.presentation === "choice") {
         assert(ev.choices && ev.choices.length, "choice dims " + ev.id);
         ev.choices.forEach(function (ch) {
-          assert(ch.qualityDim, "choice qualityDim " + ev.id + "/" + ch.id);
+          assert(ch.qualityDim || ch.healthDelta != null || ch.nextMonthWorkMult != null ||
+            ev.id === "healthHospitalStay", "choice effect " + ev.id + "/" + ch.id);
         });
         if (genericChoiceIds.indexOf(ev.id) >= 0) {
           assert(!ev.role, "generic choice has no role " + ev.id);
@@ -260,9 +261,9 @@ module.exports = function runGroup(ctx) {
           const key = ev.role + ":" + ev.phase;
           rolePhaseChoices[key] = (rolePhaseChoices[key] || 0) + 1;
         }
-      } else if (!(ev.manualOnly && ev.triggerFlag)) {
+      } else if (!(ev.manualOnly && ev.triggerFlag) && ev.id !== "healthHospitalStay") {
         // echo beats are pure prose: they pay off a flag, they carry no stat payload.
-        assert(ev.qualityDim, "event qualityDim " + ev.id);
+        assert(ev.qualityDim || ev.monthContributionMult != null, "event effect " + ev.id);
       }
     });
     genericChoiceIds.forEach(function (id) {

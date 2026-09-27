@@ -489,6 +489,14 @@
       if (c.id === optionId) opt = c;
     });
     if (!opt) return sim.fail(state, sim.ERR.EVENT_OPTION_INVALID);
+    if (opt.req && sim.careerOptionLockHint(state, config, opt.req)) {
+      return sim.fail(state, sim.ERR.EVENT_OPTION_INVALID);
+    }
+    if (num(opt.healthDelta, 0) < 0 &&
+        num(state.career && state.career.health, num((sim.careerWorld(config).careerHealth || {}).init, 4)) <=
+        num((sim.careerWorld(config).careerHealth || {}).min, 1)) {
+      return sim.fail(state, sim.ERR.EVENT_OPTION_INVALID);
+    }
     st = sim.clone(state);
     if (ev.idleGap) {
       if (st.career && st.career.idleGap && st.career.idleGap.settled) {
@@ -510,6 +518,10 @@
     }
     applyPlayerSkillFx(st, opt, config);
     if (num(opt.healthDelta, 0)) sim.applyCareerHealthDelta(st, num(opt.healthDelta, 0), config);
+    if (opt.nextMonthWorkMult != null && st.career) {
+      st.career.healthWorkMonth = sim.monthIndex(st.year, st.month);
+      st.career.healthWorkMult = Math.max(0, Math.min(1, num(opt.nextMonthWorkMult, 1)));
+    }
     if (opt.setFlags) {
       flags = careerEventFlags(st);
       for (k in opt.setFlags) {

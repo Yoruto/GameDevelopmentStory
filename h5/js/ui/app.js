@@ -48,21 +48,11 @@
 
   ui.flashStatDelta = function (elId, before, after) {
     var el = ui.$(elId);
-    var parent;
-    var floater;
     var delta;
     if (!el || before == null || after == null) return;
     delta = Math.round(after) - Math.round(before);
     if (!delta) return;
-    parent = el.parentNode;
-    if (!parent) return;
-    floater = doc.createElement("span");
-    floater.className = "stat-float";
-    floater.textContent = (delta > 0 ? "+" : "") + delta;
-    parent.appendChild(floater);
-    root.setTimeout(function () {
-      if (floater.parentNode) floater.parentNode.removeChild(floater);
-    }, 500);
+    ui.motion.floatText(el.parentNode, (delta > 0 ? "+" : "") + delta);
   };
 
   ui.flashCareerStatDeltas = function () {
@@ -89,33 +79,30 @@
   };
 
   ui.finishTickUi = function () {
-    var dateEl, fromText, reduced, beat;
+    var dateEl, fromText;
     ui.closeDlg();
     GDS.save.persist(ui.session.state);
     ui.session.tickPages = [];
     ui.session.tickStep = 0;
     // 收口拍：队列走完（事件选择的属性加成已全部落定）才刷新面板——过月成长与事件
     // 效果在这一次 paint 里一起落新值，日期 1s 翻牌 + ±浮字同拍呈现（Master 2026-09-22）。
-    reduced = !!(root.matchMedia && root.matchMedia("(prefers-reduced-motion: reduce)").matches);
     dateEl = ui.$("hq-date");
-    fromText = dateEl ? dateEl.textContent : "";
+    fromText = ui.motion.text(dateEl);
     ui.paintHq();
     ui.paintTga();
     ui.flashCareerStatDeltas();
-    ui.rollDateText(dateEl, fromText);
-    // 动画放完才恢复按钮（reduced-motion 下无动画，不干等）。
-    beat = reduced ? 0 : 1000;
-    if (ui.session.dateBeatTimer) root.clearTimeout(ui.session.dateBeatTimer);
-    ui.session.dateBeatTimer = root.setTimeout(function () {
-      ui.session.dateBeatTimer = null;
+    // UI completion follows the actual animation end (with a WebView fallback).
+    // Cancellation on restart suppresses this callback and any stale scene jump.
+    ui.motion.rollText(dateEl, fromText, function () {
       ui.$("btn-tick").disabled = false;
-      // 只在确实要切换场景时才调 ui.show——避免 finishTickUi 结束时多余重设
-      // .scene.on 在移动端 WebView 触发 scene-in 重放（translateY 6px→0 跳一下
-      // 又还原）。SETTLED 必须切到 sc-settled；PLAYING 期间 scene 本来就是
-      // sc-hq，强行 remove+add 等于无事生非。
+      // 只有结算才切换场景；普通过月留在当前主界面，不重播整页进场动画。
       var phase = ui.session.state && ui.session.state.phase;
-      if (phase === "SETTLED") ui.show("sc-settled");
-    }, beat);
+      if (phase === "SETTLED") {
+        ui.paintEnds();
+        ui.show("sc-settled");
+        if (ui.openCareerPoster) ui.openCareerPoster();
+      }
+    });
   };
 
   ui.runTickResult = function (tick) {
@@ -131,32 +118,6 @@
       return;
     }
     ui.showTickPage();
-  };
-
-  // 日期翻牌滑换：旧日期上滑淡出、新日期下滑就位（CSS 动画 1s）。
-  // 只动 #hq-date 的表现层，数值已在 paintHq 落定；reduced-motion 下直接换字不动画。
-  ui.rollDateText = function (el, fromText) {
-    var toText, wrap, oldS, newS;
-    if (!el) return;
-    toText = el.textContent;
-    if (!fromText || fromText === toText) return;
-    if (root.matchMedia && root.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    el.textContent = "";
-    wrap = doc.createElement("span");
-    wrap.className = "date-roll";
-    oldS = doc.createElement("span");
-    oldS.className = "date-roll-out";
-    oldS.textContent = fromText;
-    newS = doc.createElement("span");
-    newS.className = "date-roll-in";
-    newS.textContent = toText;
-    wrap.appendChild(newS);
-    wrap.appendChild(oldS);
-    el.appendChild(wrap);
-    // 动画结束后落回纯文本，防止连点叠加；节点已被重绘时静默跳过。
-    root.setTimeout(function () {
-      if (wrap.parentNode === el) el.textContent = toText;
-    }, 1030);
   };
 
   ui.showTickPage = function () {
@@ -422,11 +383,8 @@
     ui.prepareCareerStart();
 
     function backToBoot() {
-      // 清掉过月动画的第二拍定时器和残留队列，防止重开局后弹旧弹窗。
-      if (ui.session.dateBeatTimer) {
-        root.clearTimeout(ui.session.dateBeatTimer);
-        ui.session.dateBeatTimer = null;
-      }
+      // A cancelled animation must not complete the previous game's tick.
+      ui.motion.cancel(ui.$("hq-date"));
       showContinue(ui.session.state);
       ui.session.state = null;
       ui.session.startRoll = null;

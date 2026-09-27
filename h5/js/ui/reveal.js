@@ -70,6 +70,12 @@
     mask.addEventListener("click", function (ev) {
       var t = ev.target;
       if (!running) return;
+      if (running.kind === "awards") {
+        ev.preventDefault();
+        ev.stopPropagation();
+        ui.skipReveal();
+        return;
+      }
       if (t && t.nodeType !== 1) t = t.parentElement;
       if (t && t.closest && (t.closest("#dlg-ok") || t.closest("#dlg-cancel") || t.closest(".dlg-choices"))) return;
       ui.skipReveal();
@@ -207,6 +213,12 @@
       score.textContent = sim.formatUnits(salesAmt);
       q.appendChild(score);
       row.appendChild(q);
+      if (rec.salesReason) {
+        var why = doc.createElement("p");
+        why.className = "hint";
+        why.textContent = rec.salesReason;
+        row.appendChild(why);
+      }
       extra().appendChild(row);
       scrollExtra();
       return score;
@@ -332,6 +344,17 @@
       finishReveal(opts.onDone);
     }
 
+    // A single click during the ceremony reveals the complete result. Keep
+    // the reduced-motion result and the skipped result on the same render path.
+    inst.skip = function () {
+      if (running !== inst) return;
+      clearTimers();
+      extra().textContent = "";
+      awards.forEach(appendStatic);
+      extra().scrollTop = 0;
+      done();
+    };
+
     if (instant) {
       awards.forEach(appendStatic);
       done();
@@ -340,13 +363,20 @@
 
     i = 0;
     function playAward() {
-      var a, wrap, nameEl, reel, labels, tick, idx, phase, reelMs;
+      var a, wrap, nameEl, reel, labels, tick, idx, totalMs, holdMs, reelMs;
       if (!running || running !== inst) return;
       if (i >= awards.length) {
         done();
         return;
       }
       a = awards[i];
+      // Historical config keys say "ReelMs". They now budget the whole
+      // award, including the winner stamp and the brief hold afterward.
+      totalMs = isGrandAward(a)
+        ? ms("awardReelMs", 2000)
+        : ms("awardSmallReelMs", 1000);
+      holdMs = Math.min(ms("awardStampMs", 200) + ms("awardHoldMs", 250), Math.floor(totalMs / 2));
+      reelMs = totalMs - holdMs;
       wrap = doc.createElement("div");
       wrap.className = "fx-award" + (isGrandAward(a) ? " goty" : "");
       nameEl = doc.createElement("p");
@@ -366,55 +396,35 @@
         reel.textContent = a.w || "—";
         reel.classList.add("done");
         markMine(reel, a);
-        phase = "hold";
-        inst.skip = function () {
-          if (!running || running !== inst) return;
-          clearTimers();
-          i += 1;
-          playAward();
-        };
         later(function () {
           if (!running || running !== inst) return;
           i += 1;
           playAward();
-        }, ms("awardHoldMs", 800));
+        }, totalMs);
         return;
       }
 
       idx = 0;
       reel.textContent = labels[0];
-      phase = "reel";
       tick = every(function () {
         idx = (idx + 1) % labels.length;
         reel.textContent = labels[idx];
       }, ms("awardReelTickMs", 70));
 
       function reveal() {
-        if (phase !== "reel") return;
-        phase = "hold";
+        if (running !== inst) return;
         root.clearInterval(tick);
         timers = timers.filter(function (x) { return x !== tick; });
         reel.textContent = a.w || "—";
         reel.classList.add("done");
         markMine(reel, a);
-        inst.skip = function () {
-          if (!running || running !== inst) return;
-          clearTimers();
-          i += 1;
-          playAward();
-        };
         later(function () {
           if (!running || running !== inst) return;
           i += 1;
           playAward();
-        }, ms("awardStampMs", 600) + ms("awardHoldMs", 800));
+        }, holdMs);
       }
 
-      inst.skip = reveal;
-      // 滚幕时长只按奖项大小分档（小 1 秒 / 大奖 2 秒），与这是第几个奖项无关。
-      reelMs = isGrandAward(a)
-        ? ms("awardReelMs", 2000)
-        : ms("awardSmallReelMs", 1000);
       later(reveal, reelMs);
     }
     playAward();

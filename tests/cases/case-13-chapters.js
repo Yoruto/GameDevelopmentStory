@@ -53,7 +53,7 @@ module.exports = function runGroup(ctx) {
     const choicePool = config.careerWorld.devEvents.list.filter(function (e) {
       return (e.presentation || "notice") === "choice" && !e.manualOnly;
     });
-    assert(choicePool.length === 65, "choice pool after demotion, got " + choicePool.length);
+    assert(choicePool.length === 68, "choice pool includes three health tradeoffs, got " + choicePool.length);
     const he = config.careerWorld.devEvents.list.filter(function (e) { return e.id === "colorFight"; })[0];
     assert(he && he.presentation === "notice" && !he.choices && he.qualityDim && he.qualityDelta,
       "flavor choice demoted to notice with merged effect");

@@ -25,7 +25,8 @@
     },
     auditText: async function (text) {
       if (!(window.ColorboxAI && window.ColorboxAI.security && window.ColorboxAI.security.checkAudit)) {
-        return { ok: true, preview: true };
+        if (GDS.bridge.isPreview()) return { ok: true, preview: true };
+        return { ok: false, message: "内容检查暂不可用，请稍后重试" };
       }
       try {
         var res = await window.ColorboxAI.security.checkAudit(text);

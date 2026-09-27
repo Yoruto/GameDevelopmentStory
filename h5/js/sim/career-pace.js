@@ -33,6 +33,16 @@
     var extra = num(mult, 1);
     var role = sim.careerRole(st && st.career && st.career.roleId, config);
     var mainDim = role && role.stat;
+    if (!mainDim && st && st.career && st.career.roleId === "producer") {
+      role = sim.careerRole(st.career.priorRoleId, config);
+      mainDim = role && role.stat;
+      if (!mainDim) {
+        sim.personDims(config).forEach(function (dim) {
+          if (!mainDim || num(st.career.stats && st.career.stats[dim], 0) >
+              num(st.career.stats && st.career.stats[mainDim], 0)) mainDim = dim;
+        });
+      }
+    }
     var mainM = sim.careerTraitMult(st, "mainDimContributionMult", config, 1);
     var offM = sim.careerTraitMult(st, "offDimContributionMult", config, 1);
     var grindM = sim.careerGrindMult(st, config);
@@ -77,6 +87,7 @@
   function careerEventQueueItem(ev, copy, st, config) {
     var pres = ev.presentation || "notice";
     var body = eraEventText(ev, st, config);
+    var healthMin = num((sim.careerWorld(config).careerHealth || {}).min, 1);
     if (sim.eventSpeakerName && sim.eventSpeakerFill) {
       body = sim.eventSpeakerFill(body, sim.eventSpeakerName(ev, st, config));
     }
@@ -89,7 +100,12 @@
       title: ev.displayName,
       body: body,
       options: pres === "choice" ? (ev.choices || []).map(function (c) {
-        return { id: c.id, label: c.label, req: c.req || null };
+        var req = c.req || null;
+        if (num(c.healthDelta, 0) < 0) {
+          req = Object.assign({}, req || {});
+          req.health = Math.max(num(req.health, 0), healthMin + 1);
+        }
+        return { id: c.id, label: c.label, req: req };
       }) : null
     };
   }
@@ -251,11 +267,21 @@
     var awardStory = [];
     var firedEvent = null;
     var careEv = null;
+    var healthSpec = world.careerHealth || {};
+    var healthEvent = null;
+    var healthMonth = sim.monthIndex(st.year, st.month);
+    var hospitalized = false;
+    var workMult = 1;
     var echoEv = null;
     var lineFired = 0;
     var co, view, projectView, phaseLabel, role, invites, supporting, titleNow, xpSpec, phaseMult;
 
     sim.ensureCareerExtras(st, config);
+    if (st.career.healthWorkMonth === healthMonth) {
+      workMult = Math.max(0, Math.min(1, num(st.career.healthWorkMult, 1)));
+    }
+    st.career.healthWorkMonth = null;
+    st.career.healthWorkMult = null;
     if (st.career) st.career.inspirationMonth = false;
     if (st.month === 1 && sim.applyPendingStoryPromos) {
       sim.applyPendingStoryPromos(st, config);
@@ -268,19 +294,46 @@
     view = projectView;
     xpSpec = world.playerXp || {};
     titleNow = st.career.titleId ? sim.careerTitle(st.career.titleId, config, st) : null;
-    if (sim.tickCareerGrind) {
+    hospitalized = st.phase === "PLAYING" &&
+      num(st.career.health, num(healthSpec.init, 4)) <= num(healthSpec.hospitalThreshold, 1);
+    if (hospitalized) {
+      workMult = 0;
+      st.career.health = Math.min(num(healthSpec.max, 5), num(healthSpec.hospitalRecoverTo, 3));
+      healthEvent = sim.findById((world.devEvents || {}).list || [], healthSpec.hospitalEventId || "healthHospitalStay");
+      if (healthEvent) queue.push(careerEventQueueItem(healthEvent, copy, st, config));
+      if (copy.hospitalNote) notes.push(copy.hospitalNote.replace("{health}", st.career.health));
+    } else if (st.phase === "PLAYING" && workMult > 0 &&
+        num(st.career.health, 4) <= num(healthSpec.lowThreshold, 2) &&
+        !projectView.idle && st.career.liveStats &&
+        (st.career.lastLowHealthEventYm == null ||
+          healthMonth - st.career.lastLowHealthEventYm >= num(healthSpec.lowEventCooldownMonths, 3)) &&
+        sim.rand(st) < num(healthSpec.lowEventChance, 0)) {
+      healthEvent = sim.findById((world.devEvents || {}).list || [],
+        sim.pick(st, healthSpec.lowEventIds || []));
+      if (healthEvent) {
+        st.career.lastLowHealthEventYm = healthMonth;
+        workMult *= num(healthEvent.monthContributionMult, 1);
+        if ((healthEvent.presentation || "notice") !== "choice" && healthEvent.qualityDim) {
+          sim.applyCareerLiveDelta(st, healthEvent.qualityDim, healthEvent.qualityDelta, config);
+        }
+        queue.push(careerEventQueueItem(healthEvent, copy, st, config));
+      }
+    }
+    if (sim.tickCareerGrind && workMult > 0) {
       sim.tickCareerGrind(st, config, !!st.career.liveStats && (supporting || !projectView.idle));
     }
     if (supporting && st.career.liveStats) {
-      grantPlayerTitleXp(st, titleNow, num(xpSpec.xpPerPostLaunchMonth, num(xpSpec.xpPerDevMonth, 0)));
-      grantMainStatAndXp(st, "support", config, titleNow);
-      role = sim.careerRole(st.career.roleId, config);
-      // 长线运营月不吃阶段权重（那是开发期的节奏），只吃体量阻尼。
-      applyMonthlyLiveContribution(st, config, sim.careerPowerContribMult(titleNow, config));
-      (function markSupported() {
-        var cred = findCredit(st, st.career.titleId);
-        if (cred) cred.supported = true;
-      })();
+      if (workMult > 0) {
+        grantPlayerTitleXp(st, titleNow, num(xpSpec.xpPerPostLaunchMonth, num(xpSpec.xpPerDevMonth, 0)) * workMult);
+        grantMainStatAndXp(st, "support", config, titleNow, workMult);
+        role = sim.careerRole(st.career.roleId, config);
+        // 长线运营月不吃阶段权重（那是开发期的节奏），只吃体量阻尼。
+        applyMonthlyLiveContribution(st, config, sim.careerPowerContribMult(titleNow, config) * workMult);
+        (function markSupported() {
+          var cred = findCredit(st, st.career.titleId);
+          if (cred) cred.supported = true;
+        })();
+      }
       phaseLabel = projectView.phase ? sim.worldLabel(projectView.phase, config) : "";
       if (phaseLabel) notes.push((copy.phasePrefix || "阶段") + " " + phaseLabel);
     } else if (!projectView.idle && st.career.liveStats) {
@@ -289,11 +342,13 @@
       // 开发月的成长倍率：阶段权重（立项慢 / 填充·打磨快 / 金盘期 0）× 体量阻尼。
       // 同一个倍率同时管「属性成长」「职级经验」「作品月贡献」，玩家才对得上「这个月干了多少活」。
       phaseMult = sim.careerPhaseMult(projectView.phase && projectView.phase.id, config) *
-        sim.careerPowerContribMult(titleNow, config);
-      applyMonthlyLiveContribution(st, config, phaseMult);
-      rollInspirationMonth(st, config, notes);
-      grantPlayerTitleXp(st, titleNow, num(xpSpec.xpPerDevMonth, 0) * phaseMult);
-      grantMainStatAndXp(st, "dev", config, titleNow, phaseMult);
+        sim.careerPowerContribMult(titleNow, config) * workMult;
+      if (workMult > 0) {
+        applyMonthlyLiveContribution(st, config, phaseMult);
+        rollInspirationMonth(st, config, notes);
+        grantPlayerTitleXp(st, titleNow, num(xpSpec.xpPerDevMonth, 0) * phaseMult);
+        grantMainStatAndXp(st, "dev", config, titleNow, phaseMult);
+      }
       phaseLabel = projectView.phase ? sim.worldLabel(projectView.phase, config) : "";
       if (phaseLabel) notes.push((copy.phasePrefix || "阶段") + " " + phaseLabel);
     }
@@ -312,20 +367,23 @@
       }
     }
 
+    if (sim.settleCareerSalesMonth) sim.settleCareerSalesMonth(st, config);
+
     if (st.month === hopMonth && sim.markCareerLineYearEnd) {
       sim.markCareerLineYearEnd(st);
     }
 
-    if (sim.processCareerLines) {
+    if (!hospitalized && !healthEvent && workMult > 0 && sim.processCareerLines) {
       lineFired = sim.processCareerLines(st, config, queue, notes) || 0;
     }
 
-    if (!lineFired && supporting && st.career.liveStats) {
+    if (!hospitalized && !healthEvent && workMult > 0 && !lineFired && supporting && st.career.liveStats) {
       firedEvent = sim.rollPostLaunchEvent(st, config, notes);
       if (firedEvent) {
         queue.push(careerEventQueueItem(firedEvent, copy, st, config));
       }
-    } else if (!lineFired && !projectView.idle && st.career.liveStats && !sim.careerPostLaunch(st)) {
+    } else if (!hospitalized && !healthEvent && workMult > 0 && !lineFired && !projectView.idle &&
+        st.career.liveStats && !sim.careerPostLaunch(st)) {
       firedEvent = sim.rollCareerDevEvent(st, config, notes);
       if (firedEvent) {
         queue.push(careerEventQueueItem(firedEvent, copy, st, config));
@@ -347,13 +405,14 @@
       }
     }
 
-    invites = rollInvitesThisMonth(st, config);
+    invites = hospitalized || healthEvent ? [] : rollInvitesThisMonth(st, config);
     if (invites && invites.length) {
       queue.push(inviteQueueItem(invites[0], config));
     }
 
     // P4b：健康 ≤ 2 段 → 人物线关怀拍（每年至多一次；choice 页会让节点推进停机）。
-    if (st.phase === "PLAYING" && num(st.career.health, 4) <= 2 && st.career.careBeatYear !== st.year) {
+    if (st.phase === "PLAYING" && !healthEvent && num(st.career.health, 4) <= 2 &&
+        st.career.careBeatYear !== st.year) {
       careEv = sim.findById(world.devEvents.list || [], "careCheck");
       if (careEv) {
         st.career.careBeatYear = st.year;
@@ -362,7 +421,7 @@
     }
 
     // P7 echo beat: a flag written by an earlier choice pays off once, when it comes due.
-    if (st.phase === "PLAYING" && sim.dueEventCallback) {
+    if (st.phase === "PLAYING" && !healthEvent && sim.dueEventCallback) {
       echoEv = sim.dueEventCallback(st, config);
       if (echoEv) queue.push(careerEventQueueItem(echoEv, copy, st, config));
     }

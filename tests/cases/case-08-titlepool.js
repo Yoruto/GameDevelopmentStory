@@ -196,12 +196,12 @@ module.exports = function runGroup(ctx) {
   (function careerIdleGapChoiceOnceAndHop() {
     // P2-fix：池开着时空窗一律由池作顶上，本用例覆盖「池关掉」那条兜底路径：
     // 短空窗（< minDevMonths）由推进静默吸收；长空窗（或本公司已排不出下一档目录作）
-    // 才弹一次「空窗抉择」：接外包 / 进修 / 休息。
+    // 才弹一次「空窗抉择」：接外包 / 密集进修 / 进修 / 休息。
     const gapSpec = config.careerWorld.idleGap || {};
     const minDev = gapSpec.minDevMonths != null ? gapSpec.minDevMonths : 6;
     assert(minDev === 6, "idleGap.minDevMonths is 6");
-    assert((gapSpec.choices || []).map(function (c) { return c.id; }).join(",") === "outsource,study,rest",
-      "idle gap offers exactly outsource / study / rest");
+    assert((gapSpec.choices || []).map(function (c) { return c.id; }).join(",") === "outsource,intensiveStudy,study,rest",
+      "idle gap offers outsource / intensiveStudy / study / rest");
     // 每个场景只放一部探针，gap 才是干净的「到下一档目录作开工月的月数」
     function cfgWithProbe(id, name, devStartMonth, devMonths, releaseYear, releaseMonth) {
       // 清掉 fromsoftware 的真实目录：不摘的话《国王密令II》盖住 1995.01，

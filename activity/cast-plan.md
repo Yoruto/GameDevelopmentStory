@@ -1,5 +1,7 @@
 # 角色数据方案 · 真实角色 / 随机角色
 
+> 历史角色数据方案与分批实施记录。现行人物表和姓名模式以 `activity/career-world.json` 为准；本页旧阶段计划不作为当前待办，见 [current-status.md](current-status.md)。
+
 > 对象：`activity/career-world.json`（人物事实）、`h5/js/sim/career-{colleagues,bonds}.js` + `careerLines.js`（取人与说话人）
 > 需求（Master 原话）：**游戏中的角色都会有真实数据，分为真实角色和随机角色；玩家加入公司、以及各种事件中的人物都是真实的人物角色。**
 > 结论先行：**名字已经是真的了，真的是"身份"；缺的是"数据"和"接入点"。** 111 位真实人物零数值、零在职窗口，事件里只有 3 拍真的挂了人名。

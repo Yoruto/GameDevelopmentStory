@@ -5,7 +5,11 @@
   var doc = root.document;
   var timers = [];
   var running = null;
+  var scrollFrame = null;
+  var paused = !!doc.hidden;
   var skipBound = false;
+  var clickAtStart = null;
+  var revealAtClickStart = null;
 
   function fxCfg() {
     return (GDS.CONFIG && GDS.CONFIG.fx) || {};
@@ -28,32 +32,93 @@
     return ui.$("dlg-extra");
   }
 
+  function scheduleTimer(timer) {
+    if (paused || timer.id !== null) return;
+    if (timer.kind === "interval") {
+      timer.id = root.setInterval(timer.fn, timer.delay);
+      return;
+    }
+    timer.startedAt = Date.now();
+    timer.id = root.setTimeout(function () {
+      timer.id = null;
+      timers = timers.filter(function (entry) { return entry !== timer; });
+      timer.fn();
+    }, timer.remaining);
+  }
+
+  function pauseTimer(timer) {
+    if (timer.id === null) return;
+    if (timer.kind === "interval") root.clearInterval(timer.id);
+    else {
+      root.clearTimeout(timer.id);
+      timer.remaining = Math.max(0, timer.remaining - (Date.now() - timer.startedAt));
+    }
+    timer.id = null;
+  }
+
   function clearTimers() {
-    timers.forEach(function (id) {
-      root.clearTimeout(id);
-      root.clearInterval(id);
-    });
+    timers.forEach(pauseTimer);
     timers = [];
   }
 
   function later(fn, delay) {
-    var id = root.setTimeout(function () {
-      timers = timers.filter(function (x) { return x !== id; });
-      fn();
-    }, delay);
-    timers.push(id);
-    return id;
+    var timer = { kind: "timeout", fn: fn, remaining: delay, startedAt: 0, id: null };
+    timers.push(timer);
+    scheduleTimer(timer);
+    return timer;
   }
 
   function every(fn, delay) {
-    var id = root.setInterval(fn, delay);
-    timers.push(id);
-    return id;
+    var timer = { kind: "interval", fn: fn, delay: delay, id: null };
+    timers.push(timer);
+    scheduleTimer(timer);
+    return timer;
+  }
+
+  function stopTimer(timer) {
+    pauseTimer(timer);
+    timers = timers.filter(function (entry) { return entry !== timer; });
+  }
+
+  function scrollExtraNow() {
+    var box = extra();
+    if (box) box.scrollTop = box.scrollHeight;
+  }
+
+  function cancelScrollExtra() {
+    if (scrollFrame === null) return;
+    if (root.cancelAnimationFrame && root.requestAnimationFrame) root.cancelAnimationFrame(scrollFrame);
+    else root.clearTimeout(scrollFrame);
+    scrollFrame = null;
   }
 
   function scrollExtra() {
+    if (paused || scrollFrame !== null) return;
+    var schedule = root.requestAnimationFrame || function (fn) { return root.setTimeout(fn, 16); };
+    scrollFrame = schedule.call(root, function () {
+      scrollFrame = null;
+      scrollExtraNow();
+    });
+  }
+
+  function resetExtraScroll() {
+    cancelScrollExtra();
     var box = extra();
-    if (box) box.scrollTop = box.scrollHeight;
+    if (box) box.scrollTop = 0;
+  }
+
+  function onVisibilityChange() {
+    if (doc.hidden) {
+      if (paused) return;
+      paused = true;
+      timers.forEach(pauseTimer);
+      cancelScrollExtra();
+    } else {
+      if (!paused) return;
+      paused = false;
+      timers.forEach(scheduleTimer);
+      if (running) scrollExtra();
+    }
   }
 
   function setBusy(on) {
@@ -68,8 +133,14 @@
     mask = ui.$("dlg-mask");
     if (!mask) return;
     mask.addEventListener("click", function (ev) {
+      clickAtStart = ev;
+      revealAtClickStart = running;
+    }, true);
+    mask.addEventListener("click", function (ev) {
       var t = ev.target;
-      if (!running) return;
+      // The previous dialog may open a reveal in its click handler. That
+      // same click must not skip the newly opened ceremony as it bubbles.
+      if (!running || clickAtStart !== ev || revealAtClickStart !== running) return;
       if (running.kind === "awards") {
         ev.preventDefault();
         ev.stopPropagation();
@@ -90,6 +161,7 @@
 
   ui.stopReveal = function () {
     clearTimers();
+    cancelScrollExtra();
     running = null;
     setBusy(false);
   };
@@ -133,7 +205,9 @@
   }
 
   function finishReveal(onDone) {
+    var needsScroll = scrollFrame !== null;
     ui.stopReveal();
+    if (needsScroll) scrollExtra();
     if (onDone) onDone();
   }
 
@@ -259,6 +333,12 @@
       }, ms("mediaQuoteMs", 700));
     }
 
+    rows.forEach(function (r) { appendOutlet(r, true); });
+    appendSales(true);
+    ui.fitDialogToContent({ reserveActions: true, lockHeight: true });
+    extra().textContent = "";
+    resetExtraScroll();
+
     if (instant) {
       rows.forEach(function (r) { appendOutlet(r, true); });
       appendSales(true);
@@ -351,9 +431,14 @@
       clearTimers();
       extra().textContent = "";
       awards.forEach(appendStatic);
-      extra().scrollTop = 0;
+      resetExtraScroll();
       done();
     };
+
+    awards.forEach(appendStatic);
+    ui.fitDialogToContent({ reserveActions: true, lockHeight: true });
+    extra().textContent = "";
+    resetExtraScroll();
 
     if (instant) {
       awards.forEach(appendStatic);
@@ -413,8 +498,7 @@
 
       function reveal() {
         if (running !== inst) return;
-        root.clearInterval(tick);
-        timers = timers.filter(function (x) { return x !== tick; });
+        stopTimer(tick);
         reel.textContent = a.w || "—";
         reel.classList.add("done");
         markMine(reel, a);
@@ -429,4 +513,6 @@
     }
     playAward();
   };
+  if (doc.addEventListener) doc.addEventListener("visibilitychange", onVisibilityChange);
+  if (root.addEventListener) root.addEventListener("pagehide", ui.stopReveal);
 })(typeof globalThis !== "undefined" ? globalThis : this);

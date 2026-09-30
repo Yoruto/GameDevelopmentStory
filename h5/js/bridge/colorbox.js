@@ -23,24 +23,16 @@
     isPreview: function () {
       return !GDS.bridge.canCloud();
     },
-    auditText: async function (text) {
-      if (!(window.ColorboxAI && window.ColorboxAI.security && window.ColorboxAI.security.checkAudit)) {
-        if (GDS.bridge.isPreview()) return { ok: true, preview: true };
-        return { ok: false, message: "内容检查暂不可用，请稍后重试" };
-      }
+    posterUserId: async function () {
+      var box = cai();
+      if (!(box && box.auth && typeof box.auth.getUserInfo === "function")) return "我";
       try {
-        var res = await window.ColorboxAI.security.checkAudit(text);
-        if (res.code === 401 || res.code === 500) {
-          if (GDS.bridge.isPreview()) return { ok: true, preview: true };
-          return { ok: false, message: res.message || (res.code === 401 ? "请先登录" : "检查失败，先不提交") };
-        }
-        if (res.code !== 200 || res.data !== true) {
-          return { ok: false, message: res.message || "名字不合适，换一个" };
-        }
-        return { ok: true };
+        var res = await window.ColorboxAI.auth.getUserInfo();
+        if (!res || res.code !== 200 || !res.data || Number(res.data.islogin) !== 1) return "我";
+        var id = typeof res.data.puid === "string" ? res.data.puid.trim() : "";
+        return id || "我";
       } catch (e) {
-        if (GDS.bridge.isPreview()) return { ok: true, preview: true };
-        return { ok: false, message: (e && e.message) || "检查失败，先不提交" };
+        return "我";
       }
     },
     ensureCloud: async function () {

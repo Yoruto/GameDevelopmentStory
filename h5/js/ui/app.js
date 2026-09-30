@@ -6,6 +6,46 @@
 
   function cfg() { return GDS.CONFIG; }
 
+  function paceSnapshot(state) {
+    var career = state && state.career;
+    var stats = career && career.stats || {};
+    var view = career && sim.careerProjectView(state, cfg());
+    return career ? {
+      fame: Number(career.fame) || 0,
+      health: Number(career.health) || 0,
+      stats: { program: Number(stats.program) || 0, design: Number(stats.design) || 0,
+        art: Number(stats.art) || 0, music: Number(stats.music) || 0 },
+      titleId: career.titleId || null,
+      progress: view && !view.idle ? Number(view.progress) || 0 : null
+    } : null;
+  }
+
+  function paceRecap(before, after, meta) {
+    var changes = [];
+    var statNames = { program: "程序", design: "策划", art: "美术", music: "音乐" };
+    var monthCount = meta && meta.months || 1;
+    function add(label, a, b) {
+      var delta = Math.round(b) - Math.round(a);
+      if (delta) changes.push(label + " " + (delta > 0 ? "+" : "") + delta);
+    }
+    if (!before || !after) return null;
+    if (after.health < before.health) add("健康", before.health, after.health);
+    if (before.titleId && before.titleId === after.titleId && before.progress != null && after.progress != null) {
+      var progressDelta = Math.round(after.progress * 100) - Math.round(before.progress * 100);
+      if (progressDelta) changes.push("作品进度 " + (progressDelta > 0 ? "+" : "") + progressDelta + "%");
+    }
+    add("声望", before.fame, after.fame);
+    if (after.health >= before.health) add("健康", before.health, after.health);
+    Object.keys(statNames).forEach(function (key) {
+      add(statNames[key], before.stats[key], after.stats[key]);
+    });
+    return {
+      head: "本次进展 · " + monthCount + " 个月",
+      main: changes.slice(0, 3).join(" · ") || "稳步前进",
+      detail: changes.slice(3).join(" · ")
+    };
+  }
+
   ui.applySim = function (result, okMsg, after) {
     if (!result || !result.ok) {
       ui.toast(sim.errorMessage(result && result.error));
@@ -79,13 +119,16 @@
   };
 
   ui.finishTickUi = function () {
-    var dateEl, fromText;
+    var dateEl, fromText, routine = !(ui.session.tickPages || []).length;
     ui.closeDlg();
     GDS.save.persist(ui.session.state);
+    ui.session.recap = paceRecap(ui.session.paceBefore, paceSnapshot(ui.session.state), ui.session.paceMeta);
+    ui.session.paceBefore = null;
+    ui.session.paceMeta = null;
     ui.session.tickPages = [];
     ui.session.tickStep = 0;
     // 收口拍：队列走完（事件选择的属性加成已全部落定）才刷新面板——过月成长与事件
-    // 效果在这一次 paint 里一起落新值，日期 1s 翻牌 + ±浮字同拍呈现（Master 2026-09-22）。
+    // 效果在这一次 paint 里一起落新值；普通节点缩短日期翻牌，重要事件沿用 1s。
     dateEl = ui.$("hq-date");
     fromText = ui.motion.text(dateEl);
     ui.paintHq();
@@ -102,12 +145,17 @@
         ui.show("sc-settled");
         if (ui.openCareerPoster) ui.openCareerPoster();
       }
-    });
+    }, routine ? 350 : 1000);
   };
 
   ui.runTickResult = function (tick) {
     ui.session.state = tick.state;
-    ui.session.tickPages = tick.queue || [];
+    ui.session.tickPages = (tick.queue || []).filter(function (page) {
+      return page.type !== "yearBanner";
+    });
+    ui.session.paceMeta = {
+      months: tick.skippedMonths || 1
+    };
     ui.session.tickStep = 0;
     // 事件队列是一个事务：选项未答完时不保存已推进的月份。
     // 刷新后从上一个完整存档重放，避免必选事件被跳过。
@@ -252,20 +300,17 @@
     var config = cfg();
     var bootRestore = GDS.save.restoreOrNull();
     ui.paintStaticCopy();
-    ui.$("name-input").value = (cfg().copy && cfg().copy.career && cfg().copy.career.defaultName) || "";
 
     GDS.save.onStatus(function (status) {
-      ["save-status-boot", "save-status-hq"].forEach(function (id) {
-        var el = ui.$(id);
-        if (el) el.textContent = status.message || "";
-      });
+      ui.$("save-status-boot").textContent = status.message || "";
       ["btn-save-retry", "btn-save-retry-boot"].forEach(function (id) {
         ui.$(id).hidden = status.kind !== "error" &&
-          !(status.kind === "local" && GDS.bridge.canCloud());
+          !(id === "btn-save-retry-boot" && status.kind === "local" && GDS.bridge.canCloud());
       });
       ["btn-cloud-boot", "btn-cloud-hq"].forEach(function (id) {
         ui.$(id).hidden = status.kind !== "conflict";
       });
+      ui.$("hq-save-actions").hidden = ui.$("btn-save-retry").hidden && ui.$("btn-cloud-hq").hidden;
     });
     ["btn-save-retry", "btn-save-retry-boot"].forEach(function (id) {
       ui.$(id).addEventListener("click", function () { GDS.save.retry(); });
@@ -279,9 +324,11 @@
 
     function enterSaved(saved) {
       if (!GDS.save.validState(saved)) { ui.toast("存档无法继续，原数据未删除"); return; }
+      ui.session.recap = null;
+      ui.session.paceBefore = null;
+      ui.session.paceMeta = null;
       ui.session.state = saved;
       if (saved.phase === "OFFER") {
-        ui.$("name-input").value = saved.career.characterName || "";
         ui.paintCareerOffers();
         ui.show("sc-offer");
       } else if (saved.phase === "SETTLED") {
@@ -294,7 +341,8 @@
     }
 
     ui.$("btn-continue").addEventListener("click", function () {
-      bootRestore.then(function () { enterSaved(ui.session.savedState); });
+      bootRestore.then(function () { return enterSaved(ui.session.savedState); })
+        .catch(function (error) { ui.toast(error.message || "读取存档失败"); });
     });
 
     function chooseCloud() {
@@ -303,7 +351,7 @@
         cancel: true, okText: "载入云端", onOk: function () {
           GDS.save.loadCloud().then(function (saved) {
             showContinue(saved);
-            enterSaved(saved);
+            return enterSaved(saved);
           }).catch(function (error) { ui.toast(error.message || "载入云端失败"); });
         } });
     }
@@ -312,23 +360,16 @@
 
     ui.$("btn-start").addEventListener("click", function () {
       bootRestore.then(function () {
-      var copyC = sim.careerCopy(config);
-      var v = ui.$("name-input").value.replace(/^\s+|\s+$/g, "") || copyC.defaultName;
-      ui.$("name-input").value = v;
-      function begin() {
-        ui.showPreviewFlag();
-        GDS.bridge.auditText(v).then(function (res) {
-          if (!res.ok) { ui.toast(res.message); return; }
+        function begin() {
           showContinue(null);
-          ui.enterCareerFromStart(v, config);
-        });
-      }
-      if (ui.session.savedState) {
-        ui.openDlg({ kind: "confirm", title: "开始新局？",
-          body: "当前进度会被新局覆盖。确认后才会创建新存档。",
-          cancel: true, okText: "覆盖并开始", onOk: begin });
-      } else begin();
-      }).catch(function () { ui.toast("读档尚未完成，请重试"); });
+          ui.enterCareerFromStart(config);
+        }
+        if (ui.session.savedState) {
+          ui.openDlg({ kind: "confirm", title: "开始新局？",
+            body: "当前进度会被新局覆盖。确认后才会创建新存档。",
+            cancel: true, okText: "覆盖并开始", onOk: begin });
+        } else begin();
+      }).catch(function (error) { ui.toast(error.message || "读档尚未完成，请重试"); });
     });
 
     ui.$("btn-reroll").addEventListener("click", function () {
@@ -344,10 +385,13 @@
       return { rngSeed: (Date.now() % 100000) + 17, rngCount: 0 };
     }
 
-    ui.enterCareerFromStart = function (name, config) {
+    ui.enterCareerFromStart = function (config) {
       var draft = ui.session.startRoll || {};
       if (!draft.roleId) { ui.toast(sim.errorMessage(sim.ERR.CAREER_ROLE_INVALID)); return; }
-      ui.session.state = sim.createCareerGame(name, draft.roleId, config, {
+      ui.session.recap = null;
+      ui.session.paceBefore = null;
+      ui.session.paceMeta = null;
+      ui.session.state = sim.createCareerGame("我", draft.roleId, config, {
         stats: draft.stats,
         genreIds: draft.genreIds,
         gameplayIds: draft.gameplayIds,
@@ -391,6 +435,9 @@
       ui.session.rollsLeft = null;
       ui.session.tickPages = null;
       ui.session.tickStep = 0;
+      ui.session.recap = null;
+      ui.session.paceBefore = null;
+      ui.session.paceMeta = null;
       ui.prepareCareerStart();
       ui.show("sc-boot");
     }
@@ -425,10 +472,13 @@
       ui.$("btn-tick").disabled = true;
       try {
         ui.captureCareerStatSnap();
+        ui.session.paceBefore = paceSnapshot(ui.session.state);
         // P3：唯一推进按钮 = 「继续」，快进到下一个节点（与逐月共用同一条 tick 路径）。
         ui.runTickResult(sim.skipToNextNode(ui.session.state, config));
       } catch (err) {
         ui.session.statSnap = null;
+        ui.session.paceBefore = null;
+        ui.session.paceMeta = null;
         ui.$("btn-tick").disabled = false;
         ui.toast("推进没走完，再点一次");
       }
@@ -550,7 +600,6 @@
       }
     });
 
-    ui.showPreviewFlag();
     // webview 被杀兜底：页面隐藏/关闭时把当前档立即写一次存档（双写之一；常规写入
     // 已在 applySim / runTickResult / finishTickUi 覆盖）。localStorage 写入是同步的，
     // pagehide 场景也能落盘。
@@ -565,15 +614,13 @@
     });
     root.addEventListener("pagehide", persistOnHide);
     bootRestore.then(function (saved) {
-      var copyC = sim.careerCopy(config);
       showContinue(saved);
       if (saved && GDS.save.validState(saved)) {
-        ui.$("name-input").value = saved.career.characterName || copyC.defaultName || "";
-      } else {
-        ui.$("name-input").value = copyC.defaultName || ui.$("name-input").value;
+        // 冲突时留在开局页，让玩家先选择本机或云端进度。
+        if (GDS.save.status().kind !== "conflict") return enterSaved(saved);
       }
       if (GDS.save.restoreIssue()) ui.toast(GDS.save.restoreIssue());
-    });
+    }).catch(function (error) { ui.toast(error.message || "读取存档失败，请重试"); });
   }
 
   if (doc.readyState === "loading") doc.addEventListener("DOMContentLoaded", bind);

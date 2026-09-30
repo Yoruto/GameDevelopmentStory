@@ -111,7 +111,7 @@
       "producer": { "title": "掌舵的人", "body": "从工位走到立项桌前，你终于能把自己的判断交给整个团队。" },
       "relationships": { "title": "一路同行", "body": "作品会谢幕，与你并肩的人把这段生涯继续讲了下去。" },
       "awards": { "title": "奖台常客", "body": "那些被反复打磨的作品，最终在聚光灯下留下了名字。" },
-      "prolific": { "title": "作品如山", "body": "一部接一部，行业的年表里有许多页写着你的名字。" },
+      "prolific": { "title": "作品如山", "body": "一部接一部，行业的年表里有许多页记着你的作品。" },
       "health": { "title": "燃尽之后", "body": "你留下了作品，也终于学会问自己：下一程要怎样走。" },
       "ordinary": { "title": "认真做完这一程", "body": "不必每年站上台，这些年一起完成的游戏已经足够真实。" }
     },
@@ -1585,6 +1585,11 @@
     "maxBeatsPerMonth": 1,
     "maxNewLinesPerMonth": 1,
     "bondBeatsPerMonth": 0,
+    "endgame": {
+      "comment": "制作人线最迟 2022 年开启；人物关系长线最迟 2020 年开启。进入 2025 年最后一舞时收束仍未完成的这些线，保留此前已经生效的选择和关系。",
+      "producerLatestStartYear": 2022,
+      "bondLatestStartYear": 2020
+    },
     "exclusiveGroup": "careerPath",
     "bonds": {
       "comment": "入职钉 mentor（当前东家 seniors[0]）与 0–1 peer（同事池）；junior 在后辈线开线时生成。跳槽保留已钉对象。",
@@ -1673,7 +1678,7 @@
                 "label": "跟着过去",
                 "complete": true,
                 "effects": {
-                  "cheer": "合并文件签下来的那天，老团队的留用名单上你的名字被圈了红圈。留用骨干——四个字，比什么奖都踏实。",
+                  "cheer": "合并文件签下来的那天，老团队的留用名单上，你那一行被圈了红圈。留用骨干——四个字，比什么奖都踏实。",
                   "joinSuccessor": true
                 }
               },
@@ -1812,7 +1817,7 @@
             "presentation": "choice",
             "kicker": "晋升线",
             "title": "总监任命",
-            "body": "他们丢给你一块跨组协调，你是亲自顶，还是把节奏拆给各组。年终任命会上，名字被念到了。",
+            "body": "他们丢给你一块跨组协调，你是亲自顶，还是把节奏拆给各组。年终任命会上，你被点名了。",
             "options": [
               {
                 "id": "own",
@@ -1932,7 +1937,7 @@
             "n": 18
           },
           "requireBond": "mentor",
-          "startChance": 0.42,
+          "startChance": 0.063,
           "retryNextYear": true
         },
         "remoteBeat": {
@@ -2103,7 +2108,7 @@
             "kicker": "前辈线",
             "title": "这不是他的写法",
             "body": "有人把你的稿子和我的旧作摆在一起，说这不像同一个人的路子。我没反驳，只批了两个字——再想。",
-            "bodyRemote": "有人在会上提到你的名字，说这不是我那一派的做法。这是夸你。",
+            "bodyRemote": "有人在会上提到你，说这不是我那一派的做法。这是夸你。",
             "effects": {
               "jobXp": 2,
               "fame": 1
@@ -2137,7 +2142,7 @@
             "speakerBond": "mentor",
             "kicker": "前辈线",
             "title": "前辈提名",
-            "body": "我把你的名字递进了公司。",
+            "body": "我向公司推荐了你。",
             "bodyRemote": "我给新东家写了一封推荐信。",
             "options": [
               {
@@ -2260,7 +2265,7 @@
             "bond": "peer",
             "n": 24
           },
-          "startChance": 0.3,
+          "startChance": 0.045,
           "retryNextYear": true
         },
         "remoteBeat": {
@@ -2416,8 +2421,8 @@
             },
             "presentation": "notice",
             "kicker": "同事线",
-            "title": "两个人的名字",
-            "body": "那份交付下面挂着两个名字。评审时有人一前一后念出来，你们两个都没说话，但谁都没觉得别扭。",
+            "title": "两人的署名",
+            "body": "那份交付由你们两人署名。评审时有人一前一后念到你们。两人都没说话，谁也没觉得别扭。",
             "effects": {
               "honor": 2
             }
@@ -2433,8 +2438,8 @@
             },
             "presentation": "notice",
             "kicker": "同事线",
-            "title": "只有你的名字",
-            "body": "那份交付下面只有你一个名字。{peerName} 照常上班，照常跟你打招呼，只是不再问你要不要一起做了。",
+            "title": "独自署名",
+            "body": "那份交付最后由你独自署名。{peerName} 照常上班，照常跟你打招呼，只是不再问你要不要一起做了。",
             "effects": {
               "fame": 1,
               "jobXp": 1
@@ -2635,7 +2640,7 @@
               "minSignedCredits": 1
             }
           ],
-          "startChance": 0.34,
+          "startChance": 0.051,
           "retryNextYear": true
         },
         "remoteBeat": {
@@ -2921,7 +2926,7 @@
             "landmark": true,
             "minPrestige": 4
           },
-          "startChance": 0.25,
+          "startChance": 0.0375,
           "retryNextYear": true
         },
         "beats": [
@@ -2989,7 +2994,7 @@
         "startWhen": {
           "minYear": 2010,
           "requireInDevTarget": true,
-          "startChance": 0.38,
+          "startChance": 0.057,
           "retryNextYear": true
         },
         "beats": [
@@ -3865,8 +3870,8 @@
       },
       {
         "at": 41,
-        "title": "名字进了扉页",
-        "body": "发行商的资料册上，你的名字第一次排进核心成员那栏。从熟练到权威的那条线，你踩过去了。"
+        "title": "进入核心成员",
+        "body": "发行商的资料册上，你第一次排进核心成员那栏。从熟练到权威的那条线，你踩过去了。"
       },
       {
         "at": 51,

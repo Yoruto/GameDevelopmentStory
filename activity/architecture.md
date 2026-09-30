@@ -1,6 +1,24 @@
-# 游戏开发物语 · 架构（对齐现行实现）
+# 游戏开发物语 · 架构（当前摘要与历史记录）
 
-玩法以 `activity/design.md` 为准；生涯表以 `activity/career-world.json` 为准，生涯仍在消费的共享数值（天赋、Y 曲线、奖项、媒体、潮流、文案）在 `activity/config.json`。本文写目录、公开接口、存档字段和改数流程。
+## 当前架构摘要（2026-09-30）
+
+| 边界 | 当前实现 |
+| --- | --- |
+| 页面 | `h5/index.html` 的单页场景与弹层；`h5/js/ui/app.js` 调度，`dom.js` 管场景/弹窗，`paint.js` 绘制，`reveal.js` 揭晓，`motion.js` 管可取消动画，`poster.js` 画两页海报 |
+| 开局 | `rollCareerStart` 生成属性、岗位与天赋；`app.js` 可重掷并固定以「我」调用 `createCareerGame`，再进入 offer 选择。当前 UI 无姓名输入 |
+| 模拟 | `h5/js/sim/` 通过有序 `<script>` 加载到 `window.GDS.sim`；`tickCareerToDecision` 跳过安静月份，`tickMonth` 完成每月状态转换 |
+| 终章 | `h5/js/sim/last-dance.js` 管 2025 年作品交接、开场、颁奖夜与结尾分支；`career-pace.js` 在月结算队列中接入这些事件 |
+| 配置 | `activity/config.json` 与 `activity/career-world.json` 是源；`scripts/sync_config.py` 生成 `h5/js/config.generated.js` |
+| 销量 | `careerLaunchSales` 写入 v2 首发字段；`settleCareerSalesMonth` 按月写 `monthSales` / `lifetimeSales`；旧版本作品使用旧曲线 |
+| 海报 | `careerPosterView` 只读结算存档、筛选署名发售作品；`poster.js` 将档案与作品年表渲染为 Canvas PNG |
+| 存档 | 版本 10；`h5/js/save/port.js` 管本机优先保存、云端修订号与冲突恢复，`bridge/colorbox.js` 管 Colorbox 能力，`bridge/local.js` 仅供无宿主预览 |
+| 服务端 | `activity_api` 和 `game_saves` 测试环境曾验证；H5 配有测试环境地址。当前交付阶段仍是 `implement`，安全审查、宿主联调和正式发布尚未完成 |
+
+发布路径只包含 `h5/`。测试从 `tests/_harness.js` 加载同一套 sim 源码；2026-09-30 的 `run-sim-tests.js` 153 项、`run-save-tests.js` 59 项通过。改配置后运行 `python3 scripts/sync_config.py`、`python3 scripts/validate_career_world.py` 和两套 Node 测试。当前事实与待验收项见 [current-status.md](current-status.md)。
+
+## 历史架构记录
+
+以下保留旧版接口与字段讨论，包含已删除的薪资字段、旧销量返回值和“海报未做”的说法。需要当前契约时以本页摘要及代码为准。
 
 关联：`activity/requirements.md` · `activity/design.md` · `activity/config.json` · `activity/career-world.json` · `activity/README.md`
 

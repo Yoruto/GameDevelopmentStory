@@ -1,5 +1,7 @@
 # Bug Report：生涯档虚拟作立项时 liveStats 初始值过高
 
+> 历史问题记录。当前虚拟作初始四维、评分底值和测试结果以 `activity/career-world.json`、`tests/cases/` 与 [current-status.md](../current-status.md) 为准；下文“建议修复”不应直接当作待办。
+
 > **状态：已修复（2026-09-16）。** 采用开发者拍板的公式，不是本报告最初建议的缩系数方案：
 > 立项四维 = 全员（玩家 + 同事）各维 × `virtualPool.teamStatShare`（10%）求和后向下取整，
 > 再乘工作室对题材 + 玩法的熟练度加成（生疏 0% / 熟练 10% / 拿手 15% / 看家本领 20%，两档相加，上限 +40%）。

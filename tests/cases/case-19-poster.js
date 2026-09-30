@@ -38,6 +38,24 @@ module.exports = function (ctx) {
     first.moments[2].item.titleId === titles[2].id, "poster keeps first and final works in date order");
   ctx.ok("career poster uses real signed work data, excludes transitions, and is deterministic");
 
+  state.career.virtualProjects.push({
+    id: "last-dance-final-test", name: "终章测试作品", alias: "终章测试作品",
+    releaseYear: 2025, releaseMonth: 10, virtual: true, lastDance: "final"
+  });
+  state.career.credits.push({
+    titleId: "last-dance-final-test", shipped: true, virtual: true, score: 8.8
+  });
+  state.worldReleased.push({ id: "last-dance-final-test", lifetimeSales: 500 });
+  const finalePoster = sim.careerPosterView(state, config);
+  assert(finalePoster.signedCount === 4 && finalePoster.transitionCount === 1 &&
+    finalePoster.totalSales === 1250 && finalePoster.moments.some(function (moment) {
+      return moment.item.titleId === "last-dance-final-test";
+    }), "final virtual work joins the signed poster, ordinary transition stays excluded");
+  state.career.credits.pop();
+  state.career.virtualProjects.pop();
+  state.worldReleased.pop();
+  ctx.ok("career poster includes the last dance release and its sales");
+
   state.career.credits.push(Object.assign({}, state.career.credits[1]));
   assert(sim.careerPosterView(state, config).totalSales === 750,
     "multiple credits on the same work do not double count its sales");

@@ -1,7 +1,7 @@
-# HANDOFF — 滚动状态页（每轮收尾覆盖更新）
+# HANDOFF — 历史滚动交接记录
 
-> 用法：每轮开工先读本文件；收尾时只更新下面三节，历史细节沉到 `.workbuddy/memory/` 日报。
-> 上一版时点交接书 `P3-HANDOFF.md` 保留作存档（内容已过期）。
+> 本文最后更新于 2026-09-23，下面的测试数量、待拍板项、Git 状态和“下一步”均为当时快照。当前入口是 [activity/current-status.md](activity/current-status.md)；每轮先运行 `python3 skills/runbook/state.py current`。
+> `P3-HANDOFF.md` 也是历史时点记录。以下原文保留供追溯。
 
 ---
 

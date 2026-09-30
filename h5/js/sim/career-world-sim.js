@@ -148,6 +148,10 @@
     return { name: name, alias: name };
   }
 
+  sim.lastDanceProjectName = function (st, config, genreId, key) {
+    return pickPoolName(st, config, genreId, hash32(String(key)));
+  };
+
 
   // ── 游戏池兜底：算出一部「顶空档」的池作 ──────────────────────────────────
   // 纯计算：不写 state、不掷 RNG，返回 { title, detail } 或 null。

@@ -1,5 +1,7 @@
 # 《游戏开发物语》界面设计规划
 
+> 历史界面规划与当时的实测记录。当前页面增加了结算海报、`motion.js` 动画管理和固定尺寸的过月弹窗；实际结构以 `h5/index.html`、`h5/css/app.css` 和 [activity/current-status.md](activity/current-status.md) 为准。
+
 > 面向 `h5/` 现有实现的视觉与交互重构规格。
 > 两条硬约束：**① 每屏内容一屏放完，不出滚动条；② 界面简洁、操作手感顺畅。**
 

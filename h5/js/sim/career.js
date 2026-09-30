@@ -1383,9 +1383,10 @@
       // 旧存档缺 lifetimeSales 时兜底读 launchSales；两条都缺（没发售过）就不显示。
       var sales = rec ? num(rec.lifetimeSales != null ? rec.lifetimeSales : rec.launchSales, null) : null;
       var virtual = !!c.virtual;
+      var transition = virtual && !(title && title.lastDance === "final");
       // P2-fix-b：过渡项目不再是「履历上的一行污点」，按落盘分数给一句专属评语。
       if (c.shipped) {
-        if (virtual) virtualCount += 1;
+        if (transition) virtualCount += 1;
         else signedCount += 1;
       }
       credits.push({
@@ -1402,14 +1403,15 @@
         shipped: !!c.shipped,
         supported: !!c.supported,
         virtual: virtual,
+        finalWork: !!(title && title.lastDance === "final"),
         unsigned: !c.shipped,
         score: c.score,
         sales: sales,
         mainStatDelta: c.mainStatDelta,
         awards: c.awards || [],
-        poolNote: (virtual && c.shipped) ? sim.titlePoolNote(c.titleId, c.score, config) : "",
+        poolNote: (transition && c.shipped) ? sim.titlePoolNote(c.titleId, c.score, config) : "",
         statusLabel: c.shipped
-          ? (virtual ? (copy.resumeVirtual || "过渡项目") : (copy.resumeShipped || "署名发售"))
+          ? (transition ? (copy.resumeVirtual || "过渡项目") : (copy.resumeShipped || "署名发售"))
           : (copy.resumeUnsigned || "参与过、未署名发售")
       });
     });
@@ -1431,7 +1433,8 @@
     var transitions = 0;
     ((cr && cr.credits) || []).forEach(function (c) {
       if (!creditIsSigned(c)) return;
-      if (c.virtual) transitions += 1;
+      var title = sim.careerTitle(c.titleId, config, state);
+      if (c.virtual && !(title && title.lastDance === "final")) transitions += 1;
       else signed += 1;
     });
     if (!co && cr && cr.tenures && cr.tenures.length) {
@@ -1458,7 +1461,7 @@
     var world = sim.careerWorld(config);
     var startYear = num(world.timeline && world.timeline.startYear, 1995);
     var items = (resume.credits || []).filter(function (credit) {
-      return credit.shipped && !credit.virtual;
+      return credit.shipped && (!credit.virtual || credit.finalWork);
     }).map(function (credit, index) {
       var title = sim.careerTitle(credit.titleId, config, state);
       var released = findWorldReleased(state, credit.titleId);
@@ -3179,6 +3182,12 @@
   sim.assignCareerProject = function (st, config, queue) {
     var picked, pool, idleMax, cur, det, next, gap, minDev, cand, prodSpec;
     sim.ensureCareerExtras(st);
+    if (sim.lastDanceWorkComplete && sim.lastDanceWorkComplete(st)) {
+      st.career.titleId = null;
+      st.career.liveStats = null;
+      st.career.postLaunch = null;
+      return st;
+    }
     if (sim.careerPostLaunch(st)) return st;
     if (!st.career || !st.career.companyId) {
       if (st.career) {
@@ -3197,7 +3206,8 @@
         st.career.postLaunch = null;
       }
     }
-    picked = sim.pickCareerAssignment(st.career.companyId, st.year, st.month, config, st, st.career.studioId);
+    picked = sim.lastDanceForcedTitle && sim.lastDanceForcedTitle(st, config);
+    if (!picked) picked = sim.pickCareerAssignment(st.career.companyId, st.year, st.month, config, st, st.career.studioId);
     // 玩家正在做一部"本公司当年月还在开发"的目录作时，不要因为同公司别部开工（prestige 更高
     // 的 landmark 排前面）就把人静默顶走。只有目录作受保护：池作本来就是填空窗的，按设计
     // 让位给下一档真作（titlePool.comment：发售不得压过下一档真作开工月）。
@@ -3214,7 +3224,7 @@
     // A（节奏修复）：不接「别人快做完了」的候选——宁可等下一部新作开工，也别去给人收尾。
     // 手上那部不算候选（picked.id === titleId 是「继续做」，不是换档）。拒收后由下面的
     // 池作 / 空窗分支兜底：池作天然从当月 0% 开始，空窗则等到下一部目录作开工。
-    if (picked && picked.id !== st.career.titleId && deepCandidateRejected(picked, st, config)) {
+    if (picked && !picked.lastDance && picked.id !== st.career.titleId && deepCandidateRejected(picked, st, config)) {
       picked = null;
     }
     pool = titlePoolSpec(config);

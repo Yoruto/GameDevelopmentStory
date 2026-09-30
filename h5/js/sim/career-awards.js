@@ -273,7 +273,7 @@
 
   // P5c 落选指路：找出玩家提名作四维里最短板（读发售时的 worldReleased 记录，纯读）。
   function weakestDimOf(st, a, config) {
-    var titleId, i, rec, bestDim = null, bestV = Infinity, dims, k, v, copy;
+    var titleId, i, rec, bestDim = null, bestV = Infinity, dims, k, v;
     titleId = a && a.titleId;
     if (!titleId) {
       (a && a.nominees || []).some(function (n) {
@@ -294,15 +294,14 @@
       if (v < bestV) { bestV = v; bestDim = k; }
     }
     if (!bestDim) return null;
-    copy = sim.careerCopy(config);
-    return copy["dim" + bestDim.charAt(0).toUpperCase() + bestDim.slice(1)] || bestDim;
+    return sim.titleDimLabel(bestDim, config);
   }
 
 
   function awardStoryPage(a, kind, copy, st, config) {
     var isGoty = kind === "goty";
     var map = { title: awardStoryTitleOf(a), award: (a && a.n) || "" };
-    var fallbackTitle = isGoty ? "年度游戏" : "提名名单上有你的名字";
+    var fallbackTitle = isGoty ? "年度游戏" : "作品进入提名名单";
     var fallbackBody = isGoty
       ? "《{title}》——{award}。台上念出这个名字时，掌声从很远的地方涌过来。你没有喊，只是坐在原地，想起凌晨四点还亮着的那盏灯。它陪了你两年，此刻终于有人替你鼓了掌。"
       : "电话是深夜打来的。对方念出《{title}》的名字，说它进了{award}的提名名单。办公室里静了一瞬。你想起那些被砍掉又捡回来的功能——原来真的有人在看。";

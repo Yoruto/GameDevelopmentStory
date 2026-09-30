@@ -1,9 +1,10 @@
 # 特性（Traits）设计草案
 
-> 状态：**草案**。未合入 `design.md`，未改 `activity/config.json`，未改 `h5/js/sim/`。
-> 事实源：`design.md` 为全局事实源；本文只讨论「特性」子系统的增量设计。
+> 历史设计与实施记录。当前特性数量、权重和效果以 `activity/config.json` 为准；项目现状见 [current-status.md](current-status.md)。
 
-> ⚠️ 本文 §3 / §4 / §10 里写的「开局抽 3 条**三选一**」是**设计意图，从未实现**：实现是**随机抽 1~3 条**（`startRoll.traitCountMin/Max`、同「收益轴」最多一条）全部直接生效、可选性为零；「三选一」的两个 API（`rollCareerTraitDraw` / `pickCareerTrait`）没有 UI 入口。详见 §12.5。
+> 本页最初是草案，后续已在 `activity/config.json` 与 `h5/js/sim/career.js` 落地。以下带日期的方案和旧状态只供追溯；当前配置与开局流程见 [design.md](design.md) 页首摘要。
+
+> ⚠️ 本文 §3 / §4 / §10 里写的「开局抽 3 条**三选一**」是旧设计意图。当前开局随机抽 1–3 条（`startRoll.traitCountMin/Max`、同「收益轴」最多一条）并直接生效；玩家可重掷整组属性和天赋，不在抽出的天赋间三选一。详见 §12.5。
 
 ## 已定决策（2026-09-15 / 16）
 

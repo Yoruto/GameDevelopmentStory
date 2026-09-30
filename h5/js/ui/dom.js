@@ -62,6 +62,65 @@
     (nodes || []).forEach(function (n) { extra.appendChild(n); });
   };
 
+  // Measure without height caps, then apply one of three viewport-aware caps.
+  ui.fitDialogToContent = function (opts) {
+    opts = opts || {};
+    var dlg = ui.$("dlg");
+    // Ordinary dialogs can use their natural height with the long viewport cap.
+    // Only reveals need a measured height before their rows are cleared.
+    if (!opts.lockHeight) {
+      dlg.classList.remove("dlg-size-short", "dlg-size-medium", "dlg-size-long");
+      dlg.classList.add("dlg-size-long");
+      dlg.style.height = "";
+      return "long";
+    }
+    var body = ui.$("dlg-body");
+    var extra = ui.$("dlg-extra");
+    var actions = ui.$("dlg-actions");
+    var ok = ui.$("dlg-ok");
+    var actionsHidden = actions.classList.contains("off");
+    var okHidden = ok.classList.contains("off");
+    var old = {
+      height: dlg.style.height,
+      maxHeight: dlg.style.maxHeight,
+      overflow: dlg.style.overflow,
+      bodyMaxHeight: body.style.maxHeight,
+      bodyOverflow: body.style.overflow,
+      extraFlex: extra.style.flex,
+      extraOverflow: extra.style.overflow
+    };
+    var viewportHeight = root.innerHeight || doc.documentElement.clientHeight || 720;
+    if (opts.reserveActions) {
+      actions.classList.remove("off");
+      ok.classList.remove("off");
+    }
+    dlg.classList.remove("dlg-size-short", "dlg-size-medium", "dlg-size-long");
+    dlg.style.height = "auto";
+    dlg.style.maxHeight = "none";
+    dlg.style.overflow = "visible";
+    body.style.maxHeight = "none";
+    body.style.overflow = "visible";
+    extra.style.flex = "none";
+    extra.style.overflow = "visible";
+    var naturalHeight = dlg.offsetHeight;
+    var size = naturalHeight <= Math.min(320, viewportHeight * 0.46) ? "short"
+      : naturalHeight <= Math.min(480, viewportHeight * 0.7) ? "medium" : "long";
+    dlg.style.height = old.height;
+    dlg.style.maxHeight = old.maxHeight;
+    dlg.style.overflow = old.overflow;
+    body.style.maxHeight = old.bodyMaxHeight;
+    body.style.overflow = old.bodyOverflow;
+    extra.style.flex = old.extraFlex;
+    extra.style.overflow = old.extraOverflow;
+    if (opts.reserveActions) {
+      actions.classList.toggle("off", actionsHidden);
+      ok.classList.toggle("off", okHidden);
+    }
+    dlg.classList.add("dlg-size-" + size);
+    dlg.style.height = opts.lockHeight ? naturalHeight + "px" : "";
+    return size;
+  };
+
   ui.openDlg = function (opts) {
     opts = opts || {};
     var hook = ui.session.dlgHook;
@@ -72,6 +131,7 @@
     var dlg = ui.$("dlg");
     dlg.className = "dlg dlg-" + (opts.kind || "info") +
       ((hook.mode === "tick" || hook.mode === "tick-choice") ? " dlg-queue" : "");
+    dlg.style.height = "";
     ui.$("dlg-kicker").textContent = opts.kicker || (opts.kind === "event" ? "本月事件" : (opts.kind === "confirm" ? "请确认" : "提示"));
     ui.$("dlg-title").textContent = opts.title || "";
     ui.$("dlg-body").textContent = opts.body || "";
@@ -82,6 +142,7 @@
     ui.$("dlg-ok").classList.toggle("off", !!opts.hideOk);
     ui.$("dlg-actions").classList.toggle("off", !!opts.hideActions);
     ui.$("dlg-mask").classList.add("on");
+    ui.fitDialogToContent();
     root.setTimeout(function () {
       var first = ui.$("dlg").querySelector("[data-event-opt]:not([disabled]), #dlg-ok:not(.off), #dlg-cancel:not(.off)");
       if (ui.$("dlg-mask").classList.contains("on")) ui.focusWithoutScroll(first || ui.$("dlg"));
@@ -187,6 +248,7 @@
     var target = ui.$(id);
     if (!target) return;
     var wasOn = target.classList.contains("on");
+    if (!wasOn && ui.stopReveal) ui.stopReveal();
     // Only a real scene change may start an entrance animation. Repainting
     // the active scene must never replay a transform on the whole screen.
     var all = doc.querySelectorAll(".scene");
@@ -204,11 +266,4 @@
     else ui.syncDock();
   };
 
-  ui.showPreviewFlag = function () {
-    var on = GDS.bridge && GDS.bridge.isPreview();
-    ["preview-flag-boot", "preview-flag-hq"].forEach(function (id) {
-      var el = ui.$(id);
-      if (el) el.classList.toggle("on", !!on);
-    });
-  };
 })(typeof globalThis !== "undefined" ? globalThis : this);

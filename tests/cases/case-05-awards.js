@@ -233,6 +233,25 @@ module.exports = function runGroup(ctx) {
     ok("award gate takes the stricter line, wide gaps survive jitter, sales drives players choice");
   })();
 
+  (function awardLossHintUsesChineseTitleDimensions() {
+    const labels = { play: "游戏性", fun: "趣味性", expression: "表现力", immersion: "沉浸感" };
+    Object.keys(labels).forEach(function (weakDim) {
+      const st = sim.createCareerGame("评语", "programmer", config);
+      const stats = { play: 80, fun: 80, expression: 80, immersion: 80 };
+      stats[weakDim] = 1;
+      st.worldReleased = [{ id: "hint-title", stats: stats }];
+      const pages = sim.collectCareerAwardStory(st, config, [{
+        id: "goty", n: "年度游戏", playerNominated: true, playerWon: false,
+        titleId: "hint-title", nominees: [{ player: true, titleId: "hint-title", label: "测试作品" }]
+      }]);
+      assert(pages.length === 1 && pages[0].body.indexOf(labels[weakDim]) >= 0,
+        "award hint translates " + weakDim + " to Chinese");
+      assert(!/\b(play|fun|expression|immersion)\b/.test(pages[0].body),
+        "award hint does not show internal dimension keys");
+    });
+    ok("award loss hint uses Chinese title dimension names");
+  })();
+
   (function careerAwards1997LiveCompare() {
     const g = sim.createCareerGame("测", "music", config);
     let acc = sim.acceptOpeningOffer(g, g.career.openingOffers[1].id, config);

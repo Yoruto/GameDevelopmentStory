@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "security_review_json_v1",
+  "decision": "passed",
+  "summary": "已核对 31 个前端源码文件及 39 条预扫描候选；配置文件为纯 JSON 数据，未发现发布门禁违规或可证实的安全、性能与功能缺陷。",
+  "package": {
+    "packageId": "app_3c72f55c0c",
+    "archiveSha256": "c7feb7b94e58b1e22051fe91f148853326c6c837221d5223d9aa5da5842278c4",
+    "fileCount": 31,
+    "analyzedFileCount": 31,
+    "skippedFileCount": 0
+  },
+  "findings": [],
+  "preflightFindings": [],
+  "reviewPolicy": {
+    "executedCode": false,
+    "networkAccess": false,
+    "sandboxPath": "review-package"
+  }
+}

@@ -1,5 +1,7 @@
 # Bug Report：触发「后辈线 + 回国线」后，在研作品被换成一部陌生的虚拟作
 
+> 历史问题与修复记录。下文复现路径和“后续收口”是当时状态；当前派工规则与剩余验收见 [current-status.md](../current-status.md)。
+
 > **状态：已修复（2026-09-17）。** 四条改动，均在 `h5/js/sim/`，配置只加了一个开关：
 > ① `pickScriptedInviteTitle()`（career.js:576）不再兜底到"还没开工的下一档真作"；
 > ② `assignCareerProject()`（career.js:3201）不再把玩家从"本公司当年月还在开发"的目录作上顶走；

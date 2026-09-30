@@ -72,6 +72,21 @@ module.exports = function runGroup(ctx) {
     const openPage = (rr.queue || []).filter(function (p) { return p.type === "chapterOpen"; })[0];
     assert(closePage && closePage.body.indexOf("新世纪要来了") >= 0, "close page carries ch1 closeLine");
     assert(openPage && openPage.title.indexOf("2000 年 · 网游淘金") >= 0, "open page titles ch2");
+    const gNews = sim.createCareerGame("快讯", "programmer", config);
+    const stIntel = sim.acceptOpeningOffer(gNews, gNews.career.openingOffers[0].id, config).state;
+    stIntel.year = 1995; stIntel.month = 12;
+    const newsTick = sim.skipToNextNode(stIntel, config);
+    const intelNews = newsTick.state.career.intelNews;
+    assert(intelNews && intelNews.year === 1996 && intelNews.body,
+      "cross-year news is kept in the career save state");
+    assert((newsTick.queue || []).every(function (p) {
+      return !p.bits || p.bits.indexOf(intelNews.body) < 0;
+    }), "cross-year news is not merged into event text");
+    const oldSave = deepClone(newsTick.state);
+    delete oldSave.career.intelNews;
+    const restoredNews = sim.careerYearDigest(oldSave, config);
+    assert(restoredNews && restoredNews.body === intelNews.body,
+      "older saves recover the same year digest in the intel view");
     ok("P5a/5c: chapters container, dual-era award naming, award news line, chapter close wiring, pacing knobs");
   })();
 

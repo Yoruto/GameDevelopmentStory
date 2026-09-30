@@ -5,6 +5,7 @@
   var doc = root.document;
   var W = 900;
   var H = 1600;
+  var OUTPUT_SCALE = 0.8;
   var ink = "#211a1c";
   var red = "#ad4e35";
   var muted = "#74675f";
@@ -12,6 +13,7 @@
   var page = 0;
   var model = null;
   var returnFocus = null;
+  var opening = false;
 
   function font(ctx, size, weight, family) {
     ctx.font = (weight || 400) + " " + size + "px " + (family || '"PingFang SC", "Microsoft YaHei", sans-serif');
@@ -70,7 +72,7 @@
     ctx.fillRect(58, 136, 784, 6);
     ctx.fillStyle = "#b8aa93";
     ctx.fillRect(58, 1505, 784, 2);
-    text(ctx, "游戏开发物语 · 游戏作者生涯", 60, 1520, 21, muted, 400);
+    text(ctx, "我的游戏人生 · 游戏作者生涯", 60, 1520, 21, muted, 400);
     text(ctx, index + " / 02", 772, 1520, 21, muted, 700);
   }
 
@@ -148,14 +150,14 @@
 
   function drawTimeline(ctx, view) {
     base(ctx, "WORKS ARCHIVE · 02", "02");
-    text(ctx, view.name + "的创作轨迹", 62, 186, 27, red, 900, 772);
+    text(ctx, view.name === "我" ? "我的创作轨迹" : view.name + "的创作轨迹", 62, 186, 27, red, 900, 772);
     text(ctx, "作品年表", 58, 236, 78, ink, 900);
     wrapped(ctx, "从第一部署名作品，到这段生涯的最后一页。", 62, 336, 773, 34, 2, 27, muted, 500);
     if (!view.moments.length) {
       ctx.fillStyle = "#fcf9f1";
       ctx.fillRect(58, 536, 784, 550);
       text(ctx, "这段生涯没有署名发售作品", 92, 708, 37, ink, 800, 712);
-      wrapped(ctx, "海报仍会记住你的名字，以及走过的创作旅程。", 92, 777, 710, 40, 3, 29, muted, 500);
+      wrapped(ctx, "走过的创作旅程，仍值得记住。", 92, 777, 710, 40, 3, 29, muted, 500);
     } else {
       var ys = view.moments.length === 1 ? [681] : view.moments.length === 2 ? [522, 925] : [432, 717, 1002];
       ctx.fillStyle = red;
@@ -168,37 +170,76 @@
   }
 
   function render() {
-    if (!model) return;
+    if (!model) return false;
     var canvas = ui.$("poster-canvas");
-    var ctx = canvas.getContext("2d");
-    if (page === 0) drawArchive(ctx, model);
-    else drawTimeline(ctx, model);
-    ui.$("poster-image").src = canvas.toDataURL("image/png");
+    var ctx, dataUrl;
+    try {
+      // Keep drawing coordinates unchanged while reducing the backing bitmap.
+      canvas.width = Math.round(W * OUTPUT_SCALE);
+      canvas.height = Math.round(H * OUTPUT_SCALE);
+      ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas unavailable");
+      ctx.setTransform(OUTPUT_SCALE, 0, 0, OUTPUT_SCALE, 0, 0);
+      if (page === 0) drawArchive(ctx, model);
+      else drawTimeline(ctx, model);
+      dataUrl = canvas.toDataURL("image/png");
+      if (!dataUrl || dataUrl === "data:,") throw new Error("Image unavailable");
+    } catch (error) {
+      ui.toast("海报生成失败，请关闭后重试");
+      return false;
+    }
+    ui.$("poster-image").src = dataUrl;
     ui.$("poster-image").alt = (page === 0 ? "作者生涯档案" : "作品年表") + "，可长按保存";
     ui.$("poster-count").textContent = (page + 1) + " / 2";
     ui.$("poster-prev").disabled = page === 0;
     ui.$("poster-next").disabled = page === 1;
+    return true;
   }
 
   function go(next) {
     if (next < 0 || next > 1 || next === page) return;
+    var previous = page;
     page = next;
-    render();
+    if (!render()) page = previous;
   }
 
-  ui.openCareerPoster = function () {
+  ui.openCareerPoster = async function () {
     var state = ui.session.state;
-    if (!state || state.phase !== "SETTLED" || !sim.careerPosterView) return;
-    model = sim.careerPosterView(state, GDS.CONFIG);
-    page = 0;
-    returnFocus = doc.activeElement;
-    render();
-    ui.$("poster-overlay").hidden = false;
-    ui.$("poster-close").focus();
+    if (opening || !state || state.phase !== "SETTLED" || !sim.careerPosterView) return;
+    opening = true;
+    var button = ui.$("btn-career-poster");
+    var buttonText = button.textContent;
+    var focusTarget = doc.activeElement;
+    button.disabled = true;
+    button.textContent = "生成中…";
+    try {
+      var userId = await GDS.bridge.posterUserId();
+      if (ui.session.state !== state || state.phase !== "SETTLED") return;
+      model = sim.careerPosterView(state, GDS.CONFIG);
+      model.name = userId;
+      page = 0;
+      returnFocus = focusTarget;
+      if (!render()) { model = null; returnFocus = null; return; }
+      ui.$("poster-overlay").hidden = false;
+      ui.$("poster-close").focus();
+    } catch (error) {
+      model = null;
+      returnFocus = null;
+      ui.toast("海报生成失败，请重试");
+    } finally {
+      button.disabled = false;
+      button.textContent = buttonText;
+      opening = false;
+    }
   };
 
   ui.closeCareerPoster = function () {
     ui.$("poster-overlay").hidden = true;
+    ui.$("poster-image").removeAttribute("src");
+    var canvas = ui.$("poster-canvas");
+    canvas.width = 0;
+    canvas.height = 0;
+    model = null;
     if (returnFocus && returnFocus.focus) returnFocus.focus();
     returnFocus = null;
   };

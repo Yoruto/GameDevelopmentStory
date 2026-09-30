@@ -1223,4 +1223,29 @@ module.exports = function runGroup(ctx) {
     ok("year promo cap delays second story promo");
   })();
 
+  (function pendingRemoteChoiceSurvivesSkippedFinalBeat() {
+    const tweaked = deepClone(config);
+    tweaked.careerWorld.eventLines.lines.push({
+      id: "audit-pending-remote", kind: "bond", priority: 99,
+      beats: [{ id: "finale", presentation: "notice", complete: true,
+        skipIf: { hasCompany: true } }],
+      remoteBeat: { id: "remote", presentation: "choice", title: "还联系吗",
+        options: [{ id: "keep", label: "保持联系" }] }
+    });
+    const game = sim.createCareerGame("待答测试", "programmer", tweaked);
+    const st = sim.acceptOpeningOffer(game, game.career.openingOffers[0].id, tweaked).state;
+    st.career.lines["audit-pending-remote"] = {
+      beat: 0, flags: {}, status: "active", pending: false, remotePending: true
+    };
+    const queue = [];
+    sim.processCareerLines(st, tweaked, queue, []);
+    assert(queue.length === 1 && queue[0].type === "careerLine" &&
+      queue[0].beatId === "remote", "remote choice is queued");
+    assert(st.career.lines["audit-pending-remote"].status === "active",
+      "queued remote choice must keep its line active");
+    assert(sim.resolveCareerQueueChoice(st, queue[0], "keep", tweaked).ok,
+      "queued remote choice remains answerable");
+    ok("pending remote choice cannot be completed by a skipped final beat");
+  })();
+
 };

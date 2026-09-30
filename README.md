@@ -1,9 +1,19 @@
-# 通用技能包
+# 游戏开发物语
 
-包含 读取本地存储、关闭当前活动页、虎扑网页安全审计、活动数据存储、获取当前用户信息、埋点上报、内容安全检测、社交分享、通用业务请求、写入本地存储、用户反馈、站内跳转、CloudBase 登录、CloudBase 网关请求、game-jump、leaderboard-template、lottery-draw、OSS 文件上传、pk-voting、result-poster-posting、查询活动业务数据、查询某个帖子下的全部回帖、查询乒乓球网球F1无畏契约CS2的统计、查询评分对象详情、查询赛程列表比赛、查询一个对象的评分数/评分人数、查询英雄联盟单场比赛详细信息、查询足球单场比赛详细信息、查询足球教练基础资料、查询足球球队当前阵容、查询足球球队基础资料、查询足球球队赛季数据统计、查询足球球员基础资料、查询足球任一单场比赛的相关新闻资讯、查询NBA/CBA/足球任一球队的新闻资讯、查询NBA/CBA/足球任一球员的新闻资讯、查询NBA/CBA单场数据统计、查询NBA/CBA球队当前阵容、查询NBA/CBA球队基础资料、查询NBA/CBA球员基础资料、查询NBA球员球队薪资情况、唤起发帖编辑器、获取赛事对阵图、获取投票详情、社区标签帖子列表、社区话题帖子列表、社区帖子详情、提交投票、王者荣耀比赛事件、新闻资讯列表、支持给评分对象打分、支持回复社区帖子、专题新闻列表。
+虎扑 Colorbox 活动 H5。当前只有一条生涯模式：玩家从 1995 年入职游戏公司，通过「继续」推进关键节点，到 2025 年结算。原公司经营模式已移除。
 
-本仓库正在做的活动是 H5「游戏开发物语」。打开 `h5/index.html` 即可预览；玩法文档与改数流程见 `activity/README.md`。部署到腾讯云 EdgeOne Pages 时输出目录必须是 `h5`（仓库根 `edgeone.json` 已写明），否则预览根路径会 404。
+## 当前功能
 
-> **接手开发先读 `activity/README.md` 与 `activity/current-status.md`。** `P3-HANDOFF.md` 是 2026-09-20 的历史交接，里面的任务和测试数已过期。
-> 记忆文件 `.workbuddy/memory/MEMORY.md` 会自动注入；改配置/引擎的标准流程见项目级 skill `gds-config-workflow`。
-> 注：`AGENTS.md` 是外层 Colorbox 工作区模板（讲 `skills/runbook/` 的交付状态机），与游戏开发本身无关，别照它去跑 `state.py`。
+- 开局随机生成属性、擅长岗位与天赋，可重掷，再从三份入职 offer 中选择；之后经历项目、事件线、晋升、跳槽、发售和年度奖。当前页面没有角色名输入，角色名固定为「我」。
+- 作品使用当月新增销量与逐月累计销量。新发售作品采用销量模型 v2；旧存档作品保留旧曲线。
+- 健康会影响事件选择与当月工作；结算后可查看并保存两页生涯海报。
+- 2025 年的「The Last Dance」终章按作品排程接续最后短作；11 月照常评奖，12 月完成后根据真实署名与奖项记录收束。
+- 本机先保存进度，虎扑 App 内通过 Colorbox 云桥同步单档；直开 `h5/index.html` 是本机预览。
+
+## 开发入口
+
+每轮先运行 `python3 skills/runbook/state.py current`，按当前阶段的门禁和读写范围工作；流程由 [AGENTS.md](AGENTS.md) 约束。项目事实与操作入口见 [activity/README.md](activity/README.md) 和 [activity/current-status.md](activity/current-status.md)。
+
+改数值时编辑 `activity/config.json` 或 `activity/career-world.json`，运行 `python3 scripts/sync_config.py` 生成 `h5/js/config.generated.js`，再运行 `python3 scripts/validate_career_world.py`、`node tests/run-sim-tests.js` 和 `node tests/run-save-tests.js`。页面入口为 `h5/index.html`；仓库根的 `edgeone.json` 指向 `h5/` 输出目录。2026-09-30 本地检查为模拟 153 项、存档 59 项通过；发布安全审查和宿主内验收另按当前阶段执行。
+
+`skills/` 是 Colorbox 能力与交付工作区资料；`AI-MAP.md` 提供代码和文档索引。带日期的方案、交接和问题记录是历史材料，现行规则以代码、配置和 `activity/current-status.md` 为准。

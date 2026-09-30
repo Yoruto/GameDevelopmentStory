@@ -59,7 +59,7 @@
       if (className) element.classList.add(className);
       run.timer = root.setTimeout(function () { settle(run, true); }, duration + 50);
     },
-    rollText: function (el, fromText, onComplete) {
+    rollText: function (el, fromText, onComplete, duration) {
       if (!el) {
         if (onComplete) onComplete();
         return;
@@ -76,6 +76,9 @@
       wrap.className = "date-roll";
       oldText.className = "date-roll-out";
       newText.className = "date-roll-in";
+      duration = duration || 1000;
+      oldText.style.animationDuration = duration + "ms";
+      newText.style.animationDuration = duration + "ms";
       oldText.textContent = fromText;
       newText.textContent = toText;
       wrap.appendChild(newText);
@@ -85,7 +88,7 @@
       var restore = function () {
         if (wrap.parentNode === el) el.textContent = toText;
       };
-      this.play(el, oldText, null, 1000, function () {
+      this.play(el, oldText, null, duration, function () {
         restore();
         if (onComplete) onComplete();
       }, restore);

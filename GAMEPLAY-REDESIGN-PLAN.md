@@ -1,5 +1,7 @@
 # 玩法重设计方案（v2 草案）
 
+> 历史设计方案，保留提案和当时的取舍。现行玩法、销量 v2、健康事件与海报以 [activity/design.md](activity/design.md) 页首摘要和 [activity/current-status.md](activity/current-status.md) 为准。
+
 > 状态：方向已与开发者确认，待细化拆任务
 > 结论日期：2026-09-20
 > 交付定位：从「逐月模拟经营」改造为「节点驱动的叙事生涯体验」，10-20 分钟一周目

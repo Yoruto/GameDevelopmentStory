@@ -277,6 +277,7 @@
     var co, view, projectView, phaseLabel, role, invites, supporting, titleNow, xpSpec, phaseMult;
 
     sim.ensureCareerExtras(st, config);
+    if (sim.planLastDance) sim.planLastDance(st, config);
     if (st.career.healthWorkMonth === healthMonth) {
       workMult = Math.max(0, Math.min(1, num(st.career.healthWorkMult, 1)));
     }
@@ -297,6 +298,7 @@
     hospitalized = st.phase === "PLAYING" &&
       num(st.career.health, num(healthSpec.init, 4)) <= num(healthSpec.hospitalThreshold, 1);
     if (hospitalized) {
+      st.career.healthHospitalizedEver = true;
       workMult = 0;
       st.career.health = Math.min(num(healthSpec.max, 5), num(healthSpec.hospitalRecoverTo, 3));
       healthEvent = sim.findById((world.devEvents || {}).list || [], healthSpec.hospitalEventId || "healthHospitalStay");
@@ -364,6 +366,7 @@
       view = sim.careerTitle(st.career.titleId, config, st);
       if (view && view.releaseYear === st.year && view.releaseMonth === st.month) {
         sim.shipPlayerTitle(st, config, notes, queue);
+        if (sim.lastDanceAfterShip) sim.lastDanceAfterShip(st);
       }
     }
 
@@ -399,6 +402,7 @@
     }
 
     if (st.phase === "PLAYING" && st.month === (config.awards.month || 11)) {
+      if (sim.lastDanceAwardNight) sim.lastDanceAwardNight(st, config, queue);
       awardPack = sim.runCareerAwards(st, config, notes);
       if (sim.collectCareerAwardStory) {
         awardStory = sim.collectCareerAwardStory(st, config, awardPack);
@@ -437,6 +441,10 @@
       st.month = 1;
       st.year += 1;
       st.career.promotionsThisYear = 0;
+      st.career.intelNews = {
+        year: st.year,
+        body: yearDigestBody(st.year, st, config).join("\n")
+      };
     }
 
     if (st.month === hopMonth) {
@@ -456,7 +464,9 @@
       }
     }
     if (!sim.careerPostLaunch(st) && !st.career.titleId) st.career.idleMonths = num(st.career.idleMonths, 0) + 1;
+    if (sim.prepareLastDanceAssignment) sim.prepareLastDanceAssignment(st, config);
     sim.assignCareerProject(st, config, queue);
+    if (sim.lastDanceOpening) sim.lastDanceOpening(st, config, queue);
     sim.ensureCareerColleagues(st, config);
 
     if (st.phase === "PLAYING" && (st.year > cal.endYear || (st.year === cal.endYear && st.month > cal.endMonth))) {
@@ -465,7 +475,7 @@
 
     if (awardPack && awardsInvolvePlayer(awardPack)) {
       // P5c 完整档：只有玩家被卷进本届颁奖（提名/获奖）才推完整颁奖夜；
-      // 快讯档在跨年「年度快讯」页呈现（skipToNextNode 的 yearBanner）。
+      // 快讯档在跨年时写入生涯进度，由主界面「情报」呈现。
       queue.push({
         type: "awards",
         kind: "event",
@@ -481,6 +491,9 @@
       });
       // 剧情页排在颁奖夜之后：先看滚幕揭晓，再读这一段。
       awardStory.forEach(function (p) { queue.push(p); });
+    }
+    if (st.phase === "SETTLED" && sim.lastDanceFinale) {
+      queue.push(sim.lastDanceFinale(st, config));
     }
     return { state: st, queue: queue };
   };
@@ -540,6 +553,7 @@
   // 配置入口：careerWorld.careerPace.{stopOnTypes, stopOnChoice, stopOnPlayerAwards,
   // maxSkipMonths}（缺省走代码里的默认值）。
   sim.careerNodeDetectors = [
+    { id: "lastDance", test: function (page) { return page.type === "lastDance"; } },
     // ⓪ 属性里程碑（P6：被世界承认——每档一次， rare，优先级最高）
     { id: "milestone", test: function (page) {
       return page.type === "milestone";
@@ -612,7 +626,7 @@
   }
 
 
-  // P5c/5d：跨年「年度快讯」页（title=年份大字幕；body=行业新闻 + 颁奖快讯，各 ≤1 行）。
+  // P5c/5d：跨年快讯（行业新闻 + 颁奖快讯，各 ≤1 行）。
   // 行业新闻走 yearNewsLine（当年最高分真作）；颁奖快讯读上届 goty 得主（快讯档才上墙）。
   function yearDigestBody(year, st, config) {
     var lines = [];
@@ -622,6 +636,18 @@
     if (awardLine) lines.push(awardLine);
     return lines;
   }
+
+  // 旧存档没有 intelNews 字段；总览可按当前年份补算，不改写原存档。
+  sim.careerYearDigest = function (st, config) {
+    var career = st && st.career;
+    var startYear = (sim.careerWorld(config).timeline || {}).startYear || 1995;
+    var stored = career && career.intelNews;
+    var body;
+    if (!career || st.year <= startYear) return null;
+    if (stored && stored.year === st.year) return stored.body ? stored : null;
+    body = yearDigestBody(st.year, st, config).join("\n");
+    return body ? { year: st.year, body: body } : null;
+  };
 
 
   // P5a：章开场演出页（年份大字幕 + 时代白描 2~3 行）。
@@ -693,9 +719,8 @@
         banners.push({
           type: "yearBanner",
           kind: "info",
-          kicker: (sim.careerCopy(config) || {}).awardNewsKicker || "年度快讯",
           title: st.year + " 年",
-          body: yearDigestBody(st.year, st, config).join("\n")
+          body: st.career.intelNews && st.career.intelNews.body || ""
         });
       }
       if (st.phase !== "PLAYING") { hit = { id: "settle" }; break; }
@@ -703,22 +728,8 @@
       if (hit) break;
       if (skipped >= maxSkip) { hit = { id: "paceCap" }; break; }
     }
-    // 普通年度快讯并入本次首张事件页，避免每年多点一次重复新闻。
-    // 章开场仍独立成页；没有其他事件时保留年度快讯，确保信息不丢失。
-    if (last && last.queue && last.queue.length && banners.length) {
-      var digest = banners.filter(function (page) { return page.type === "yearBanner"; });
-      if (digest.length) {
-        banners = banners.filter(function (page) { return page.type !== "yearBanner"; });
-        var first = Object.assign({}, last.queue[0]);
-        first.bits = digest.map(function (page) {
-          return page.title + (page.body ? "\n" + page.body : "");
-        }).join("\n") + (first.bits ? "\n" + first.bits : "");
-        last.queue = [first].concat(last.queue.slice(1));
-      }
-    }
-    // queue = 跨年/章末字幕 + 停机当月的原始队列。
-    // 命中 paceCap 且途中无事发生时 queue 可为空——UI 层只走日期动画，不弹窗。
-    queue = banners.slice().concat((last && last.queue) ? last.queue.slice() : []);
+    // 年度快讯已写入进度；yearBanner 仅保留作跨年节点标记，由 UI 收起。
+    queue = banners.concat((last && last.queue) ? last.queue.slice() : []);
     return {
       state: st,
       queue: queue,
@@ -768,6 +779,7 @@
       return sim.declineCareerInvite(state, page.inviteId, config);
     }
     if (page.type === "careerLineFork") return sim.resolveCareerPathFork(state, optionId, config);
+    if (page.type === "lastDance") return sim.resolveLastDanceChoice(state, optionId);
     if (page.type === "careerLine") return sim.resolveCareerLineChoice(state, page.lineId, page.beatId, optionId, config);
     if (page.type === "producerPitch") return sim.resolveProducerPitch(state, optionId, config);
     if (!page.eventId) return { ok: false, state: state };

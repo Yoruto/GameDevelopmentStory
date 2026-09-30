@@ -1,5 +1,7 @@
 # 虚拟作口碑标尺：一次数值重定（2026-09-16）
 
+> 历史平衡记录。此处的评分锚点和测试样本对应 2026-09-16；当前 `titlePool.craft.scoreBase` 为 1.5，数值以 `activity/career-world.json` 与 [current-status.md](../current-status.md) 为准。
+
 ## 目标（Master 给定）
 
 | 队伍 | 熟练度 | 期望口碑 |

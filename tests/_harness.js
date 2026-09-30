@@ -26,6 +26,7 @@ const SIM_FILES = [
   "career-mobility.js",
   "career-bonds.js",
   "career-world-sim.js",
+  "last-dance.js",
   "career-pace.js",
   "careerLines.js",
   "tick.js",

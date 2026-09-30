@@ -1,5 +1,7 @@
 # 前辈 / 后辈 / 同事 三条关系线重设计方案
 
+> 历史提案与实施记录。文中的推荐路线、测试样本和“未做”项是当时状态；现行事件线以 `activity/career-world.json`、`h5/js/sim/careerLines.js` 与 [current-status.md](current-status.md) 为准。
+
 > 对象：`activity/career-world.json` → `eventLines.lines` 中 `bond-mentor` / `bond-peer` / `bond-junior`
 > 引擎：`h5/js/sim/careerLines.js`（事件线驱动）、`h5/js/sim/career.js`（bond 记录与共存判定）
 > 结论先行：**三条线的"生硬"不来自文案，来自机制**。选择没有回声、设定没有接上、节奏被主线挤死。

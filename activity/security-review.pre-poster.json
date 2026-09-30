@@ -1,0 +1,19 @@
+{
+  "schemaVersion": "security_review_json_v1",
+  "decision": "passed",
+  "summary": "已审查 28 个前端 HTML、JS、CSS 文件；预扫描候选经定点核对未构成发布门禁、通用安全、性能或功能问题。",
+  "package": {
+    "packageId": "app_3c72f55c0c",
+    "archiveSha256": "3820160dcddf39bcab68a97eda06419d3bb21fde353946f9abb34dc6dd3f7d37",
+    "fileCount": 28,
+    "analyzedFileCount": 28,
+    "skippedFileCount": 0
+  },
+  "findings": [],
+  "preflightFindings": [],
+  "reviewPolicy": {
+    "executedCode": false,
+    "networkAccess": false,
+    "sandboxPath": "review-package"
+  }
+}

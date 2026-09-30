@@ -18,7 +18,7 @@ module.exports = function runGroup(ctx) {
   (function loaderOrderInSync() {
     const html = fs.readFileSync(path.join(ROOT, "h5", "index.html"), "utf8");
     const fromHtml = [];
-    const re = /<script src="js\/sim\/([\w.\-]+\.js)"><\/script>/g;
+    const re = /<script\b[^>]*\bsrc="js\/sim\/([\w.\-]+\.js)"[^>]*><\/script>/g;
     let m;
     while ((m = re.exec(html))) fromHtml.push(m[1]);
     assert(fromHtml.join(",") === SIM_FILES.join(","),

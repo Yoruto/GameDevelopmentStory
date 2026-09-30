@@ -5,7 +5,11 @@
   var doc = root.document;
   var timers = [];
   var running = null;
+  var scrollFrame = null;
+  var paused = !!doc.hidden;
   var skipBound = false;
+  var clickAtStart = null;
+  var revealAtClickStart = null;
 
   function fxCfg() {
     return (GDS.CONFIG && GDS.CONFIG.fx) || {};
@@ -28,32 +32,93 @@
     return ui.$("dlg-extra");
   }
 
+  function scheduleTimer(timer) {
+    if (paused || timer.id !== null) return;
+    if (timer.kind === "interval") {
+      timer.id = root.setInterval(timer.fn, timer.delay);
+      return;
+    }
+    timer.startedAt = Date.now();
+    timer.id = root.setTimeout(function () {
+      timer.id = null;
+      timers = timers.filter(function (entry) { return entry !== timer; });
+      timer.fn();
+    }, timer.remaining);
+  }
+
+  function pauseTimer(timer) {
+    if (timer.id === null) return;
+    if (timer.kind === "interval") root.clearInterval(timer.id);
+    else {
+      root.clearTimeout(timer.id);
+      timer.remaining = Math.max(0, timer.remaining - (Date.now() - timer.startedAt));
+    }
+    timer.id = null;
+  }
+
   function clearTimers() {
-    timers.forEach(function (id) {
-      root.clearTimeout(id);
-      root.clearInterval(id);
-    });
+    timers.forEach(pauseTimer);
     timers = [];
   }
 
   function later(fn, delay) {
-    var id = root.setTimeout(function () {
-      timers = timers.filter(function (x) { return x !== id; });
-      fn();
-    }, delay);
-    timers.push(id);
-    return id;
+    var timer = { kind: "timeout", fn: fn, remaining: delay, startedAt: 0, id: null };
+    timers.push(timer);
+    scheduleTimer(timer);
+    return timer;
   }
 
   function every(fn, delay) {
-    var id = root.setInterval(fn, delay);
-    timers.push(id);
-    return id;
+    var timer = { kind: "interval", fn: fn, delay: delay, id: null };
+    timers.push(timer);
+    scheduleTimer(timer);
+    return timer;
+  }
+
+  function stopTimer(timer) {
+    pauseTimer(timer);
+    timers = timers.filter(function (entry) { return entry !== timer; });
+  }
+
+  function scrollExtraNow() {
+    var box = extra();
+    if (box) box.scrollTop = box.scrollHeight;
+  }
+
+  function cancelScrollExtra() {
+    if (scrollFrame === null) return;
+    if (root.cancelAnimationFrame && root.requestAnimationFrame) root.cancelAnimationFrame(scrollFrame);
+    else root.clearTimeout(scrollFrame);
+    scrollFrame = null;
   }
 
   function scrollExtra() {
+    if (paused || scrollFrame !== null) return;
+    var schedule = root.requestAnimationFrame || function (fn) { return root.setTimeout(fn, 16); };
+    scrollFrame = schedule.call(root, function () {
+      scrollFrame = null;
+      scrollExtraNow();
+    });
+  }
+
+  function resetExtraScroll() {
+    cancelScrollExtra();
     var box = extra();
-    if (box) box.scrollTop = box.scrollHeight;
+    if (box) box.scrollTop = 0;
+  }
+
+  function onVisibilityChange() {
+    if (doc.hidden) {
+      if (paused) return;
+      paused = true;
+      timers.forEach(pauseTimer);
+      cancelScrollExtra();
+    } else {
+      if (!paused) return;
+      paused = false;
+      timers.forEach(scheduleTimer);
+      if (running) scrollExtra();
+    }
   }
 
   function setBusy(on) {
@@ -68,8 +133,20 @@
     mask = ui.$("dlg-mask");
     if (!mask) return;
     mask.addEventListener("click", function (ev) {
+      clickAtStart = ev;
+      revealAtClickStart = running;
+    }, true);
+    mask.addEventListener("click", function (ev) {
       var t = ev.target;
-      if (!running) return;
+      // The previous dialog may open a reveal in its click handler. That
+      // same click must not skip the newly opened ceremony as it bubbles.
+      if (!running || clickAtStart !== ev || revealAtClickStart !== running) return;
+      if (running.kind === "awards") {
+        ev.preventDefault();
+        ev.stopPropagation();
+        ui.skipReveal();
+        return;
+      }
       if (t && t.nodeType !== 1) t = t.parentElement;
       if (t && t.closest && (t.closest("#dlg-ok") || t.closest("#dlg-cancel") || t.closest(".dlg-choices"))) return;
       ui.skipReveal();
@@ -84,6 +161,7 @@
 
   ui.stopReveal = function () {
     clearTimers();
+    cancelScrollExtra();
     running = null;
     setBusy(false);
   };
@@ -127,7 +205,9 @@
   }
 
   function finishReveal(onDone) {
+    var needsScroll = scrollFrame !== null;
     ui.stopReveal();
+    if (needsScroll) scrollExtra();
     if (onDone) onDone();
   }
 
@@ -207,6 +287,12 @@
       score.textContent = sim.formatUnits(salesAmt);
       q.appendChild(score);
       row.appendChild(q);
+      if (rec.salesReason) {
+        var why = doc.createElement("p");
+        why.className = "hint";
+        why.textContent = rec.salesReason;
+        row.appendChild(why);
+      }
       extra().appendChild(row);
       scrollExtra();
       return score;
@@ -246,6 +332,12 @@
         }, ms("mediaStampMs", 520) + ms("mediaGapMs", 420));
       }, ms("mediaQuoteMs", 700));
     }
+
+    rows.forEach(function (r) { appendOutlet(r, true); });
+    appendSales(true);
+    ui.fitDialogToContent({ reserveActions: true, lockHeight: true });
+    extra().textContent = "";
+    resetExtraScroll();
 
     if (instant) {
       rows.forEach(function (r) { appendOutlet(r, true); });
@@ -332,6 +424,22 @@
       finishReveal(opts.onDone);
     }
 
+    // A single click during the ceremony reveals the complete result. Keep
+    // the reduced-motion result and the skipped result on the same render path.
+    inst.skip = function () {
+      if (running !== inst) return;
+      clearTimers();
+      extra().textContent = "";
+      awards.forEach(appendStatic);
+      resetExtraScroll();
+      done();
+    };
+
+    awards.forEach(appendStatic);
+    ui.fitDialogToContent({ reserveActions: true, lockHeight: true });
+    extra().textContent = "";
+    resetExtraScroll();
+
     if (instant) {
       awards.forEach(appendStatic);
       done();
@@ -340,13 +448,20 @@
 
     i = 0;
     function playAward() {
-      var a, wrap, nameEl, reel, labels, tick, idx, phase, reelMs;
+      var a, wrap, nameEl, reel, labels, tick, idx, totalMs, holdMs, reelMs;
       if (!running || running !== inst) return;
       if (i >= awards.length) {
         done();
         return;
       }
       a = awards[i];
+      // Historical config keys say "ReelMs". They now budget the whole
+      // award, including the winner stamp and the brief hold afterward.
+      totalMs = isGrandAward(a)
+        ? ms("awardReelMs", 2000)
+        : ms("awardSmallReelMs", 1000);
+      holdMs = Math.min(ms("awardStampMs", 200) + ms("awardHoldMs", 250), Math.floor(totalMs / 2));
+      reelMs = totalMs - holdMs;
       wrap = doc.createElement("div");
       wrap.className = "fx-award" + (isGrandAward(a) ? " goty" : "");
       nameEl = doc.createElement("p");
@@ -366,57 +481,38 @@
         reel.textContent = a.w || "—";
         reel.classList.add("done");
         markMine(reel, a);
-        phase = "hold";
-        inst.skip = function () {
-          if (!running || running !== inst) return;
-          clearTimers();
-          i += 1;
-          playAward();
-        };
         later(function () {
           if (!running || running !== inst) return;
           i += 1;
           playAward();
-        }, ms("awardHoldMs", 800));
+        }, totalMs);
         return;
       }
 
       idx = 0;
       reel.textContent = labels[0];
-      phase = "reel";
       tick = every(function () {
         idx = (idx + 1) % labels.length;
         reel.textContent = labels[idx];
       }, ms("awardReelTickMs", 70));
 
       function reveal() {
-        if (phase !== "reel") return;
-        phase = "hold";
-        root.clearInterval(tick);
-        timers = timers.filter(function (x) { return x !== tick; });
+        if (running !== inst) return;
+        stopTimer(tick);
         reel.textContent = a.w || "—";
         reel.classList.add("done");
         markMine(reel, a);
-        inst.skip = function () {
-          if (!running || running !== inst) return;
-          clearTimers();
-          i += 1;
-          playAward();
-        };
         later(function () {
           if (!running || running !== inst) return;
           i += 1;
           playAward();
-        }, ms("awardStampMs", 600) + ms("awardHoldMs", 800));
+        }, holdMs);
       }
 
-      inst.skip = reveal;
-      // 滚幕时长只按奖项大小分档（小 1 秒 / 大奖 2 秒），与这是第几个奖项无关。
-      reelMs = isGrandAward(a)
-        ? ms("awardReelMs", 2000)
-        : ms("awardSmallReelMs", 1000);
       later(reveal, reelMs);
     }
     playAward();
   };
+  if (doc.addEventListener) doc.addEventListener("visibilitychange", onVisibilityChange);
+  if (root.addEventListener) root.addEventListener("pagehide", ui.stopReveal);
 })(typeof globalThis !== "undefined" ? globalThis : this);

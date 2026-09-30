@@ -100,6 +100,28 @@
     "comment": "个人线新局 saveVersion。经营局仍写 4。职级/履历起为 9；事件线/制作人起为 10。",
     "version": 10
   },
+  "endings": {
+    "comment": "结局按 producer → relationships → awards → prolific → health → ordinary 的优先级命中；阈值是固定业务规则，文案与人物线回声由此处提供。",
+    "relationshipLines": 2,
+    "awardHonor": 4,
+    "prolificCredits": 8,
+    "lowHealth": 2,
+    "priority": ["producer", "relationships", "awards", "prolific", "health", "ordinary"],
+    "cards": {
+      "producer": { "title": "掌舵的人", "body": "从工位走到立项桌前，你终于能把自己的判断交给整个团队。" },
+      "relationships": { "title": "一路同行", "body": "作品会谢幕，与你并肩的人把这段生涯继续讲了下去。" },
+      "awards": { "title": "奖台常客", "body": "那些被反复打磨的作品，最终在聚光灯下留下了名字。" },
+      "prolific": { "title": "作品如山", "body": "一部接一部，行业的年表里有许多页记着你的作品。" },
+      "health": { "title": "燃尽之后", "body": "你留下了作品，也终于学会问自己：下一程要怎样走。" },
+      "ordinary": { "title": "认真做完这一程", "body": "不必每年站上台，这些年一起完成的游戏已经足够真实。" }
+    },
+    "echoes": [
+      { "line": "bond-junior", "flag": "taughtWell", "text": "你把学会的东西交给了后辈。" },
+      { "line": "bond-peer", "flag": "creditShare", "text": "你曾把属于自己的署名分给同伴。" },
+      { "line": "bond-peer", "flag": "peerReconciled", "text": "当年的对手，后来成了懂你的人。" },
+      { "line": "bond-mentor", "flag": "ownStyle", "text": "前辈教会你起步，你走出了自己的路。" }
+    ]
+  },
   "player": {
     "comment": "开局不再选主职：先 roll 总属性（startRoll.totalMin–totalMax），再按随机权重分到四维，最高维定擅长主职。chances 是含首掷在内的总 roll 次数。startingStats/specialtyBonus 仅作旧档兜底，新开局不再使用。月贡献 = monthlyContribution × contribMult[rank] × careerStatFactor(该维属性) × 阶段权重 × 体量权重，再乘熟练度加成（playerSkillContribMult）。",
     "startingFame": 0,
@@ -186,11 +208,11 @@
     }
   },
   "launchSales": {
-    "comment": "生涯发售首月实销基准。baseline = round(baseUnit × scoreCurve × prestigeMult × qualityMult × powerMult)。scoreCurve 以 scoreRef 为拐点分两段：及格线以上 exp(scoreExp × (score − scoreRef))，每高 1 分约 ×5.5；及格线以下换更缓的 scoreExpBelow——纯指数的下尾会把 3 分作品压到个位数（e^-6.8 ≈ 0.001），而真实市场里再烂的作品也有基础曝光。scoreExpBelow 只抬下尾，7 分及以上完全由 scoreExp 决定、一个数不动。prestigeMult 按作品 prestige(2-5) 查表；qualityMult = clamp((qsum / qualityRef) ^ qualityExp, qualityMin, qualityMax)；powerMult 按发行公司 power(1-3) 查表——同分作品大厂发行卖得更多，powerDefault 供查不到公司时兜底。baseline 再乘 lifecycle Y(1) 得 launchSales，后续月只乘 Y(m)。标定锚点（首月）：9.9 分 landmark + prestige5 + power3 ≈ 260 万（不变）；7 分合格作（p3/pw2/q300）= 9000（不变）；小厂作（p2/pw1/q160）本次调整前 → 后：1 分 0 → 245、3 分 5 → 665、5 分 164 → 1807、6 分 897 → 2979。改高分段梯度只动 scoreExp，改低分段只动 scoreExpBelow，改整体量级动 baseUnit。",
-    "baseUnit": 9000,
+    "comment": "生涯发售首月实销（实体与数字合计）：基础需求 × 有界评分口碑 × 作品质量 × 公司规模 × 年代市场 × 已有知名度 × 公司制定的发行档位。史实作品可用有来源的首发下界和累计锚点校准；后续月份按 lifecycle.v2 结算。",
+    "baseUnit": 15000,
     "scoreRef": 7,
-    "scoreExp": 1.7,
-    "scoreExpBelow": 0.5,
+    "scoreExp": 0.9,
+    "scoreExpBelow": 0.4,
     "prestigeMult": {
       "2": 0.85,
       "3": 1,
@@ -198,15 +220,29 @@
       "5": 1.4
     },
     "qualityRef": 300,
-    "qualityExp": 0.35,
-    "qualityMin": 0.6,
-    "qualityMax": 1.6,
+    "qualityExp": 0.15,
+    "qualityMin": 0.85,
+    "qualityMax": 1.15,
     "powerMult": {
       "1": 0.8,
       "2": 1,
       "3": 1.35
     },
-    "powerDefault": 1
+    "powerDefault": 1,
+    "eraMarket": [
+      { "year": 1995, "mult": 1 },
+      { "year": 2005, "mult": 1.2 },
+      { "year": 2015, "mult": 1.45 },
+      { "year": 2025, "mult": 1.65 }
+    ],
+    "strategyMult": { "targeted": 0.75, "standard": 1, "wide": 1.3 },
+    "companyHitMinSales": 50000,
+    "companyHitMinScore": 7,
+    "companyFamePerHit": 0.07,
+    "companyFameMax": 1.4,
+    "seriesFamePerHit": 0.55,
+    "seriesFameDecayMonths": 72,
+    "seriesFameMax": 3
   },
   "companyXp": {
     "comment": "工作室 studioXp 抬作品 live 四维底（立项时）。玩家个人 genreXp/gameplayXp 另算，抬主职 live 底与月贡献。两套叠加、不互相覆盖。",
@@ -308,13 +344,13 @@
     "prestige": 2,
     "score": 7.2,
     "craft": {
-      "comment": "参考 5 人 × 6 月：口碑 = scoreBase + teamAvg / statDivisor。sizeFactor=(n/refTeamSize)^sizeExp，timeFactor=(months/refMonths)^timeExp。弱组拉长工期成不了神作。",
+      "comment": "虚拟作品口碑 = scoreBase + 作品四维均值 / statDivisor，夹在 1–10。基础值 1.5 让早期小组作品有可见反馈；团队属性与开发月贡献继续决定能否在后期冲击高分。",
       "statDivisor": 7.5,
       "refTeamSize": 5,
       "refMonths": 6,
       "sizeExp": 0.6,
       "timeExp": 0.5,
-      "scoreBase": 1
+      "scoreBase": 1.5
     },
     "landmarkBlockSameMonth": true,
     "minWorldReleasesPerYear": 10,
@@ -735,6 +771,16 @@
           "art": 1,
           "music": 1
         }
+      },
+      {
+        "id": "intensiveStudy",
+        "req": {
+          "health": 2
+        },
+        "healthDelta": -1,
+        "label": "密集进修",
+        "text": "把空窗排满课程，主职进步很快，身体却没歇下来。",
+        "mainStatDelta": 3
       },
       {
         "id": "study",
@@ -1539,6 +1585,11 @@
     "maxBeatsPerMonth": 1,
     "maxNewLinesPerMonth": 1,
     "bondBeatsPerMonth": 0,
+    "endgame": {
+      "comment": "制作人线最迟 2022 年开启；人物关系长线最迟 2020 年开启。进入 2025 年最后一舞时收束仍未完成的这些线，保留此前已经生效的选择和关系。",
+      "producerLatestStartYear": 2022,
+      "bondLatestStartYear": 2020
+    },
     "exclusiveGroup": "careerPath",
     "bonds": {
       "comment": "入职钉 mentor（当前东家 seniors[0]）与 0–1 peer（同事池）；junior 在后辈线开线时生成。跳槽保留已钉对象。",
@@ -1627,7 +1678,7 @@
                 "label": "跟着过去",
                 "complete": true,
                 "effects": {
-                  "cheer": "合并文件签下来的那天，老团队的留用名单上你的名字被圈了红圈。留用骨干——四个字，比什么奖都踏实。",
+                  "cheer": "合并文件签下来的那天，老团队的留用名单上，你那一行被圈了红圈。留用骨干——四个字，比什么奖都踏实。",
                   "joinSuccessor": true
                 }
               },
@@ -1766,7 +1817,7 @@
             "presentation": "choice",
             "kicker": "晋升线",
             "title": "总监任命",
-            "body": "他们丢给你一块跨组协调，你是亲自顶，还是把节奏拆给各组。年终任命会上，名字被念到了。",
+            "body": "他们丢给你一块跨组协调，你是亲自顶，还是把节奏拆给各组。年终任命会上，你被点名了。",
             "options": [
               {
                 "id": "own",
@@ -1886,7 +1937,7 @@
             "n": 18
           },
           "requireBond": "mentor",
-          "startChance": 0.42,
+          "startChance": 0.063,
           "retryNextYear": true
         },
         "remoteBeat": {
@@ -2057,7 +2108,7 @@
             "kicker": "前辈线",
             "title": "这不是他的写法",
             "body": "有人把你的稿子和我的旧作摆在一起，说这不像同一个人的路子。我没反驳，只批了两个字——再想。",
-            "bodyRemote": "有人在会上提到你的名字，说这不是我那一派的做法。这是夸你。",
+            "bodyRemote": "有人在会上提到你，说这不是我那一派的做法。这是夸你。",
             "effects": {
               "jobXp": 2,
               "fame": 1
@@ -2091,7 +2142,7 @@
             "speakerBond": "mentor",
             "kicker": "前辈线",
             "title": "前辈提名",
-            "body": "我把你的名字递进了公司。",
+            "body": "我向公司推荐了你。",
             "bodyRemote": "我给新东家写了一封推荐信。",
             "options": [
               {
@@ -2214,7 +2265,7 @@
             "bond": "peer",
             "n": 24
           },
-          "startChance": 0.3,
+          "startChance": 0.045,
           "retryNextYear": true
         },
         "remoteBeat": {
@@ -2370,8 +2421,8 @@
             },
             "presentation": "notice",
             "kicker": "同事线",
-            "title": "两个人的名字",
-            "body": "那份交付下面挂着两个名字。评审时有人一前一后念出来，你们两个都没说话，但谁都没觉得别扭。",
+            "title": "两人的署名",
+            "body": "那份交付由你们两人署名。评审时有人一前一后念到你们。两人都没说话，谁也没觉得别扭。",
             "effects": {
               "honor": 2
             }
@@ -2387,8 +2438,8 @@
             },
             "presentation": "notice",
             "kicker": "同事线",
-            "title": "只有你的名字",
-            "body": "那份交付下面只有你一个名字。{peerName} 照常上班，照常跟你打招呼，只是不再问你要不要一起做了。",
+            "title": "独自署名",
+            "body": "那份交付最后由你独自署名。{peerName} 照常上班，照常跟你打招呼，只是不再问你要不要一起做了。",
             "effects": {
               "fame": 1,
               "jobXp": 1
@@ -2589,7 +2640,7 @@
               "minSignedCredits": 1
             }
           ],
-          "startChance": 0.34,
+          "startChance": 0.051,
           "retryNextYear": true
         },
         "remoteBeat": {
@@ -2875,7 +2926,7 @@
             "landmark": true,
             "minPrestige": 4
           },
-          "startChance": 0.25,
+          "startChance": 0.0375,
           "retryNextYear": true
         },
         "beats": [
@@ -2943,7 +2994,7 @@
         "startWhen": {
           "minYear": 2010,
           "requireInDevTarget": true,
-          "startChance": 0.38,
+          "startChance": 0.057,
           "retryNextYear": true
         },
         "beats": [
@@ -3673,11 +3724,22 @@
     "honorPerNomination": 1
   },
   "careerHealth": {
-    "comment": "P4b 健康：5 段体检条（UI 不显数字）。只随事件选项变动（healthDelta ±1，钳在 min..max），绝不随时间自动衰减；eraLateYear 之后赶工类事件文案换重口径（textLate），数值规则不变。v2 铁律：健康不影响作品质量。",
+    "comment": "健康为 1..5 格，只随事件结果变化，不随时间自动衰减。健康 2 格时工作月可能触发负面事件；健康 1 格时下一次手动过月强制住院，恢复到 3 格且该月个人贡献为零。开发选项可用健康换作品质量；健康本身不作为作品质量倍率。",
     "init": 4,
     "min": 1,
     "max": 5,
-    "eraLateYear": 2010
+    "eraLateYear": 2010,
+    "lowThreshold": 2,
+    "lowEventChance": 0.25,
+    "lowEventCooldownMonths": 3,
+    "lowEventIds": [
+      "healthFocusSlip",
+      "healthMissedTest",
+      "healthRecurringFever"
+    ],
+    "hospitalThreshold": 1,
+    "hospitalRecoverTo": 3,
+    "hospitalEventId": "healthHospitalStay"
   },
   "renown": {
     "comment": "P4c 声望称号链（累积制）：score = 获奖(playerWon)次数×winWeight + 署名已发售作品均分≥scoreThreshold 的部数；tier=满足的最高档（tiers 升序阈值，5 档）。反哺：邀约权重 ×(1+inviteWeightPerTier×(tier-1))；供 req.renown 门禁与 P7 结局分档。数值待原型验证。",
@@ -3808,8 +3870,8 @@
       },
       {
         "at": 41,
-        "title": "名字进了扉页",
-        "body": "发行商的资料册上，你的名字第一次排进核心成员那栏。从熟练到权威的那条线，你踩过去了。"
+        "title": "进入核心成员",
+        "body": "发行商的资料册上，你第一次排进核心成员那栏。从熟练到权威的那条线，你踩过去了。"
       },
       {
         "at": 51,
@@ -3824,7 +3886,7 @@
     ]
   },
   "devEvents": {
-    "comment": "个人线开发事件。有 role 的只进该岗池，有 phase 的只进该阶段池；无 role 的全员可抽。每条必须指定 qualityDim，禁止随机抽一维讲故事。结果改 live 质量；skillGrant 或 genreXpDelta/gameplayXpDelta 加到当前作的玩家题材/玩法熟练度。titleId 仅提高该作出现权重且每作只触发一次。design 对应员工 script。频率：在研月掷骰，minGapMonths 内不再出；chance 是间隔满足后的月概率；pityMonths 到了必出一条；每年最多 maxPerYear。目标大约 4 个月一条、一年 3–5 条。当月已出事件线拍子则不掷，也不占这条间隔。",
+    "comment": "个人线开发事件。有 role 的只进该岗池，有 phase 的只进该阶段池；无 role 的全员可抽。普通作品事件指定 qualityDim，健康专属事件可只改变健康或当月贡献；禁止随机抽一维讲故事。结果改 live 质量；skillGrant 或 genreXpDelta/gameplayXpDelta 加到当前作的玩家题材/玩法熟练度。titleId 仅提高该作出现权重且每作只触发一次。design 对应员工 script。频率：在研月掷骰，minGapMonths 内不再出；chance 是间隔满足后的月概率；pityMonths 到了必出一条；每年最多 maxPerYear。目标大约 4 个月一条、一年 3–5 条。当月已出事件线拍子则不掷，也不占这条间隔。",
     "chance": 0.35,
     "minGapMonths": 2,
     "pityMonths": 6,
@@ -3858,6 +3920,149 @@
             "qualityDelta": [
               1
             ]
+          }
+        ]
+      },
+      {
+        "id": "healthDeadline",
+        "displayName": "封包前的红灯",
+        "text": "最后一轮测试还在报错。明早要封包，屏幕上的红灯一盏接着一盏亮。",
+        "presentation": "choice",
+        "phase": "alpha",
+        "weight": 2,
+        "choices": [
+          {
+            "id": "overnight",
+            "label": "连夜打磨",
+            "req": { "health": 2 },
+            "qualityDim": "play",
+            "qualityDelta": 8,
+            "healthDelta": -1
+          },
+          {
+            "id": "planned",
+            "label": "按计划修复",
+            "qualityDim": "play",
+            "qualityDelta": 3
+          },
+          {
+            "id": "rest",
+            "label": "先收工，明天再看",
+            "qualityDim": "play",
+            "qualityDelta": 1,
+            "healthDelta": 1
+          }
+        ]
+      },
+      {
+        "id": "healthStoryRewrite",
+        "displayName": "这段内容要重做吗",
+        "text": "一段重要内容始终不对味。同事说先放过它，你却知道还能再往前推一点。",
+        "presentation": "choice",
+        "role": "design",
+        "phase": "production",
+        "weight": 2,
+        "choices": [
+          {
+            "id": "rewrite",
+            "label": "自己重写",
+            "req": { "health": 2 },
+            "qualityDim": "fun",
+            "qualityDelta": 7,
+            "healthDelta": -1
+          },
+          {
+            "id": "trim",
+            "label": "只修改关键段落",
+            "qualityDim": "fun",
+            "qualityDelta": 3
+          },
+          {
+            "id": "workshop",
+            "label": "请同事一起梳理",
+            "qualityDim": "fun",
+            "qualityDelta": 1,
+            "healthDelta": 1
+          }
+        ]
+      },
+      {
+        "id": "healthNightFix",
+        "displayName": "凌晨三点的修复",
+        "text": "测试服的玩家不断报同一个问题。修复窗口还开着，你已经盯着日志看了半夜。",
+        "presentation": "choice",
+        "role": "programmer",
+        "phase": "alpha",
+        "weight": 2,
+        "choices": [
+          {
+            "id": "solo",
+            "label": "自己守到修好",
+            "req": { "health": 2 },
+            "qualityDim": "play",
+            "qualityDelta": 6,
+            "healthDelta": -1
+          },
+          {
+            "id": "rotate",
+            "label": "与团队轮班",
+            "qualityDim": "play",
+            "qualityDelta": 3
+          },
+          {
+            "id": "handoff",
+            "label": "交接后去休息",
+            "healthDelta": 1
+          }
+        ]
+      },
+      {
+        "id": "healthFocusSlip",
+        "manualOnly": true,
+        "displayName": "评审会走神",
+        "text": "会上讲到你负责的部分，你却一时想不起昨天改过什么。这个月只能完成平时一半的活。",
+        "presentation": "notice",
+        "monthContributionMult": 0.5
+      },
+      {
+        "id": "healthMissedTest",
+        "manualOnly": true,
+        "displayName": "漏掉的测试",
+        "text": "一条关键测试被漏掉，已经做好的部分还得回头返工。",
+        "presentation": "notice",
+        "qualityDim": "play",
+        "qualityDelta": -2
+      },
+      {
+        "id": "healthRecurringFever",
+        "manualOnly": true,
+        "displayName": "反复低烧",
+        "text": "体温降下去又升上来。医生说该休息，你看着下个月的工作安排迟迟没回话。",
+        "presentation": "choice",
+        "choices": [
+          {
+            "id": "sickLeave",
+            "label": "下个月请病假",
+            "healthDelta": 1,
+            "nextMonthWorkMult": 0
+          },
+          {
+            "id": "halfDay",
+            "label": "下个月只做半天",
+            "nextMonthWorkMult": 0.5
+          }
+        ]
+      },
+      {
+        "id": "healthHospitalStay",
+        "manualOnly": true,
+        "displayName": "医院的白灯",
+        "text": "眼前的字开始重影。醒来时，你躺在医院里。医生让你停工休养，这个月的活由团队接手。",
+        "presentation": "choice",
+        "choices": [
+          {
+            "id": "recover",
+            "label": "住院休养"
           }
         ]
       },
@@ -31358,8 +31563,14 @@
       "releaseYear": 1996,
       "releaseMonth": 9,
       "score": 8.0,
+      "seriesId": "tes",
+      "seriesFameSeed": 2.6,
+      "releaseStrategy": "wide",
+      "launchSalesFloor": 110000,
+      "salesTargetUnits": 700000,
+      "salesTargetMonths": 46,
+      "salesEvidence": "1996-09-24 Next Generation: >100,000 sold in first two days; 2000-07-18 Pete Hines interview: about 700,000 sold by mid-2000",
       "platforms": [
-        "console",
         "pc"
       ],
       "genreId": "fantasy",
@@ -31387,6 +31598,7 @@
       "releaseYear": 2002,
       "releaseMonth": 5,
       "score": 8.9,
+      "seriesId": "tes",
       "platforms": [
         "console",
         "pc"

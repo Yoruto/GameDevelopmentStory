@@ -1,5 +1,7 @@
 # v2 玩法重设计 · 实施任务书
 
+> 历史实施任务书。完成标记、测试数量与待办反映写作时状态，不是当前交付队列；现行状态见 [activity/current-status.md](activity/current-status.md)，阶段门禁以 `state.py current` 为准。
+
 > 用途：供 AI 逐步执行的修改任务清单。设计理由与背景见 `GAMEPLAY-REDESIGN-PLAN.md`，本文档只讲「改什么、怎么改、怎么验收」。
 > 定稿：2026-09-20。执行前请通读 §0 全局铁律。
 

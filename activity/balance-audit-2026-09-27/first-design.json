@@ -1,0 +1,1388 @@
+{
+  "seeds": 32,
+  "startingRole": "design",
+  "policy": "first opening offer; first valid queue choice",
+  "summary": {
+    "1995": {
+      "stat": {
+        "n": 32,
+        "p10": 24,
+        "p50": 24,
+        "p90": 24
+      },
+      "bestStat": {
+        "n": 32,
+        "p10": 24,
+        "p50": 24,
+        "p90": 24
+      },
+      "rank": {
+        "n": 32,
+        "p10": 1,
+        "p50": 1,
+        "p90": 1
+      },
+      "credits": {
+        "n": 32,
+        "p10": 0,
+        "p50": 0,
+        "p90": 0
+      }
+    },
+    "2000": {
+      "stat": {
+        "n": 32,
+        "p10": 20.5,
+        "p50": 32.1,
+        "p90": 34.8
+      },
+      "bestStat": {
+        "n": 32,
+        "p10": 28.1,
+        "p50": 32.2,
+        "p90": 34.8
+      },
+      "rank": {
+        "n": 32,
+        "p10": 1,
+        "p50": 2,
+        "p90": 3
+      },
+      "credits": {
+        "n": 32,
+        "p10": 0,
+        "p50": 1,
+        "p90": 1
+      }
+    },
+    "2005": {
+      "stat": {
+        "n": 32,
+        "p10": 21.3,
+        "p50": 27.5,
+        "p90": 43
+      },
+      "bestStat": {
+        "n": 32,
+        "p10": 31.7,
+        "p50": 39.6,
+        "p90": 43.7
+      },
+      "rank": {
+        "n": 32,
+        "p10": 2,
+        "p50": 4,
+        "p90": 4
+      },
+      "credits": {
+        "n": 32,
+        "p10": 0,
+        "p50": 1,
+        "p90": 3
+      }
+    },
+    "2010": {
+      "stat": {
+        "n": 32,
+        "p10": 24.2,
+        "p50": 30.3,
+        "p90": 48.9
+      },
+      "bestStat": {
+        "n": 32,
+        "p10": 34.4,
+        "p50": 41.7,
+        "p90": 51.7
+      },
+      "rank": {
+        "n": 32,
+        "p10": 2,
+        "p50": 4,
+        "p90": 4
+      },
+      "credits": {
+        "n": 32,
+        "p10": 1,
+        "p50": 2,
+        "p90": 4
+      }
+    },
+    "2015": {
+      "stat": {
+        "n": 32,
+        "p10": 26.3,
+        "p50": 38,
+        "p90": 53.2
+      },
+      "bestStat": {
+        "n": 32,
+        "p10": 40,
+        "p50": 45.7,
+        "p90": 56.9
+      },
+      "rank": {
+        "n": 32,
+        "p10": 3,
+        "p50": 4,
+        "p90": 5
+      },
+      "credits": {
+        "n": 32,
+        "p10": 2,
+        "p50": 2,
+        "p90": 5
+      }
+    },
+    "2020": {
+      "stat": {
+        "n": 32,
+        "p10": 30.6,
+        "p50": 39.2,
+        "p90": 55.3
+      },
+      "bestStat": {
+        "n": 32,
+        "p10": 43.9,
+        "p50": 51,
+        "p90": 62.7
+      },
+      "rank": {
+        "n": 32,
+        "p10": 4,
+        "p50": 4,
+        "p90": 6
+      },
+      "credits": {
+        "n": 32,
+        "p10": 2,
+        "p50": 3,
+        "p90": 5
+      }
+    },
+    "2025": {
+      "stat": {
+        "n": 32,
+        "p10": 32.8,
+        "p50": 45.5,
+        "p90": 63.7
+      },
+      "bestStat": {
+        "n": 32,
+        "p10": 48.9,
+        "p50": 58.1,
+        "p90": 69.1
+      },
+      "rank": {
+        "n": 32,
+        "p10": 4,
+        "p50": 5,
+        "p90": 6
+      },
+      "credits": {
+        "n": 32,
+        "p10": 2,
+        "p50": 4,
+        "p90": 6
+      }
+    }
+  },
+  "releases": {
+    "1995-2004-virtual": {
+      "score": {
+        "n": 21,
+        "p10": 4.1,
+        "p50": 5.1,
+        "p90": 5.8
+      },
+      "sales": {
+        "n": 21,
+        "p10": 2242,
+        "p50": 5665,
+        "p90": 8698
+      },
+      "highScoreShare": 0
+    },
+    "1995-2004-catalog": {
+      "score": {
+        "n": 237,
+        "p10": 7.5,
+        "p50": 8.5,
+        "p90": 9.3
+      },
+      "sales": {
+        "n": 237,
+        "p10": 23699,
+        "p50": 57967,
+        "p90": 180231
+      },
+      "highScoreShare": 0.165
+    },
+    "2005-2014-virtual": {
+      "score": {
+        "n": 35,
+        "p10": 4.6,
+        "p50": 5.9,
+        "p90": 8.8
+      },
+      "sales": {
+        "n": 35,
+        "p10": 3548,
+        "p50": 11763,
+        "p90": 148935
+      },
+      "highScoreShare": 0.114
+    },
+    "2005-2014-catalog": {
+      "score": {
+        "n": 312,
+        "p10": 7.8,
+        "p50": 8.5,
+        "p90": 9.4
+      },
+      "sales": {
+        "n": 312,
+        "p10": 31448,
+        "p50": 98846,
+        "p90": 433730
+      },
+      "highScoreShare": 0.228
+    },
+    "2015-2025-virtual": {
+      "score": {
+        "n": 31,
+        "p10": 4.5,
+        "p50": 7.3,
+        "p90": 9
+      },
+      "sales": {
+        "n": 31,
+        "p10": 5052,
+        "p50": 43748,
+        "p90": 223316
+      },
+      "highScoreShare": 0.161
+    },
+    "2015-2025-catalog": {
+      "score": {
+        "n": 397,
+        "p10": 7.6,
+        "p50": 8.5,
+        "p90": 9.4
+      },
+      "sales": {
+        "n": 397,
+        "p10": 46042,
+        "p50": 193432,
+        "p90": 804385
+      },
+      "highScoreShare": 0.275
+    }
+  },
+  "pacing": {
+    "idleTotal": {
+      "n": 32,
+      "p10": 0,
+      "p50": 0,
+      "p90": 1
+    },
+    "idleLongest": {
+      "n": 32,
+      "p10": 0,
+      "p50": 0,
+      "p90": 1
+    },
+    "unemployedTotal": {
+      "n": 32,
+      "p10": 0,
+      "p50": 0,
+      "p90": 0
+    },
+    "roleChanges": {
+      "n": 32,
+      "p10": 5,
+      "p50": 7,
+      "p90": 9
+    },
+    "rankFirstAt": {
+      "2": {
+        "reached": 32,
+        "month": {
+          "n": 32,
+          "p10": 25,
+          "p50": 36,
+          "p90": 48
+        }
+      },
+      "3": {
+        "reached": 32,
+        "month": {
+          "n": 32,
+          "p10": 38,
+          "p50": 72,
+          "p90": 176
+        }
+      },
+      "4": {
+        "reached": 32,
+        "month": {
+          "n": 32,
+          "p10": 83,
+          "p50": 109,
+          "p90": 249
+        }
+      },
+      "5": {
+        "reached": 21,
+        "month": {
+          "n": 21,
+          "p10": 168,
+          "p50": 240,
+          "p90": 324
+        }
+      },
+      "6": {
+        "reached": 7,
+        "month": {
+          "n": 7,
+          "p10": 204,
+          "p50": 288,
+          "p90": 289
+        }
+      }
+    },
+    "producerEverCount": 32,
+    "producerFirstAt": {
+      "n": 32,
+      "p10": 126,
+      "p50": 156,
+      "p90": 239
+    },
+    "longestIdleSeeds": [
+      {
+        "seed": 15,
+        "months": 4
+      },
+      {
+        "seed": 10,
+        "months": 3
+      },
+      {
+        "seed": 16,
+        "months": 2
+      },
+      {
+        "seed": 28,
+        "months": 2
+      },
+      {
+        "seed": 4,
+        "months": 1
+      }
+    ]
+  },
+  "optionalLines": {
+    "bond-mentor": {
+      "started": 21,
+      "done": 21,
+      "activeAtEnd": 0
+    },
+    "bond-peer": {
+      "started": 19,
+      "done": 19,
+      "activeAtEnd": 0
+    },
+    "bond-junior": {
+      "started": 32,
+      "done": 32,
+      "activeAtEnd": 0
+    },
+    "epic-title": {
+      "started": 29,
+      "done": 29,
+      "activeAtEnd": 0
+    },
+    "era-return-china": {
+      "started": 32,
+      "done": 32,
+      "activeAtEnd": 0
+    }
+  },
+  "optionalDoneCounts": {
+    "0": 0,
+    "1": 0,
+    "2": 2,
+    "3": 9,
+    "4": 3,
+    "5": 18
+  },
+  "final": {
+    "rank": {
+      "n": 32,
+      "p10": 4,
+      "p50": 5,
+      "p90": 6
+    },
+    "score": {
+      "n": 1033,
+      "p10": 7.2,
+      "p50": 8.4,
+      "p90": 9.4
+    },
+    "sales": {
+      "n": 1033,
+      "p10": 23580,
+      "p50": 101905,
+      "p90": 510811
+    },
+    "honor": {
+      "n": 32,
+      "p10": 36,
+      "p50": 58,
+      "p90": 81
+    },
+    "employers": {
+      "n": 32,
+      "p10": 18,
+      "p50": 20,
+      "p90": 24
+    },
+    "optionalDone": {
+      "n": 32,
+      "p10": 3,
+      "p50": 5,
+      "p90": 5
+    },
+    "producerCount": 3,
+    "endings": {
+      "relationships": 20,
+      "awards": 9,
+      "producer": 3
+    }
+  },
+  "rows": [
+    {
+      "seed": 1,
+      "ending": "relationships",
+      "finalRank": 4,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 18,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 33,
+          "3": 38,
+          "4": 83
+        },
+        "producerFirstAt": 117,
+        "roleChanges": 11
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 2,
+      "ending": "relationships",
+      "finalRank": 5,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 20,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 36,
+          "3": 49,
+          "4": 107,
+          "5": 228
+        },
+        "producerFirstAt": 152,
+        "roleChanges": 5
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 3,
+      "ending": "awards",
+      "finalRank": 4,
+      "producer": false,
+      "optionalDone": 3,
+      "employers": 27,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 36,
+          "3": 176,
+          "4": 300
+        },
+        "producerFirstAt": 277,
+        "roleChanges": 5
+      },
+      "lineStates": {
+        "bond-mentor": "unseen",
+        "bond-peer": "unseen",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 4,
+      "ending": "relationships",
+      "finalRank": 5,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 22,
+      "pacing": {
+        "idleTotal": 1,
+        "idleLongest": 1,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 33,
+          "3": 92,
+          "4": 158,
+          "5": 312
+        },
+        "producerFirstAt": 190,
+        "roleChanges": 9
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 5,
+      "ending": "relationships",
+      "finalRank": 5,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 19,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 24,
+          "3": 38,
+          "4": 107,
+          "5": 264
+        },
+        "producerFirstAt": 205,
+        "roleChanges": 5
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 6,
+      "ending": "awards",
+      "finalRank": 4,
+      "producer": false,
+      "optionalDone": 3,
+      "employers": 22,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 84,
+          "3": 120,
+          "4": 228
+        },
+        "producerFirstAt": 205,
+        "roleChanges": 6
+      },
+      "lineStates": {
+        "bond-mentor": "unseen",
+        "bond-peer": "unseen",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 7,
+      "ending": "awards",
+      "finalRank": 5,
+      "producer": false,
+      "optionalDone": 3,
+      "employers": 18,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 36,
+          "3": 96,
+          "4": 120,
+          "5": 193
+        },
+        "producerFirstAt": 241,
+        "roleChanges": 5
+      },
+      "lineStates": {
+        "bond-mentor": "unseen",
+        "bond-peer": "unseen",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 8,
+      "ending": "awards",
+      "finalRank": 4,
+      "producer": false,
+      "optionalDone": 3,
+      "employers": 26,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 48,
+          "3": 204,
+          "4": 277
+        },
+        "producerFirstAt": 205,
+        "roleChanges": 6
+      },
+      "lineStates": {
+        "bond-mentor": "unseen",
+        "bond-peer": "unseen",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 9,
+      "ending": "relationships",
+      "finalRank": 6,
+      "producer": false,
+      "optionalDone": 4,
+      "employers": 17,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 36,
+          "3": 69,
+          "4": 107,
+          "5": 180,
+          "6": 205
+        },
+        "producerFirstAt": 148,
+        "roleChanges": 5
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "unseen",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 10,
+      "ending": "relationships",
+      "finalRank": 4,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 19,
+      "pacing": {
+        "idleTotal": 3,
+        "idleLongest": 3,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 25,
+          "3": 38,
+          "4": 72
+        },
+        "producerFirstAt": 165,
+        "roleChanges": 9
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 11,
+      "ending": "relationships",
+      "finalRank": 5,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 19,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 36,
+          "3": 49,
+          "4": 72,
+          "5": 348
+        },
+        "producerFirstAt": 141,
+        "roleChanges": 7
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 12,
+      "ending": "relationships",
+      "finalRank": 6,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 24,
+      "pacing": {
+        "idleTotal": 1,
+        "idleLongest": 1,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 96,
+          "3": 156,
+          "4": 195,
+          "5": 277,
+          "6": 289
+        },
+        "producerFirstAt": 200,
+        "roleChanges": 9
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 13,
+      "ending": "relationships",
+      "finalRank": 5,
+      "producer": false,
+      "optionalDone": 4,
+      "employers": 19,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 36,
+          "3": 84,
+          "4": 156,
+          "5": 217
+        },
+        "producerFirstAt": 139,
+        "roleChanges": 4
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "unseen",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 14,
+      "ending": "relationships",
+      "finalRank": 5,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 18,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 48,
+          "3": 75,
+          "4": 107,
+          "5": 313
+        },
+        "producerFirstAt": 149,
+        "roleChanges": 9
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 15,
+      "ending": "awards",
+      "finalRank": 6,
+      "producer": false,
+      "optionalDone": 3,
+      "employers": 17,
+      "pacing": {
+        "idleTotal": 8,
+        "idleLongest": 4,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 45,
+          "3": 68,
+          "4": 133,
+          "5": 216,
+          "6": 264
+        },
+        "producerFirstAt": 148,
+        "roleChanges": 5
+      },
+      "lineStates": {
+        "bond-mentor": "unseen",
+        "bond-peer": "unseen",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 16,
+      "ending": "producer",
+      "finalRank": 6,
+      "producer": true,
+      "optionalDone": 2,
+      "employers": 22,
+      "pacing": {
+        "idleTotal": 2,
+        "idleLongest": 2,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 36,
+          "3": 156,
+          "4": 180,
+          "5": 240,
+          "6": 337
+        },
+        "producerFirstAt": 239,
+        "roleChanges": 7
+      },
+      "lineStates": {
+        "bond-mentor": "unseen",
+        "bond-peer": "unseen",
+        "bond-junior": "done",
+        "epic-title": "unseen",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 17,
+      "ending": "awards",
+      "finalRank": 4,
+      "producer": false,
+      "optionalDone": 3,
+      "employers": 21,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 45,
+          "3": 72,
+          "4": 132
+        },
+        "producerFirstAt": 190,
+        "roleChanges": 8
+      },
+      "lineStates": {
+        "bond-mentor": "unseen",
+        "bond-peer": "unseen",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 18,
+      "ending": "relationships",
+      "finalRank": 5,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 19,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 36,
+          "3": 60,
+          "4": 107,
+          "5": 324
+        },
+        "producerFirstAt": 219,
+        "roleChanges": 8
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 19,
+      "ending": "producer",
+      "finalRank": 5,
+      "producer": true,
+      "optionalDone": 5,
+      "employers": 21,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 36,
+          "3": 49,
+          "4": 96,
+          "5": 120
+        },
+        "producerFirstAt": 253,
+        "roleChanges": 7
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 20,
+      "ending": "relationships",
+      "finalRank": 4,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 20,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 36,
+          "3": 72,
+          "4": 96
+        },
+        "producerFirstAt": 152,
+        "roleChanges": 8
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 21,
+      "ending": "relationships",
+      "finalRank": 4,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 23,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 24,
+          "3": 38,
+          "4": 61
+        },
+        "producerFirstAt": 66,
+        "roleChanges": 10
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 22,
+      "ending": "relationships",
+      "finalRank": 4,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 23,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 80,
+          "3": 216,
+          "4": 252
+        },
+        "producerFirstAt": 205,
+        "roleChanges": 9
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 23,
+      "ending": "relationships",
+      "finalRank": 5,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 17,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 48,
+          "3": 84,
+          "4": 132,
+          "5": 191
+        },
+        "producerFirstAt": 156,
+        "roleChanges": 4
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 24,
+      "ending": "relationships",
+      "finalRank": 6,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 21,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 48,
+          "3": 75,
+          "4": 108,
+          "5": 277,
+          "6": 289
+        },
+        "producerFirstAt": 126,
+        "roleChanges": 6
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 25,
+      "ending": "relationships",
+      "finalRank": 6,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 23,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 36,
+          "3": 56,
+          "4": 83,
+          "5": 168,
+          "6": 204
+        },
+        "producerFirstAt": 148,
+        "roleChanges": 7
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 26,
+      "ending": "awards",
+      "finalRank": 5,
+      "producer": false,
+      "optionalDone": 3,
+      "employers": 19,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 45,
+          "3": 228,
+          "4": 253,
+          "5": 324
+        },
+        "producerFirstAt": 217,
+        "roleChanges": 6
+      },
+      "lineStates": {
+        "bond-mentor": "unseen",
+        "bond-peer": "unseen",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 27,
+      "ending": "relationships",
+      "finalRank": 5,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 24,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 24,
+          "3": 38,
+          "4": 119,
+          "5": 324
+        },
+        "producerFirstAt": 130,
+        "roleChanges": 10
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 28,
+      "ending": "awards",
+      "finalRank": 5,
+      "producer": false,
+      "optionalDone": 3,
+      "employers": 25,
+      "pacing": {
+        "idleTotal": 2,
+        "idleLongest": 2,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 33,
+          "3": 67,
+          "4": 109,
+          "5": 240
+        },
+        "producerFirstAt": 123,
+        "roleChanges": 10
+      },
+      "lineStates": {
+        "bond-mentor": "unseen",
+        "bond-peer": "unseen",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 29,
+      "ending": "producer",
+      "finalRank": 6,
+      "producer": true,
+      "optionalDone": 2,
+      "employers": 19,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 36,
+          "3": 72,
+          "4": 109,
+          "5": 168,
+          "6": 288
+        },
+        "producerFirstAt": 130,
+        "roleChanges": 5
+      },
+      "lineStates": {
+        "bond-mentor": "unseen",
+        "bond-peer": "unseen",
+        "bond-junior": "done",
+        "epic-title": "unseen",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 30,
+      "ending": "awards",
+      "finalRank": 4,
+      "producer": false,
+      "optionalDone": 3,
+      "employers": 20,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 144,
+          "3": 192,
+          "4": 249
+        },
+        "producerFirstAt": 253,
+        "roleChanges": 6
+      },
+      "lineStates": {
+        "bond-mentor": "unseen",
+        "bond-peer": "unseen",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 31,
+      "ending": "relationships",
+      "finalRank": 5,
+      "producer": false,
+      "optionalDone": 4,
+      "employers": 27,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 45,
+          "3": 72,
+          "4": 120,
+          "5": 204
+        },
+        "producerFirstAt": 150,
+        "roleChanges": 8
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "unseen",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    },
+    {
+      "seed": 32,
+      "ending": "relationships",
+      "finalRank": 4,
+      "producer": false,
+      "optionalDone": 5,
+      "employers": 24,
+      "pacing": {
+        "idleTotal": 0,
+        "idleLongest": 0,
+        "unemployedTotal": 0,
+        "rankFirstAt": {
+          "1": 0,
+          "2": 25,
+          "3": 63,
+          "4": 86
+        },
+        "producerFirstAt": 178,
+        "roleChanges": 9
+      },
+      "lineStates": {
+        "bond-mentor": "done",
+        "bond-peer": "done",
+        "bond-junior": "done",
+        "epic-title": "done",
+        "era-return-china": "done"
+      }
+    }
+  ]
+}

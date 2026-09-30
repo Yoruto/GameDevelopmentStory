@@ -147,7 +147,7 @@
   sim.checkStatMilestones = function (st, config, queue) {
     var list, main, cur, flags, i, m;
     if (!st || !st.career || !queue) return;
-    main = (sim.careerRole(st.career.roleId, config) || {}).stat;
+    main = mainStatKey(st, config);
     if (!main) return;
     cur = num(st.career.stats && st.career.stats[main], 0);
     list = (sim.careerWorld(config).statMilestones || {}).list || [];
@@ -488,10 +488,27 @@
     return sum;
   };
 
-  function mainStatValue(st, config) {
+  function mainStatKey(st, config) {
     var cr = st && st.career;
     var role = sim.careerRole(cr && cr.roleId, config);
-    var key = (role && role.stat) || "program";
+    var prior, dims, best;
+    if (role && role.stat) return role.stat;
+    if (cr && cr.roleId === "producer") {
+      prior = sim.careerRole(cr.priorRoleId, config);
+      if (prior && prior.stat) return prior.stat;
+      dims = sim.personDims(config);
+      best = dims[0];
+      dims.forEach(function (dim) {
+        if (num(cr.stats && cr.stats[dim], 0) > num(cr.stats && cr.stats[best], 0)) best = dim;
+      });
+      return best || "program";
+    }
+    return null;
+  }
+
+  function mainStatValue(st, config) {
+    var cr = st && st.career;
+    var key = mainStatKey(st, config) || "program";
     return num(cr && cr.stats && cr.stats[key], 0);
   }
 
@@ -1362,13 +1379,14 @@
     ((cr && cr.credits) || []).forEach(function (c) {
       var title = sim.careerTitle(c.titleId, config, state);
       var rec = findWorldReleased(state, c.titleId);
-      // 履历的「作品总销量」：首发簿记（stampCareerLaunchSales）盖的是 lifetimeSales，
-      // 目录作 / 后期加入的作品只有 launchSales，兜底读它；两条都缺（没发售过）就不显示。
+      // 履历的「作品总销量」读取逐月累加的 lifetimeSales；首发时先记入首月实销。
+      // 旧存档缺 lifetimeSales 时兜底读 launchSales；两条都缺（没发售过）就不显示。
       var sales = rec ? num(rec.lifetimeSales != null ? rec.lifetimeSales : rec.launchSales, null) : null;
       var virtual = !!c.virtual;
+      var transition = virtual && !(title && title.lastDance === "final");
       // P2-fix-b：过渡项目不再是「履历上的一行污点」，按落盘分数给一句专属评语。
       if (c.shipped) {
-        if (virtual) virtualCount += 1;
+        if (transition) virtualCount += 1;
         else signedCount += 1;
       }
       credits.push({
@@ -1385,14 +1403,15 @@
         shipped: !!c.shipped,
         supported: !!c.supported,
         virtual: virtual,
+        finalWork: !!(title && title.lastDance === "final"),
         unsigned: !c.shipped,
         score: c.score,
         sales: sales,
         mainStatDelta: c.mainStatDelta,
         awards: c.awards || [],
-        poolNote: (virtual && c.shipped) ? sim.titlePoolNote(c.titleId, c.score, config) : "",
+        poolNote: (transition && c.shipped) ? sim.titlePoolNote(c.titleId, c.score, config) : "",
         statusLabel: c.shipped
-          ? (virtual ? (copy.resumeVirtual || "过渡项目") : (copy.resumeShipped || "署名发售"))
+          ? (transition ? (copy.resumeVirtual || "过渡项目") : (copy.resumeShipped || "署名发售"))
           : (copy.resumeUnsigned || "参与过、未署名发售")
       });
     });
@@ -1414,7 +1433,8 @@
     var transitions = 0;
     ((cr && cr.credits) || []).forEach(function (c) {
       if (!creditIsSigned(c)) return;
-      if (c.virtual) transitions += 1;
+      var title = sim.careerTitle(c.titleId, config, state);
+      if (c.virtual && !(title && title.lastDance === "final")) transitions += 1;
       else signed += 1;
     });
     if (!co && cr && cr.tenures && cr.tenures.length) {
@@ -1433,14 +1453,129 @@
     };
   };
 
+  // Poster view reads signed releases only and uses stable selection rules.
+  sim.careerPosterView = function (state, config) {
+    var settlement = sim.careerSettlementView(state, config);
+    var resume = sim.careerResumeView(state, config);
+    var ending = sim.careerEndingView(state, config);
+    var world = sim.careerWorld(config);
+    var startYear = num(world.timeline && world.timeline.startYear, 1995);
+    var items = (resume.credits || []).filter(function (credit) {
+      return credit.shipped && (!credit.virtual || credit.finalWork);
+    }).map(function (credit, index) {
+      var title = sim.careerTitle(credit.titleId, config, state);
+      var released = findWorldReleased(state, credit.titleId);
+      var score = credit.score == null ? null : Number(credit.score);
+      var sales = released && typeof released.lifetimeSales === "number" &&
+        isFinite(released.lifetimeSales) && released.lifetimeSales >= 0
+        ? released.lifetimeSales : null;
+      return {
+        titleId: credit.titleId,
+        title: credit.titleLabel || "",
+        year: num(title && title.releaseYear, num(credit.leftYear, num(credit.joinYear, null))),
+        month: num(title && title.releaseMonth, num(credit.leftMonth, num(credit.joinMonth, 1))),
+        score: isFinite(score) ? score : null,
+        sales: isFinite(sales) ? sales : null,
+        order: index
+      };
+    });
+    items.sort(function (a, b) {
+      return (a.year || 0) - (b.year || 0) || (a.month || 0) - (b.month || 0) || a.order - b.order;
+    });
+    var countedIds = [];
+    var totalSales = 0;
+    items.forEach(function (item) {
+      if (countedIds.indexOf(item.titleId) >= 0) return;
+      countedIds.push(item.titleId);
+      if (item.sales == null) totalSales = null;
+      else if (totalSales != null) totalSales += item.sales;
+    });
+    var scored = items.filter(function (item) { return item.score != null; });
+    var sold = items.filter(function (item) { return item.sales != null; });
+    var best = null;
+    var bestKind = "";
+    if (scored.length) {
+      best = scored.slice().sort(function (a, b) {
+        return b.score - a.score || (b.sales || 0) - (a.sales || 0) || a.order - b.order;
+      })[0];
+      bestKind = "score";
+    } else if (sold.length) {
+      best = sold.slice().sort(function (a, b) {
+        return b.sales - a.sales || a.order - b.order;
+      })[0];
+      bestKind = "sales";
+    } else if (items.length) {
+      best = items[items.length - 1];
+      bestKind = "last";
+    }
+    var moments = [];
+    function addMoment(item, label) {
+      if (!item || moments.some(function (part) { return part.item.titleId === item.titleId; })) return;
+      moments.push({ item: item, label: label });
+    }
+    addMoment(items[0], "first");
+    addMoment(items[items.length - 1], "last");
+    addMoment(best, "best");
+    moments.sort(function (a, b) {
+      return (a.item.year || 0) - (b.item.year || 0) || (a.item.month || 0) - (b.item.month || 0) || a.item.order - b.item.order;
+    });
+    return {
+      name: settlement.characterName || "",
+      startYear: startYear,
+      endYear: num(state && state.year, startYear),
+      job: settlement.jobLabel || "—",
+      employer: settlement.employer || "—",
+      signedCount: settlement.creditedCount,
+      transitionCount: settlement.transitionCount,
+      fame: settlement.fame,
+      honor: settlement.honor,
+      totalSales: totalSales,
+      topScore: scored.length ? best.score : null,
+      best: best,
+      bestKind: bestKind,
+      moments: moments,
+      endingTitle: ending.title || "",
+      endingBody: ending.body || ""
+    };
+  };
+
+  sim.careerEndingView = function (state, config) {
+    var cr = state && state.career || {};
+    var spec = sim.careerWorld(config).endings || {};
+    var lines = cr.lines || {};
+    var doneBonds = ["bond-mentor", "bond-peer", "bond-junior"].filter(function (id) {
+      return lines[id] && lines[id].status === "done";
+    }).length;
+    var settlement = sim.careerSettlementView(state, config);
+    var matches = {
+      producer: settlement.growthStage === "producer",
+      relationships: doneBonds >= num(spec.relationshipLines, 2),
+      awards: settlement.honor >= num(spec.awardHonor, 4),
+      prolific: settlement.creditedCount >= num(spec.prolificCredits, 8),
+      health: num(cr.health, 4) <= num(spec.lowHealth, 2),
+      ordinary: true
+    };
+    var order = spec.priority || ["producer", "relationships", "awards", "prolific", "health", "ordinary"];
+    var id = order.filter(function (key) { return matches[key]; })[0] || "ordinary";
+    var card = (spec.cards || {})[id] || {};
+    var echo = "";
+    (spec.echoes || []).some(function (item) {
+      if (lines[item.line] && lines[item.line].flags && lines[item.line].flags[item.flag]) {
+        echo = item.text || "";
+        return true;
+      }
+      return false;
+    });
+    return { id: id, title: card.title || "", body: card.body || "", echo: echo };
+  };
+
   // phaseMult：开发月的阶段权重（sim.careerPhaseMult）。0 表示这个月没有实质产出
   // （金盘期等发售），连职级经验一起停——「这个月你在项目上实际投入了多少」是一个倍率管全部。
   function grantMainStatAndXp(st, kind, config, title, phaseMult) {
     var spec = jobRankSpec(config);
     var statGain = spec.statGain || {};
     var xpGain = spec.jobXpGain || {};
-    var role = sim.careerRole(st.career && st.career.roleId, config);
-    var key = role && role.stat;
+    var key = mainStatKey(st, config);
     var virtual = !!(title && title.virtual);
     var statAmt = 0;
     var xpAmt = 0;
@@ -2190,13 +2325,59 @@
     return co && co.power != null ? co.power : null;
   }
 
-  // 首月销量基准 = 单位量 × 评分曲线 × prestige 倍率 × 质量倍率 × 发行方倍率。
-  // 评分曲线在 scoreRef 处换斜率：及格线以上每分 ×e^scoreExp（约 ×5.5），落差由评分主导而不是靠堆线性系数
-  // （旧的 scoreCoeff 线性写法下 9.9 分和 7 分只差 1.7 倍，销量对评分几乎不敏感）。
-  // 及格线以下换更缓的 scoreExpBelow：纯指数的下尾会把 3 分作品压到个位数，而真实市场里再烂的作品
-  // 也有基础曝光。这个旋钮只抬下尾，7 分及以上完全由 scoreExp 决定、一个数不动。
-  sim.careerLaunchSales = function (title, publicScore, config, liveStats) {
+  function eraSalesMult(rows, year) {
+    var i, left, right, ratio;
+    if (!rows || !rows.length) return 1;
+    if (year <= rows[0].year) return num(rows[0].mult, 1);
+    for (i = 1; i < rows.length; i++) {
+      right = rows[i];
+      if (year <= right.year) {
+        left = rows[i - 1];
+        ratio = (year - left.year) / (right.year - left.year);
+        return num(left.mult, 1) + ratio * (num(right.mult, 1) - num(left.mult, 1));
+      }
+    }
+    return num(rows[rows.length - 1].mult, 1);
+  }
+
+  function companyReleaseStrategy(title, config) {
+    var power = num(titlePower(title, config), 2);
+    if (title && (title.releaseStrategy === "wide" || title.releaseStrategy === "standard" ||
+        title.releaseStrategy === "targeted")) return title.releaseStrategy;
+    if (power <= 1) return "targeted";
+    if (power >= 3 && num(title && title.prestige, 0) >= 3) return "wide";
+    return "standard";
+  }
+
+  function launchAwareness(title, st, spec) {
+    var companyHits = 0, seriesHits = 0, now, companyFame, seriesFame;
+    if (title && st && st.worldReleased) {
+      now = sim.monthIndex(
+        num(title.releaseYear, st.year), num(title.releaseMonth, st.month));
+      st.worldReleased.forEach(function (g) {
+        var prior, age;
+        if (!g || g.id === title.id) return;
+        prior = sim.monthIndex(g.releasedYear, g.releasedMonth);
+        if (!(prior < now)) return;
+        age = now - prior;
+        if (g.companyId === title.companyId && num(g.avg, 0) >= num(spec.companyHitMinScore, 7) &&
+            num(g.launchSales, 0) >= num(spec.companyHitMinSales, 50000)) companyHits++;
+        if (title.seriesId && g.seriesId === title.seriesId && num(g.avg, 0) >= 7) {
+          seriesHits += Math.exp(-age / num(spec.seriesFameDecayMonths, 72));
+        }
+      });
+    }
+    companyFame = Math.min(num(spec.companyFameMax, 1.4), 1 + companyHits * num(spec.companyFamePerHit, 0.07));
+    seriesFame = Math.min(num(spec.seriesFameMax, 3),
+      Math.max(num(title && title.seriesFameSeed, 1), 1 + seriesHits * num(spec.seriesFamePerHit, 0.55)));
+    return { company: companyFame, series: seriesFame, total: companyFame * seriesFame };
+  }
+
+  // 首发需求由评分、作品质量、公司规模、年代、已积累的知名度和公司发行档位共同决定。
+  // 历史作品的已知销量可设下界与累计锚点；评分不能单独替代市场触达。
+  sim.careerLaunchSales = function (title, publicScore, config, liveStats, st) {
     var spec = (sim.careerWorld(config).launchSales) || {};
+    var copy = (config && config.copy) || {};
     var score = num(publicScore, 0);
     var stats = liveStats || (title && title.stats) || {};
     var qsum = sim.titleQualitySum(stats, config);
@@ -2207,33 +2388,56 @@
     var qmax = num(spec.qualityMax, null);
     var ref = num(spec.scoreRef, 0);
     var curveExp;
-    var baseline, y1, sales;
+    var baseline, y1, sales, strategy, awareness, year;
     if (qmin != null && qm < qmin) qm = qmin;
     if (qmax != null && qm > qmax) qm = qmax;
     curveExp = score < ref
       ? num(spec.scoreExpBelow, num(spec.scoreExp, 0))
       : num(spec.scoreExp, 0);
+    strategy = companyReleaseStrategy(title, config);
+    awareness = launchAwareness(title, st, spec);
+    year = num(title && title.releaseYear, st && st.year != null ? st.year : 1995);
     baseline = Math.round(
       num(spec.baseUnit, 0) *
       Math.exp(curveExp * (score - ref)) *
       tableMult(spec.prestigeMult, title && title.prestige, 1) *
       qm *
-      tableMult(spec.powerMult, titlePower(title, config), num(spec.powerDefault, 1))
+      tableMult(spec.powerMult, titlePower(title, config), num(spec.powerDefault, 1)) *
+      eraSalesMult(spec.eraMarket, year) *
+      awareness.total *
+      tableMult(spec.strategyMult, strategy, 1)
     );
     if (!(baseline >= 0)) baseline = 0;
+    if (title && num(title.launchSalesFloor, 0) > baseline) baseline = num(title.launchSalesFloor, 0);
     y1 = sim.salesFactor ? sim.salesFactor(1, score, config) : 1;
     if (!(y1 > 0)) y1 = 0;
     sales = sim.boxedActualFromY
       ? sim.boxedActualFromY({ baselineSales: baseline }, y1)
       : Math.round(baseline * y1);
     if (sales < 0) sales = 0;
-    return { baselineSales: baseline, launchSales: sales };
+    return {
+      baselineSales: baseline, launchSales: sales, salesModelVersion: 2,
+      releaseStrategy: strategy, launchAwareness: Math.round(awareness.total * 100) / 100,
+      salesTargetUnits: num(title && title.salesTargetUnits, 0),
+      salesTargetMonths: num(title && title.salesTargetMonths, 0),
+      salesReason: (copy.releaseStrategyPrefix || "") +
+        ((copy.releaseStrategyNames || {})[strategy] || strategy) +
+        (copy.releaseStrategySuffix || "") +
+        (awareness.total >= 1.7 ? (copy.releaseAwarenessHigh || "") :
+          awareness.total >= 1.2 ? (copy.releaseAwarenessMid || "") : (copy.releaseAwarenessLow || ""))
+    };
   };
 
-  function stampCareerLaunchSales(rec, title, publicScore, config, liveStats) {
-    var packed = sim.careerLaunchSales(title, publicScore, config, liveStats);
+  function stampCareerLaunchSales(rec, title, publicScore, config, liveStats, st) {
+    var packed = sim.careerLaunchSales(title, publicScore, config, liveStats, st);
     rec.baselineSales = packed.baselineSales;
     rec.launchSales = packed.launchSales;
+    rec.salesModelVersion = packed.salesModelVersion;
+    rec.releaseStrategy = packed.releaseStrategy;
+    rec.launchAwareness = packed.launchAwareness;
+    rec.salesTargetUnits = packed.salesTargetUnits;
+    rec.salesTargetMonths = packed.salesTargetMonths;
+    rec.salesReason = packed.salesReason;
     rec.lifetimeSales = packed.launchSales;
     rec.monthSales = packed.launchSales;
   }
@@ -2689,6 +2893,7 @@
       studioId: title.studioId || null,
       genreId: title.genreId,
       gameplayId: title.gameplayId,
+      seriesId: title.seriesId || null,
       platforms: title.platforms ? title.platforms.slice() : [],
       platformId: title.platformId || ((title.platforms && title.platforms[0]) || ""),
       releaseYear: title.releaseYear,
@@ -2708,9 +2913,17 @@
     };
     // 长线标记作和盒装走同一条生命周期，所以一样盖 baselineSales/launchSales，
     // 月销量排行与畅销榜才能算出当月销量。
-    var packed = sim.careerLaunchSales(title, rec.avg != null ? rec.avg : rec.score, config, rec.stats);
+    var packed = sim.careerLaunchSales(title, rec.avg != null ? rec.avg : rec.score, config, rec.stats, st);
     rec.baselineSales = packed.baselineSales;
     rec.launchSales = packed.launchSales;
+    rec.salesModelVersion = packed.salesModelVersion;
+    rec.releaseStrategy = packed.releaseStrategy;
+    rec.launchAwareness = packed.launchAwareness;
+    rec.salesTargetUnits = packed.salesTargetUnits;
+    rec.salesTargetMonths = packed.salesTargetMonths;
+    rec.salesReason = packed.salesReason;
+    rec.lifetimeSales = packed.launchSales;
+    rec.monthSales = packed.launchSales;
     st.worldReleased.push(rec);
     grantReleaseXp(st, rec, config, player);
     return rec;
@@ -2959,16 +3172,22 @@
       eventId: eventId,
       kicker: spec.kicker || copy.idleHint || "空窗",
       title: spec.title || copy.idleHint || "空窗",
-      body: spec.text || "",
-      options: (spec.choices || []).map(function (c) {
-        return { id: c.id, label: c.label };
-      })
+       body: spec.text || "",
+       options: (spec.choices || []).map(function (c) {
+         return { id: c.id, label: c.label, req: c.req || null };
+       })
     });
   }
 
   sim.assignCareerProject = function (st, config, queue) {
     var picked, pool, idleMax, cur, det, next, gap, minDev, cand, prodSpec;
     sim.ensureCareerExtras(st);
+    if (sim.lastDanceWorkComplete && sim.lastDanceWorkComplete(st)) {
+      st.career.titleId = null;
+      st.career.liveStats = null;
+      st.career.postLaunch = null;
+      return st;
+    }
     if (sim.careerPostLaunch(st)) return st;
     if (!st.career || !st.career.companyId) {
       if (st.career) {
@@ -2987,7 +3206,8 @@
         st.career.postLaunch = null;
       }
     }
-    picked = sim.pickCareerAssignment(st.career.companyId, st.year, st.month, config, st, st.career.studioId);
+    picked = sim.lastDanceForcedTitle && sim.lastDanceForcedTitle(st, config);
+    if (!picked) picked = sim.pickCareerAssignment(st.career.companyId, st.year, st.month, config, st, st.career.studioId);
     // 玩家正在做一部"本公司当年月还在开发"的目录作时，不要因为同公司别部开工（prestige 更高
     // 的 landmark 排前面）就把人静默顶走。只有目录作受保护：池作本来就是填空窗的，按设计
     // 让位给下一档真作（titlePool.comment：发售不得压过下一档真作开工月）。
@@ -3004,7 +3224,7 @@
     // A（节奏修复）：不接「别人快做完了」的候选——宁可等下一部新作开工，也别去给人收尾。
     // 手上那部不算候选（picked.id === titleId 是「继续做」，不是换档）。拒收后由下面的
     // 池作 / 空窗分支兜底：池作天然从当月 0% 开始，空窗则等到下一部目录作开工。
-    if (picked && picked.id !== st.career.titleId && deepCandidateRejected(picked, st, config)) {
+    if (picked && !picked.lastDance && picked.id !== st.career.titleId && deepCandidateRejected(picked, st, config)) {
       picked = null;
     }
     pool = titlePoolSpec(config);
@@ -3334,7 +3554,7 @@
     rec.score = avg;
     rec.avg = avg;
     rec.title = label;
-    stampCareerLaunchSales(rec, title, avg, config, rec.liveStats || rec.stats);
+    stampCareerLaunchSales(rec, title, avg, config, rec.liveStats || rec.stats, st);
     (function markShippedCredit() {
       var cred = addCredit(st, title.id, config) || findCredit(st, title.id);
       if (!cred) {

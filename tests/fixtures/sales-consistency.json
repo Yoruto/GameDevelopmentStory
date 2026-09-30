@@ -1,0 +1,19 @@
+{
+  "description": "手算样例：每部作品只卖三个月；长线版首月实销 80、后两月以 baselineSales 各卖 60；2024 年奖项窗口为 2023.12—2024.11。",
+  "games": [
+    { "id": "ledger-a", "name": "十一月普通作", "releaseYear": 2023, "releaseMonth": 11, "launchSales": 100, "releaseType": "boxed", "signed": true },
+    { "id": "ledger-b", "name": "十二月长线版", "releaseYear": 2023, "releaseMonth": 12, "launchSales": 80, "baselineSales": 60, "releaseType": "liveops", "signed": true },
+    { "id": "ledger-c", "name": "次年十一月作", "releaseYear": 2024, "releaseMonth": 11, "launchSales": 150, "releaseType": "boxed", "signed": true },
+    { "id": "ledger-d", "name": "次年十二月作", "releaseYear": 2024, "releaseMonth": 12, "launchSales": 200, "releaseType": "boxed", "signed": false }
+  ],
+  "checkpoints": [
+    { "year": 2023, "month": 11, "monthly": [100, 0, 0, 0], "cumulative": [100, null, null, null], "chart": ["ledger-a"] },
+    { "year": 2023, "month": 12, "monthly": [100, 80, 0, 0], "cumulative": [200, 80, null, null], "chart": ["ledger-a", "ledger-b"] },
+    { "year": 2024, "month": 1, "monthly": [100, 60, 0, 0], "cumulative": [300, 140, null, null], "chart": ["ledger-a", "ledger-b"] },
+    { "year": 2024, "month": 2, "monthly": [0, 60, 0, 0], "cumulative": [300, 200, null, null], "chart": ["ledger-b"] },
+    { "year": 2024, "month": 11, "monthly": [0, 0, 150, 0], "cumulative": [300, 200, 150, null], "chart": ["ledger-c"] },
+    { "year": 2024, "month": 12, "monthly": [0, 0, 150, 200], "cumulative": [300, 200, 300, 200], "chart": ["ledger-d", "ledger-c"] }
+  ],
+  "awards2024": { "inWindow": ["ledger-b", "ledger-c"], "outside": ["ledger-a", "ledger-d"], "liveOps": ["ledger-b"] },
+  "poster2024": { "signedWorkSales": [300, 200, 300], "signedTotalSales": 800 }
+}

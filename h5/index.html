@@ -2,26 +2,55 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-  <title>游戏开发物语</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>我的游戏人生</title>
   <script type="application/json" id="colorbox-skill-usage">
 {
   "skills": [
+    "colorbox-auth-get-user-info",
     "colorbox-cloud-auth",
     "colorbox-cloud-request",
-    "colorbox-security-check-audit",
     "colorbox-storage-get-value",
     "colorbox-storage-set-value",
     "user-feedback"
   ]
 }
 </script>
-  <!-- ColorboxAI JS Path（实现在 js/bridge/colorbox.js）：window.ColorboxAI.cloud.auth window.ColorboxAI.cloud.request window.ColorboxAI.security.checkAudit window.ColorboxAI.storage.getValue window.ColorboxAI.storage.setValue -->
+  <!-- ColorboxAI JS Path（实现在 js/bridge/colorbox.js）：window.ColorboxAI.auth.getUserInfo window.ColorboxAI.cloud.auth window.ColorboxAI.cloud.request window.ColorboxAI.storage.getValue window.ColorboxAI.storage.setValue -->
   <script>
-    window.ACTIVITY_API_BASE = "";
-    window.ACTIVITY_ENV_ID = "";
+    window.ACTIVITY_API_BASE = "https://app-3c72f55c0c-d3gc5cvnta9f232c1-1252166086.ap-shanghai.app.tcloudbase.com/api";
+    window.ACTIVITY_ENV_ID = "app-3c72f55c0c-d3gc5cvnta9f232c1";
   </script>
   <link rel="stylesheet" href="css/app.css">
+  <script defer src="js/config.generated.js"></script>
+  <script defer src="js/sim/ns.js"></script>
+  <script defer src="js/sim/rng.js"></script>
+  <script defer src="js/sim/util.js"></script>
+  <script defer src="js/sim/events.js"></script>
+  <script defer src="js/sim/lifecycle.js"></script>
+  <script defer src="js/sim/media.js"></script>
+  <script defer src="js/sim/awards.js"></script>
+  <script defer src="js/sim/career.js"></script>
+  <script defer src="js/sim/career-colleagues.js"></script>
+  <script defer src="js/sim/career-awards.js"></script>
+  <script defer src="js/sim/career-events.js"></script>
+  <script defer src="js/sim/career-mobility.js"></script>
+  <script defer src="js/sim/career-bonds.js"></script>
+  <script defer src="js/sim/career-world-sim.js"></script>
+  <script defer src="js/sim/last-dance.js"></script>
+  <script defer src="js/sim/career-pace.js"></script>
+  <script defer src="js/sim/careerLines.js"></script>
+  <script defer src="js/sim/tick.js"></script>
+  <script defer src="js/sim/actions.js"></script>
+  <script defer src="js/bridge/colorbox.js"></script>
+  <script defer src="js/bridge/local.js"></script>
+  <script defer src="js/save/port.js"></script>
+  <script defer src="js/ui/dom.js"></script>
+  <script defer src="js/ui/motion.js"></script>
+  <script defer src="js/ui/reveal.js"></script>
+  <script defer src="js/ui/paint.js"></script>
+  <script defer src="js/ui/poster.js"></script>
+  <script defer src="js/ui/app.js"></script>
 </head>
 <body>
   <div id="app" class="mode-career">
@@ -29,13 +58,9 @@
       <div class="hero">
         <div class="hero-copy">
           <div class="pill" id="boot-span">1995 刚毕业</div>
-          <h1>游戏开发物语</h1>
-          <p id="boot-lead">刚毕业入行。填好名字，挑一个擅长和天赋，就能入职开始这一局。</p>
+          <h1>我的游戏人生</h1>
         </div>
         <div class="hero-form">
-          <label id="boot-name-label">角色名</label>
-          <input id="name-input" type="text" maxlength="16" value="">
-
           <div class="roll-card" id="roll-box">
             <div class="roll-head">
               <span class="sec-title" id="roll-spec">擅长 —</span>
@@ -46,8 +71,11 @@
           </div>
 
           <button class="btn ghost wide mt-12" id="btn-reroll" type="button">🎲 重掷开局</button>
-          <button class="btn wide mt-8" id="btn-start">开始游戏</button>
-          <div class="preview-flag" id="preview-flag-boot">预览模式</div>
+          <button class="btn wide mt-8" id="btn-continue" type="button" hidden>继续旧档</button>
+          <button class="btn wide mt-8" id="btn-start" type="button">开始新局</button>
+          <p class="save-status" id="save-status-boot" role="status" aria-live="polite"></p>
+          <button class="btn tiny ghost" id="btn-save-retry-boot" type="button" hidden>重试同步</button>
+          <button class="btn tiny ghost" id="btn-cloud-boot" type="button" hidden>载入云端存档</button>
         </div>
       </div>
     </section>
@@ -65,7 +93,6 @@
 
     <section class="scene" id="sc-hq">
       <div class="top">
-        <div class="preview-flag badge" id="preview-flag-hq">预览</div>
         <div class="top-kpis">
           <div class="kpi">
             <span class="kpi-lab">年月</span>
@@ -85,15 +112,16 @@
           <span class="top-chip" id="hq-cap">岗位 —</span>
           <span class="top-chip" id="hq-plats-chip">阶段 —</span>
         </div>
+        <div class="save-row" id="hq-save-actions" hidden><button class="btn tiny ghost" id="btn-save-retry" type="button" hidden>重试同步</button><button class="btn tiny ghost" id="btn-cloud-hq" type="button" hidden>载入云端</button></div>
       </div>
       <div class="scene-body" id="hq-body">
         <div class="hq-grid">
           <div class="card hq-id">
             <div class="hq-id-top">
               <div class="hq-id-who">
-                <div class="name" id="hq-name">阿喵</div>
+                <div class="name" id="hq-name">我</div>
                 <p class="hint career-only" id="hq-career-job"></p>
-                <p class="hint career-only" id="hq-seniors" hidden></p>
+                <p class="hint career-only pace-goal" id="hq-goal"></p>
               </div>
               <button type="button" class="btn tiny career-only" id="hq-promote" data-promote="1" hidden>申请晋升</button>
             </div>
@@ -124,7 +152,19 @@
           <div class="card" id="hq-intel-card">
             <h2>情报</h2>
             <div class="intel-rows">
-              <div class="hint next-releases career-only" id="hq-next-releases"></div>
+              <div class="pace-recap career-only" id="hq-recap" hidden aria-live="polite">
+                <b id="hq-recap-head">本次进展</b>
+                <p id="hq-recap-main"></p>
+                <details id="hq-recap-details" hidden>
+                  <summary>查看详情</summary>
+                  <p id="hq-recap-detail"></p>
+                </details>
+              </div>
+              <p class="hint career-only" id="hq-recap-empty">点击「继续」后查看本次进展</p>
+              <div class="pace-news career-only" id="hq-news" hidden>
+                <b>业界快讯</b>
+                <p id="hq-news-body"></p>
+              </div>
             </div>
           </div>
         </div>
@@ -142,7 +182,6 @@
       <div class="scene-body">
         <div class="card">
           <h2 id="tga-head">年度盛典</h2>
-          <p class="hint" id="tga-hint">每年 11 月过月时评选。左右滑动选年份，点年份看那一届，玩家参与的作品会标出来。</p>
           <div class="tga-year-scroller">
             <div class="tga-year-nav" id="tga-years"></div>
           </div>
@@ -155,7 +194,6 @@
       <div class="scene-body">
         <div class="card grow">
           <h2 class="sec-title" id="chart-head">排行榜</h2>
-          <p class="hint" id="chart-hint">长线与单机同榜，按本月销量排序，前 15。</p>
           <div class="list-fit" id="month-chart"></div>
         </div>
       </div>
@@ -165,12 +203,7 @@
       <div class="scene-body player-skills">
         <div class="card player-skills-card">
           <h2 id="player-page-head">玩家详情</h2>
-          <p class="hint" id="player-page-hint"></p>
-          <div class="resume-row" id="player-trait-row">
-            <span class="name">天赋</span>
-            <b class="val" id="player-trait">—</b>
-          </div>
-          <p class="hint" id="player-trait-hint"></p>
+          <div class="roll-trait" id="player-trait-row"></div>
           <h2 id="player-genre-head">题材熟练度</h2>
           <div class="skill-grid" id="player-genre-grid"></div>
           <h2 id="player-play-head">玩法熟练度</h2>
@@ -192,7 +225,6 @@
       <div class="scene-body">
         <div class="card grow">
           <h2 id="calendar-head">发售日历</h2>
-          <p class="hint" id="calendar-hint">其他厂商计划发售。不含自家待发售。</p>
           <div class="cal-grid" id="calendar-grid"></div>
         </div>
       </div>
@@ -202,7 +234,7 @@
       <div class="scene-body">
         <div class="card">
           <h2>生涯结算 · 打完 2025.12</h2>
-          <div class="name" id="end-name">阿喵</div>
+          <div class="name" id="end-name">我</div>
           <div class="grid2 mt-10">
             <div class="stat"><b id="end-scale">—</b><span id="end-scale-label">职称</span></div>
             <div class="stat"><b id="end-fans">—</b><span id="end-fans-label">声望</span></div>
@@ -210,7 +242,9 @@
             <div class="stat"><b id="end-series">—</b><span id="end-series-label">最后东家</span></div>
           </div>
           <div class="row item"><span id="end-avg-label">荣誉</span><b id="end-avg">—</b></div>
-          <p class="hint">只在页里看，不发到微信/微博。可以再开一局。</p>
+          <div class="ending-card" id="end-card"><h3 id="end-card-title"></h3><p id="end-card-body"></p><p class="hint" id="end-card-echo"></p></div>
+          <button type="button" class="btn wide mt-12" id="btn-career-poster" hidden>查看生涯海报</button>
+          <p class="hint">海报可以保存为图片，不会自动发布。可以再开一局。</p>
           <button type="button" class="btn wide mt-12" id="btn-again1">再开一局</button>
         </div>
       </div>
@@ -240,8 +274,16 @@
     </div>
   </div>
 
+  <div class="poster-overlay" id="poster-overlay" role="dialog" aria-modal="true" aria-label="游戏作者生涯海报" hidden>
+    <div class="poster-toolbar"><strong>游戏作者生涯海报</strong><button type="button" id="poster-close" aria-label="关闭生涯海报">关闭</button></div>
+    <img class="poster-image" id="poster-image" alt="当前生涯海报，可长按保存" draggable="false">
+    <canvas id="poster-canvas" width="720" height="1280" hidden></canvas>
+    <div class="poster-nav"><button type="button" id="poster-prev">上一张</button><span id="poster-count">1 / 2</span><button type="button" id="poster-next">下一张</button></div>
+    <p class="poster-hint">两页海报分别保存：切换到要保存的一页，长按图片保存；电脑上可右键保存。</p>
+  </div>
+
   <div class="mask" id="dlg-mask">
-    <div class="dlg dlg-info" id="dlg">
+    <div class="dlg dlg-info" id="dlg" role="dialog" aria-modal="true" aria-labelledby="dlg-title" aria-describedby="dlg-body" tabindex="-1">
       <p class="dlg-kicker" id="dlg-kicker">提示</p>
       <h2 id="dlg-title">提示</h2>
       <p class="dlg-body" id="dlg-body"></p>
@@ -252,33 +294,7 @@
       </div>
     </div>
   </div>
-  <div class="toast" id="toast"></div>
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
-  <script src="js/config.generated.js"></script>
-  <script src="js/sim/ns.js"></script>
-  <script src="js/sim/rng.js"></script>
-  <script src="js/sim/util.js"></script>
-  <script src="js/sim/events.js"></script>
-  <script src="js/sim/lifecycle.js"></script>
-  <script src="js/sim/media.js"></script>
-  <script src="js/sim/awards.js"></script>
-  <script src="js/sim/career.js"></script>
-  <script src="js/sim/career-colleagues.js"></script>
-  <script src="js/sim/career-awards.js"></script>
-  <script src="js/sim/career-events.js"></script>
-  <script src="js/sim/career-mobility.js"></script>
-  <script src="js/sim/career-bonds.js"></script>
-  <script src="js/sim/career-world-sim.js"></script>
-  <script src="js/sim/career-pace.js"></script>
-  <script src="js/sim/careerLines.js"></script>
-  <script src="js/sim/tick.js"></script>
-  <script src="js/sim/actions.js"></script>
-  <script src="js/bridge/colorbox.js"></script>
-  <script src="js/bridge/local.js"></script>
-  <script src="js/save/port.js"></script>
-  <script src="js/ui/dom.js"></script>
-  <script src="js/ui/reveal.js"></script>
-  <script src="js/ui/paint.js"></script>
-  <script src="js/ui/app.js"></script>
 </body>
 </html>

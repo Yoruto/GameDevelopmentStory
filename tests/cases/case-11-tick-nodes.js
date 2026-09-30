@@ -191,4 +191,17 @@ module.exports = function runGroup(ctx) {
     ok("full-run consistency: skipToNextNode === month-by-month (same seed, whole state)");
   })();
 
+  (function unfinishedQueueReplaysFromLastCheckpoint() {
+    const game = sim.createCareerGame("重放", "programmer", config);
+    game.rngSeed = 20260924;
+    game.rngCount = 0;
+    const before = sim.acceptOpeningOffer(game, game.career.openingOffers[0].id, config).state;
+    const checkpoint = JSON.stringify(before);
+    const first = sim.skipToNextNode(before, config);
+    const replay = sim.skipToNextNode(JSON.parse(checkpoint), config);
+    assert(JSON.stringify(first.state) === JSON.stringify(replay.state), "unfinished queue state replays after refresh");
+    assert(JSON.stringify(first.queue) === JSON.stringify(replay.queue), "unfinished queue choices replay after refresh");
+    ok("unfinished event queue replays from previous saved checkpoint");
+  })();
+
 };

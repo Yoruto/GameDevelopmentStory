@@ -11,6 +11,10 @@
     return (sim.careerWorld(config).eventLines) || {};
   }
 
+  function endgameLineSpec(config) {
+    return eventLinesSpec(config).endgame || {};
+  }
+
   function producerSpec(config) {
     return (sim.careerWorld(config).producerCareer) || {};
   }
@@ -206,6 +210,7 @@
     var minRank, prog;
     opts = opts || {};
     if (!sim.isCareerMode(state) || !cr || !cr.companyId) return false;
+    if (state.year > num(endgameLineSpec(config).producerLatestStartYear, 2022)) return false;
     if (sim.isCareerProducer(state)) return false;
     if (!def) return false;
     if (producerAsksExhausted(state, config)) return false;
@@ -322,7 +327,7 @@
     view = sim.careerPromotionView(st, config);
     text = text.replace(/\{currentLabel\}/g, view.currentLabel || "");
     text = text.replace(/\{nextLabel\}/g, view.nextLabel || "");
-    text = text.replace(/\{name\}/g, (st.career && st.career.characterName) || "");
+    text = text.replace(/\{name\}/g, sim.careerCopy(config).playerAddress || "");
     text = text.replace(/\{mentorName\}/g, bondDisplayName(st, "mentor", config));
     text = text.replace(/\{peerName\}/g, bondDisplayName(st, "peer", config));
     text = text.replace(/\{juniorName\}/g, bondDisplayName(st, "junior", config));
@@ -784,6 +789,22 @@
     if (status === "aborted") prog.abortedYear = st.year;
   }
 
+  sim.closeEndgameCareerLines = function (st, config) {
+    var ids = sim.activeCareerLineIds(st);
+    var i, def, prog, closed = 0;
+    for (i = 0; i < ids.length; i++) {
+      def = findLineDef(config, ids[i]);
+      if (!def || (def.kind !== "bond" && def.kind !== "becomeProducer")) continue;
+      prog = lineProgress(st, ids[i]);
+      if (!prog) continue;
+      completeLine(prog, "aborted", st);
+      prog.endgameClosed = true;
+      closed++;
+    }
+    if (st.career) st.career.pendingMentorProducer = null;
+    return closed;
+  };
+
   function fireBeat(st, def, beatIndex, config, queue, notes) {
     var beats = def.beats || [];
     var beat;
@@ -834,6 +855,9 @@
     def = findLineDef(config, lineId);
     if (!def) return sim.fail(state, sim.ERR.EVENT_NOT_FOUND);
     if (def.kind === "becomeProducer" && !sim.canStartBecomeProducerLine(state, config, opts)) {
+      return sim.fail(state, sim.ERR.CAREER_LINE_LOCKED);
+    }
+    if (def.kind === "bond" && state.year > num(endgameLineSpec(config).bondLatestStartYear, 2020)) {
       return sim.fail(state, sim.ERR.CAREER_LINE_LOCKED);
     }
     if (def.kind === "promotion" && !sim.canStartPromotionLine(state, config) &&
@@ -1107,6 +1131,7 @@
     var prog;
     if (!def || !optionalLineKind(def)) return false;
     if (!sim.isCareerMode(st) || !st.career) return false;
+    if (def.kind === "bond" && st.year > num(endgameLineSpec(config).bondLatestStartYear, 2020)) return false;
     if (exclusiveBlocked(st, def, config)) return false;
     prog = lineProgress(st, def.id);
     if (!reopenOk(prog, def, st)) return false;
@@ -1304,10 +1329,12 @@
     for (i = 0; i < ids.length; i++) {
       def = findLineDef(config, ids[i]);
       prog = lineProgress(st, ids[i]);
-      if (!def || !prog) continue;
+      // A queued choice must be answered before skip rules can finish its line.
+      // Remote beats may queue a choice earlier in this same monthly pass.
+      if (!def || !prog || prog.pending) continue;
       if (def.kind === "merger" || def.kind === "interrupt") continue;
       advanceSkippedBeats(st, def, prog, config);
-      if (prog.status !== "active" || prog.pending) continue;
+      if (prog.status !== "active") continue;
       beats = def.beats || [];
       if (prog.beat < beats.length && beatWaitReady(st, prog, beats[prog.beat], config)) {
         slot = { def: def, prog: prog };

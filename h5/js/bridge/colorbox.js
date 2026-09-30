@@ -23,23 +23,16 @@
     isPreview: function () {
       return !GDS.bridge.canCloud();
     },
-    auditText: async function (text) {
-      if (!(window.ColorboxAI && window.ColorboxAI.security && window.ColorboxAI.security.checkAudit)) {
-        return { ok: true, preview: true };
-      }
+    posterUserId: async function () {
+      var box = cai();
+      if (!(box && box.auth && typeof box.auth.getUserInfo === "function")) return "我";
       try {
-        var res = await window.ColorboxAI.security.checkAudit(text);
-        if (res.code === 401 || res.code === 500) {
-          if (GDS.bridge.isPreview()) return { ok: true, preview: true };
-          return { ok: false, message: res.message || (res.code === 401 ? "请先登录" : "检查失败，先不提交") };
-        }
-        if (res.code !== 200 || res.data !== true) {
-          return { ok: false, message: res.message || "名字不合适，换一个" };
-        }
-        return { ok: true };
+        var res = await window.ColorboxAI.auth.getUserInfo();
+        if (!res || res.code !== 200 || !res.data || Number(res.data.islogin) !== 1) return "我";
+        var id = typeof res.data.puid === "string" ? res.data.puid.trim() : "";
+        return id || "我";
       } catch (e) {
-        if (GDS.bridge.isPreview()) return { ok: true, preview: true };
-        return { ok: false, message: (e && e.message) || "检查失败，先不提交" };
+        return "我";
       }
     },
     ensureCloud: async function () {
@@ -63,9 +56,40 @@
       });
       if (res.statusCode === 401 || res.code === 401) throw new Error(res.message || "请先登录");
       if (res.code !== 200 && res.code !== 0) throw new Error(res.message || "读档失败");
-      return res.data || null;
+      var row = res.data || null;
+      if (row && row.saveChunks) {
+        if (!Number.isSafeInteger(row.saveChunks) || row.saveChunks < 2 || row.saveChunks > 8 ||
+            row.chunkIndex !== 0 || typeof row.saveChunk !== "string") {
+          throw new Error("云端存档分段信息无效");
+        }
+        var chunks = [row.saveChunk];
+        for (var i = 1; i < row.saveChunks; i++) {
+          var next = await window.ColorboxAI.cloud.request({
+            url: e.apiBase + "/my/save?part=" + i + "&revision=" + row.revision,
+            method: "GET", envId: e.envId, auth: true
+          });
+          if (next.statusCode === 409 || next.code === 409) throw new Error("读取时云端存档发生变更，请重试");
+          if ((next.code !== 200 && next.code !== 0) || !next.data ||
+              next.data.revision !== row.revision || next.data.chunkIndex !== i ||
+              next.data.saveChunks !== row.saveChunks || typeof next.data.saveChunk !== "string") {
+            throw new Error("云端存档分段读取失败");
+          }
+          chunks.push(next.data.saveChunk);
+        }
+        if (!win.TextDecoder || !win.atob) throw new Error("当前浏览器无法读取云端存档");
+        var decoded = chunks.map(function (chunk) { return win.atob(chunk); });
+        var size = decoded.reduce(function (sum, chunk) { return sum + chunk.length; }, 0);
+        var bytes = new Uint8Array(size);
+        var offset = 0;
+        decoded.forEach(function (chunk) {
+          for (var j = 0; j < chunk.length; j++) bytes[offset + j] = chunk.charCodeAt(j);
+          offset += chunk.length;
+        });
+        row.saveJson = new win.TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      }
+      return row;
     },
-    cloudPutSave: async function (st) {
+    cloudPutSave: async function (st, expectedRevision) {
       if (!(await GDS.bridge.ensureCloud())) return false;
       var e = env();
       var res = await window.ColorboxAI.cloud.request({
@@ -76,20 +100,27 @@
           year: st.year,
           month: st.month,
           phase: st.phase,
-          saveJson: JSON.stringify(st)
+          saveJson: JSON.stringify(st),
+          expectedRevision: expectedRevision
         },
         envId: e.envId,
         auth: true
       });
+      if (res.statusCode === 409 || res.code === 409) {
+        var conflict = new Error("云端有较新的存档");
+        conflict.code = 409;
+        throw conflict;
+      }
       if (res.statusCode === 401 || res.code === 401) throw new Error(res.message || "请先登录");
       if (res.code !== 200 && res.code !== 0) throw new Error(res.message || "存档失败");
-      return true;
+      return res.data || null;
     },
     storageSet: async function (st) {
-      if (!(window.ColorboxAI && window.ColorboxAI.storage && window.ColorboxAI.storage.setValue)) return;
+      if (!(window.ColorboxAI && window.ColorboxAI.storage && window.ColorboxAI.storage.setValue)) return false;
       try {
         await window.ColorboxAI.storage.setValue({ gdsSave: st });
-      } catch (e) { /* 预览可无容器存储 */ }
+        return true;
+      } catch (e) { return false; }
     },
     storageGet: async function () {
       if (!(window.ColorboxAI && window.ColorboxAI.storage && window.ColorboxAI.storage.getValue)) return null;
@@ -97,7 +128,7 @@
         var val = await window.ColorboxAI.storage.getValue("gdsSave");
         return val || null;
       } catch (e) {
-        return null;
+        throw e;
       }
     }
   };

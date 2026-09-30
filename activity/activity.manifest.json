@@ -1,0 +1,21 @@
+{
+  "metaActivityId": "app_3c72f55c0c",
+  "alias": "未命名应用",
+  "envId": "app-3c72f55c0c-d3gc5cvnta9f232c1",
+  "resources": {
+    "functions": ["activity_api"],
+    "gatewayRoutes": ["/api/health", "/api/my/save", "/api/save/upsert"],
+    "postgresTables": ["public.game_saves"]
+  },
+  "publicBaseUrl": "https://app-3c72f55c0c-d3gc5cvnta9f232c1-1252166086.ap-shanghai.app.tcloudbase.com",
+  "verification": {
+    "ok": true,
+    "healthChecked": true,
+    "unauthenticatedSaveWriteBlocked": true,
+    "corsPreflightChecked": true,
+    "frontendUploadPending": true
+  },
+  "activity": {
+    "status": "verified"
+  }
+}

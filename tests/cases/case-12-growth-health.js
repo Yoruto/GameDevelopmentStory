@@ -75,6 +75,27 @@ module.exports = function runGroup(ctx) {
     ok("stat soft cap converges below linear, off-role dims follow the main one");
   })();
 
+  (function producerKeepsGrowingOriginalSpecialty() {
+    let st = enterLiveDevMonth(config, 24680, "制作人成长", config);
+    st.career.roleId = "art";
+    st.career.priorRoleId = null;
+    st.career.stats.program = 20;
+    st.career.stats.art = 50.9;
+    st.career.statMilestones = {};
+    sim.applyCareerBecomeProducer(st, config);
+    assert(st.career.priorRoleId === "art", "producer remembers the previous specialty");
+    assert(sim.careerMainStat(st, config) === 50.9, "producer main stat reads the previous specialty");
+    const oldSave = deepClone(st);
+    oldSave.career.priorRoleId = null;
+    assert(sim.careerMainStat(oldSave, config) === 50.9, "older producer saves use the highest stat");
+    for (let i = 0; i < 24 && st.career.stats.art <= 51; i++) {
+      st = sim.tickMonth(st, config).state;
+    }
+    assert(st.career.stats.art > 51, "producer specialty grows through project work");
+    assert(st.career.statMilestones["51"], "producer growth can trigger the next stat milestone");
+    ok("producer retains specialty growth and milestones after changing role");
+  })();
+
   // 开发期成长：阶段权重（projectPhases）× 体量阻尼，以及熟练度阶梯拉陡。
   (function careerDevPhaseAndPowerWeighting() {
     const world = config.careerWorld;
@@ -203,8 +224,10 @@ module.exports = function runGroup(ctx) {
     assert(r2.ok && r2.state.career.health === 4, "rest option +1, got " + (r2.state.career.health));
     // 低健康关怀拍：health ≤ 2 触发 careCheck（每年一次），高健康不触发
     tweaked.careerWorld.devEvents.chance = 0;
+    tweaked.careerWorld.careerHealth = deepClone(config.careerWorld.careerHealth);
+    tweaked.careerWorld.careerHealth.lowEventChance = 0;
     tweaked.careerWorld.devEvents.list = deepClone(config.careerWorld.devEvents.list); // 含 careCheck(manualOnly)
-    st.career.health = 1;
+    st.career.health = 2;
     st.career.careBeatYear = null;
     const rq1 = sim.tickMonth(st, tweaked);
     const carePage = (rq1.queue || []).filter(function (p) { return p.eventId === "careCheck"; })[0];
@@ -213,12 +236,26 @@ module.exports = function runGroup(ctx) {
     const rq2 = sim.tickMonth(rq1.state, tweaked);
     assert(!(rq2.queue || []).some(function (p) { return p.eventId === "careCheck"; }), "care beat once per year");
     const rEat = sim.resolveCareerEventChoice(rq1.state, "careCheck", "goEat", tweaked);
-    assert(rEat.ok && rEat.state.career.health === 2, "care meal +1, got " + (rEat.state.career.health));
+    assert(rEat.ok && rEat.state.career.health === 3, "care meal +1, got " + (rEat.state.career.health));
     const hiState = deepClone(rq1.state);
     hiState.career.health = 3;
     hiState.career.careBeatYear = null;
     const rq3 = sim.tickMonth(hiState, tweaked);
     assert(!(rq3.queue || []).some(function (p) { return p.eventId === "careCheck"; }), "no care beat above 2 segments");
+    const hospitalState = deepClone(st);
+    hospitalState.career.health = 1;
+    hospitalState.career.careBeatYear = null;
+    const hospitalStats = JSON.stringify(hospitalState.career.stats);
+    const hospitalXp = hospitalState.career.jobXp;
+    const hospitalMonth = sim.tickMonth(hospitalState, tweaked);
+    assert(hospitalMonth.state.career.health === 3, "hospital restores 1 → 3");
+    assert((hospitalMonth.queue || []).some(function (p) {
+      return p.eventId === "healthHospitalStay" && p.presentation === "choice" && p.options.length === 1;
+    }), "hospital is a forced stopping event");
+    assert(!(hospitalMonth.queue || []).some(function (p) { return p.eventId === "careCheck"; }),
+      "hospital takes priority over care meal");
+    assert(JSON.stringify(hospitalMonth.state.career.stats) === hospitalStats &&
+      hospitalMonth.state.career.jobXp === hospitalXp, "hospital month grants no player growth");
     // manualOnly 事件不得进随机池：把 cadence/chance 拉满狂抽也抽不到 careCheck
     tweaked.careerWorld.devEvents.chance = 1;
     tweaked.careerWorld.devEvents.minGapMonths = 0;
@@ -236,7 +273,42 @@ module.exports = function runGroup(ctx) {
       if (r && r.id === "careCheck") { sawCare = true; break; }
     }
     assert(!sawCare, "manualOnly event never rolled from pool");
-    ok("health: init 4, event-only movement, clamp 1..5, option healthDelta applies, care beat");
+    ok("health: event movement, low-health care, and forced hospital recovery without work");
+  })();
+
+  (function careerHealthRiskEvents() {
+    const tweaked = deepClone(config);
+    tweaked.careerWorld = deepClone(config.careerWorld);
+    tweaked.careerWorld.devEvents = deepClone(config.careerWorld.devEvents);
+    tweaked.careerWorld.devEvents.chance = 0;
+    tweaked.careerWorld.careerHealth = deepClone(config.careerWorld.careerHealth);
+    const game = sim.createCareerGame("健康风险", "programmer", tweaked);
+    let st = sim.acceptOpeningOffer(game, game.career.openingOffers[0].id, tweaked).state;
+    st.career.liveStats = { play: 50, fun: 50, expression: 50, immersion: 50 };
+    st.career.health = 1;
+    const blocked = sim.resolveCareerEventChoice(st, "healthDeadline", "overnight", tweaked);
+    assert(!blocked.ok && st.career.health === 1, "cannot take free health-costing gain at minimum health");
+    st.career.health = 2;
+    const rush = sim.resolveCareerEventChoice(st, "healthDeadline", "overnight", tweaked);
+    const steady = sim.resolveCareerEventChoice(st, "healthDeadline", "planned", tweaked);
+    assert(rush.ok && rush.state.career.health === 1 && steady.ok &&
+      rush.state.career.liveStats.play > steady.state.career.liveStats.play,
+      "health-costing choice gives larger live title gain");
+    tweaked.careerWorld.careerHealth.lowEventChance = 1;
+    tweaked.careerWorld.careerHealth.lowEventIds = ["healthFocusSlip"];
+    const riskMonth = sim.tickMonth(st, tweaked);
+    assert((riskMonth.queue || []).some(function (p) { return p.eventId === "healthFocusSlip"; }),
+      "health 2 can trigger a negative work event");
+    assert(riskMonth.state.career.lastLowHealthEventYm != null, "low-health event stamps cooldown");
+    const fever = sim.resolveCareerEventChoice(st, "healthRecurringFever", "sickLeave", tweaked);
+    assert(fever.ok && fever.state.career.health === 3 && fever.state.career.healthWorkMult === 0,
+      "sick leave recovers health and schedules a work-free month");
+    const leaveMonth = sim.tickMonth(fever.state, tweaked);
+    assert(leaveMonth.state.career.healthWorkMonth == null && leaveMonth.state.career.healthWorkMult == null,
+      "scheduled leave is consumed once");
+    assert(leaveMonth.state.career.jobXp === fever.state.career.jobXp,
+      "sick leave month grants no job experience");
+    ok("health risk: gain gate, low-health event, and next-month sick leave");
   })();
 
   (function careerOptionReqGate() {

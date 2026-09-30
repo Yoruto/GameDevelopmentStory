@@ -1,5 +1,7 @@
 # Bug Report：职级跑在属性前面——全属性不到 40，职级已经 T5
 
+> 历史问题与两轮修复记录。下文统计、待拍板与测试数量不代表当前构建；现行职级门槛以 `activity/career-world.json` 和 [current-status.md](../current-status.md) 为准。
+
 > **状态：已修复（2026-09-22）。** 三条改动：挖人带级的准入、`applyCareerPromotion` 的门禁兜底、
 > 两条晋升线补 `storyPromo` 标记。测试 `tests/cases/case-17-promotion-gate.js`（4 条），全量 **112 条全绿**。
 > 复现脚本：`scripts/_probe_promotion_run.js`（整局归因）/ `_probe_promotion.js`（逐次晋升快照）/

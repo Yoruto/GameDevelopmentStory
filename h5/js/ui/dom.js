@@ -7,6 +7,12 @@
     return doc.getElementById(id);
   };
 
+  ui.focusWithoutScroll = function (el) {
+    if (!el || !el.focus) return;
+    try { el.focus({ preventScroll: true }); }
+    catch (error) { el.focus(); }
+  };
+
   ui.toast = function (msg) {
     var el = ui.$("toast");
     el.textContent = msg;
@@ -56,14 +62,76 @@
     (nodes || []).forEach(function (n) { extra.appendChild(n); });
   };
 
+  // Measure without height caps, then apply one of three viewport-aware caps.
+  ui.fitDialogToContent = function (opts) {
+    opts = opts || {};
+    var dlg = ui.$("dlg");
+    // Ordinary dialogs can use their natural height with the long viewport cap.
+    // Only reveals need a measured height before their rows are cleared.
+    if (!opts.lockHeight) {
+      dlg.classList.remove("dlg-size-short", "dlg-size-medium", "dlg-size-long");
+      dlg.classList.add("dlg-size-long");
+      dlg.style.height = "";
+      return "long";
+    }
+    var body = ui.$("dlg-body");
+    var extra = ui.$("dlg-extra");
+    var actions = ui.$("dlg-actions");
+    var ok = ui.$("dlg-ok");
+    var actionsHidden = actions.classList.contains("off");
+    var okHidden = ok.classList.contains("off");
+    var old = {
+      height: dlg.style.height,
+      maxHeight: dlg.style.maxHeight,
+      overflow: dlg.style.overflow,
+      bodyMaxHeight: body.style.maxHeight,
+      bodyOverflow: body.style.overflow,
+      extraFlex: extra.style.flex,
+      extraOverflow: extra.style.overflow
+    };
+    var viewportHeight = root.innerHeight || doc.documentElement.clientHeight || 720;
+    if (opts.reserveActions) {
+      actions.classList.remove("off");
+      ok.classList.remove("off");
+    }
+    dlg.classList.remove("dlg-size-short", "dlg-size-medium", "dlg-size-long");
+    dlg.style.height = "auto";
+    dlg.style.maxHeight = "none";
+    dlg.style.overflow = "visible";
+    body.style.maxHeight = "none";
+    body.style.overflow = "visible";
+    extra.style.flex = "none";
+    extra.style.overflow = "visible";
+    var naturalHeight = dlg.offsetHeight;
+    var size = naturalHeight <= Math.min(320, viewportHeight * 0.46) ? "short"
+      : naturalHeight <= Math.min(480, viewportHeight * 0.7) ? "medium" : "long";
+    dlg.style.height = old.height;
+    dlg.style.maxHeight = old.maxHeight;
+    dlg.style.overflow = old.overflow;
+    body.style.maxHeight = old.bodyMaxHeight;
+    body.style.overflow = old.bodyOverflow;
+    extra.style.flex = old.extraFlex;
+    extra.style.overflow = old.extraOverflow;
+    if (opts.reserveActions) {
+      actions.classList.toggle("off", actionsHidden);
+      ok.classList.toggle("off", okHidden);
+    }
+    dlg.classList.add("dlg-size-" + size);
+    dlg.style.height = opts.lockHeight ? naturalHeight + "px" : "";
+    return size;
+  };
+
   ui.openDlg = function (opts) {
     opts = opts || {};
     var hook = ui.session.dlgHook;
     hook.mode = opts.mode || "once";
     hook.onOk = opts.onOk || null;
     hook.onCancel = opts.onCancel || null;
+    hook.returnFocus = doc.activeElement;
     var dlg = ui.$("dlg");
-    dlg.className = "dlg dlg-" + (opts.kind || "info");
+    dlg.className = "dlg dlg-" + (opts.kind || "info") +
+      ((hook.mode === "tick" || hook.mode === "tick-choice") ? " dlg-queue" : "");
+    dlg.style.height = "";
     ui.$("dlg-kicker").textContent = opts.kicker || (opts.kind === "event" ? "本月事件" : (opts.kind === "confirm" ? "请确认" : "提示"));
     ui.$("dlg-title").textContent = opts.title || "";
     ui.$("dlg-body").textContent = opts.body || "";
@@ -74,15 +142,42 @@
     ui.$("dlg-ok").classList.toggle("off", !!opts.hideOk);
     ui.$("dlg-actions").classList.toggle("off", !!opts.hideActions);
     ui.$("dlg-mask").classList.add("on");
+    ui.fitDialogToContent();
+    root.setTimeout(function () {
+      var first = ui.$("dlg").querySelector("[data-event-opt]:not([disabled]), #dlg-ok:not(.off), #dlg-cancel:not(.off)");
+      if (ui.$("dlg-mask").classList.contains("on")) ui.focusWithoutScroll(first || ui.$("dlg"));
+    }, 0);
   };
 
   ui.closeDlg = function () {
     if (ui.stopReveal) ui.stopReveal();
     ui.$("dlg-mask").classList.remove("on");
+    var returnFocus = ui.session.dlgHook.returnFocus;
     ui.session.dlgHook.mode = null;
     ui.session.dlgHook.onOk = null;
     ui.session.dlgHook.onCancel = null;
+    ui.session.dlgHook.returnFocus = null;
+    ui.focusWithoutScroll(returnFocus);
   };
+
+  doc.addEventListener("keydown", function (event) {
+    if (!ui.$("dlg-mask").classList.contains("on")) return;
+    var mode = ui.session.dlgHook.mode;
+    if (event.key === "Escape" && mode !== "tick" && mode !== "tick-choice") {
+      event.preventDefault();
+      var cancel = ui.session.dlgHook.onCancel;
+      ui.closeDlg();
+      if (cancel) cancel();
+      return;
+    }
+    if (event.key !== "Tab") return;
+    var nodes = Array.prototype.slice.call(ui.$("dlg").querySelectorAll("button:not(:disabled)"))
+      .filter(function (el) { return !el.classList.contains("off") && el.offsetParent !== null; });
+    if (!nodes.length) { event.preventDefault(); ui.focusWithoutScroll(ui.$("dlg")); return; }
+    var first = nodes[0], last = nodes[nodes.length - 1];
+    if (event.shiftKey && doc.activeElement === first) { event.preventDefault(); last.focus(); }
+    else if (!event.shiftKey && doc.activeElement === last) { event.preventDefault(); first.focus(); }
+  });
 
   ui.l2Open = function () {
     var intel = ui.$("dock-intel");
@@ -153,24 +248,22 @@
     var target = ui.$(id);
     if (!target) return;
     var wasOn = target.classList.contains("on");
-    // 目标 scene 已是当前 scene 时跳过 add，避免移动端 WebView（X5 / 老 Blink /
-    // WebKit）把同步 remove+add 视为新动画，重放 .scene.on { animation: scene-in }
-    // 造成主界面 translateY(6px)→0 跳一下又还原（桌面 Chromium 优化掉了，所以重
-    // 放只在真机上能复现）。
+    if (!wasOn && ui.stopReveal) ui.stopReveal();
+    // Only a real scene change may start an entrance animation. Repainting
+    // the active scene must never replay a transform on the whole screen.
     var all = doc.querySelectorAll(".scene");
     for (var i = 0; i < all.length; i++) {
-      if (all[i] !== target) all[i].classList.remove("on");
+      if (all[i] !== target) {
+        ui.motion.cancel(all[i]);
+        all[i].classList.remove("on");
+      }
     }
-    if (!wasOn) target.classList.add("on");
+    if (!wasOn) {
+      target.classList.add("on");
+      ui.motion.play(target, target, "scene-enter", 220);
+    }
     if (id !== "sc-hq") ui.closeDockSheets();
     else ui.syncDock();
   };
 
-  ui.showPreviewFlag = function () {
-    var on = GDS.bridge && GDS.bridge.isPreview();
-    ["preview-flag-boot", "preview-flag-hq"].forEach(function (id) {
-      var el = ui.$(id);
-      if (el) el.classList.toggle("on", !!on);
-    });
-  };
 })(typeof globalThis !== "undefined" ? globalThis : this);
